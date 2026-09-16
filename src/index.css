@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-primary: #2563EB;
+  --color-secondary: #3B82F6;
+  --color-accent: #60A5FA;
+  --color-bg: #F1F5F9;
+  --color-surface: #FFFFFF;
+  --color-sidebar: #111827;
+  --color-sidebar-hover: #1F2937;
+  
+  --color-text-main: #374151;
+  --color-text-secondary: #6B7280;
+  --color-border-line: #E5E7EB;
+
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
+
+  /* Spacing Grid (8px system) */
+  --spacing-1: 8px;
+  --spacing-2: 16px;
+  --spacing-3: 24px;
+  --spacing-4: 32px;
+  --spacing-5: 40px;
+  --spacing-6: 48px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 14px;
+  --radius-xl: 22px;
+  --radius-2xl: 22px;
+  --radius-full: 9999px;
+
+  /* Premium Box Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.02), 0 2px 4px rgba(0, 0, 0, 0.01);
+  --shadow-lg: 0 20px 40px rgba(37, 99, 255, 0.03), 0 4px 6px rgba(0, 0, 0, 0.02);
+  --shadow-card: 0 8px 30px rgba(37, 99, 255, 0.02), 0 1px 2px rgba(37, 99, 255, 0.01);
+  --shadow-float: 0 25px 50px -12px rgba(15, 23, 42, 0.08);
+
+  /* Animations */
+  --animate-fade-in: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-up: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-in: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-zoom-in: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes zoomIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text-main);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  *:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.4);
+    border-radius: 6px;
+    transition: box-shadow 0.2s ease;
+  }
+}
+
+@layer utilities {
+  .page-container {
+    @apply w-full max-w-[1400px] mx-auto pb-12 flex flex-col gap-4 sm:gap-6 lg:gap-8 px-3 sm:px-4 md:px-6 lg:px-8;
+  }
+
+  /* Premium Card Component styling */
+  .saas-card {
+    @apply rounded-[22px] border border-slate-300/80 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_12px_40px_rgba(37,99,235,0.12)] hover:border-blue-300 hover:-translate-y-1;
+  }
+ 
+  /* Sticky Header Tables */
+  .saas-table-container {
+    @apply rounded-[22px] border border-slate-300/80 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-white transition-all duration-300 hover:shadow-[0_12px_40px_rgba(37,99,235,0.12)] hover:border-blue-300;
+  }
+ 
+  .saas-table {
+    @apply w-full text-left border-collapse;
+  }
+ 
+  .saas-table th {
+    @apply px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50/50 sticky top-0 border-b border-slate-100 z-10;
+  }
+ 
+  .saas-table td {
+    @apply px-6 py-4 text-sm text-slate-600 border-b border-slate-100/50 transition-colors;
+  }
+ 
+  .saas-table tr:last-child td {
+    @apply border-b-0;
+  }
+ 
+  .saas-table tr:hover td {
+    @apply bg-slate-50/60 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)];
+  }
+ 
+  /* Premium Status Badges */
+  .saas-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border;
+  }
+ 
+  .saas-badge-success {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border bg-emerald-50 text-emerald-700 border-emerald-100;
+  }
+ 
+  .saas-badge-warning {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border bg-amber-50 text-amber-700 border-amber-100;
+  }
+ 
+  .saas-badge-danger {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border bg-rose-50 text-rose-700 border-rose-100;
+  }
+ 
+  .saas-badge-info {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border bg-blue-50 text-blue-700 border-blue-100;
+  }
+ 
+  .saas-badge-neutral {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border bg-slate-50 text-slate-700 border-slate-200;
+  }
+ 
+  /* SaaS Form Elements */
+  .saas-input {
+    @apply w-full h-11 px-4 rounded-[14px] border border-slate-300 bg-[#F8FAFC] text-sm transition-all duration-200 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/25 hover:border-indigo-400 hover:shadow-md placeholder:text-slate-400;
+  }
+ 
+  .saas-label {
+    @apply text-xs font-bold text-slate-600 mb-1.5 block uppercase tracking-wider;
+  }
+ 
+  .saas-btn {
+    @apply h-11 px-5 rounded-[14px] text-sm font-bold inline-flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+ 
+  .saas-btn-primary {
+    @apply h-11 px-5 rounded-[14px] text-sm font-bold inline-flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white shadow-sm hover:shadow-[0_8px_20px_rgba(37,99,235,0.3)] hover:-translate-y-0.5;
+  }
+ 
+  .saas-btn-secondary {
+    @apply h-11 px-5 rounded-[14px] text-sm font-bold inline-flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none bg-slate-100 text-slate-800 hover:bg-white hover:border-slate-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5;
+  }
+ 
+  .saas-btn-outline {
+    @apply h-11 px-5 rounded-[14px] text-sm font-bold inline-flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5;
+  }
+ 
+  .saas-btn-ghost {
+    @apply h-11 px-5 rounded-[14px] text-sm font-bold inline-flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none text-slate-600 hover:bg-slate-50 hover:text-indigo-600 hover:shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:-translate-y-0.5;
+  }
+
+  /* Page Headers */
+  .saas-page-header {
+    @apply flex flex-col md:flex-row md:items-center justify-between gap-4 py-6 border-b border-slate-100;
+  }
+
+  .saas-page-title {
+    @apply text-2xl md:text-3xl font-black text-slate-900 tracking-tight;
+  }
+
+  .saas-page-subtitle {
+    @apply text-sm text-slate-500 font-medium mt-1;
+  }
+
+  /* Custom scrollbar for premium panels */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-slate-200);
+    border-radius: var(--radius-full);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-slate-300);
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Ensure all tables wrapped in overflow-x-auto scroll horizontally rather than squishing columns */
+  .overflow-x-auto table {
+    min-width: 800px !important;
+    width: 100%;
+  }
+
+  /* Exclude calendar tables or small custom layout grids from horizontal scroll forcing */
+  .overflow-x-auto table.no-responsive-scroll {
+    min-width: auto !important;
+  }
+}

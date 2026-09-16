@@ -1,0 +1,146 @@
+import React from 'react';
+import { MainLayout } from '../layouts/MainLayout';
+import { Card } from '../components/Card';
+
+import { useState, useEffect } from 'react';
+import api from '../api/client';
+
+
+
+export const VacancyDashboard = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
+  const [selectedOwnerId, setSelectedOwnerId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    vacant: 0,
+    occupied: 0,
+    totalVacantBedrooms: 0,
+    fullUnitCount: 0,
+    bedroomWiseCount: 0,
+    vacancyByBuilding: []
+  });
+
+  const fetchStats = async (ownerId = '') => {
+    try {
+      setLoading(true);
+      const url = ownerId ? `/api/admin/analytics/vacancy?ownerId=${ownerId}` : '/api/admin/analytics/vacancy';
+      const res = await api.get(url);
+      setStats(res.data);
+    } catch (e) {
+      console.error('Vacancy Fetch Error:', e);
+      setStats({
+        total: 0,
+        vacant: 0,
+        occupied: 0,
+        totalVacantBedrooms: 0,
+        fullUnitCount: 0,
+        bedroomWiseCount: 0,
+        vacancyByBuilding: []
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+    const handleCompanyChange = () => {
+      fetchStats();
+    };
+    window.addEventListener('companyChanged', handleCompanyChange);
+    return () => window.removeEventListener('companyChanged', handleCompanyChange);
+  }, []);
+
+  return (
+    <MainLayout title="Vacancy Dashboard">
+      <div className="flex flex-col gap-8">
+
+        {/* TOP BAR / FILTERS */}
+
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <>
+            <section className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-6">
+              <Card className="saas-card">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Units</span>
+                <h2 className="text-3xl font-black mt-2 text-slate-800 leading-tight">{stats.total}</h2>
+                <p className="mt-2 text-slate-500 text-xs">Across all buildings</p>
+              </Card>
+
+              <Card className="saas-card border-l-4 border-rose-500">
+                <span className="text-xs font-bold uppercase tracking-wider text-rose-500">Currently Vacant</span>
+                <h2 className="text-3xl font-black mt-2 text-rose-600 leading-tight">{stats.vacant}</h2>
+                <p className="mt-2 text-slate-500 text-xs">Needs immediate attention</p>
+              </Card>
+
+              <Card className="saas-card border-l-4 border-orange-500">
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-500">Will Be Vacant</span>
+                <h2 className="text-3xl font-black mt-2 text-orange-600 leading-tight">{stats.willBeVacant || 0}</h2>
+                <p className="mt-2 text-slate-500 text-xs">Upcoming move-outs</p>
+              </Card>
+
+              <Card className="saas-card border-l-4 border-emerald-500">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-500">Occupied Units</span>
+                <h2 className="text-3xl font-black mt-2 text-emerald-600 leading-tight">{stats.occupied}</h2>
+                <p className="mt-2 text-slate-500 text-xs">Generating active revenue</p>
+              </Card>
+            </section>
+
+            {/* DETAILS */}
+            <section className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+
+              {/* Vacancy by Building */}
+              <Card title="Vacancy by Building">
+                <ul className="p-0 list-none">
+                  {stats.vacancyByBuilding.map((b, index) => (
+                    <li key={index} className="flex flex-col py-4 border-b border-slate-100 last:border-0">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                        <div className="flex flex-col gap-2.5">
+                          <span className="font-bold text-slate-800 text-sm">{b.name}</span>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-medium">
+                            <span className="bg-slate-50 px-2 py-1 rounded-md border border-slate-100">Total: <strong className="text-slate-700">{b.total}</strong></span>
+                            <span className="bg-slate-50 px-2 py-1 rounded-md border border-slate-100">Occupied: <strong className="text-slate-700">{b.occupied}</strong></span>
+                            {b.hasBedroomWise && (
+                              <span className="text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-md font-bold text-[10px]">Bedroom-wise rental</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap sm:justify-end gap-2 shrink-0">
+                          {/* Full-unit vacancy badge */}
+                          {b.vacant > 0 ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">
+                              {b.vacant} Unit{b.vacant > 1 ? 's' : ''} Vacant (Agent: Unassigned)
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                              All Units Occupied
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                  {stats.vacancyByBuilding.length === 0 && <li className="text-gray-400 italic">No buildings found for this owner</li>}
+                </ul>
+              </Card>
+
+              {/* Removed Unit vs Bedroom Rental Mode per client request */}
+
+            </section>
+          </>
+        )}
+
+      </div>
+    </MainLayout>
+  );
+};
