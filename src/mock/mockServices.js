@@ -379,6 +379,7 @@ export const mockDashboardService = {
   getVacancyStats: () => withDelay(() => {
     const apartments = getStore('mock_apartments');
     const properties = getStore('mock_properties');
+    const leases = getStore('mock_leases');
     
     const total = apartments.length;
     const vacant = apartments.filter(a => a.status === 'Vacant').length;
@@ -418,6 +419,29 @@ export const mockDashboardService = {
       };
     });
 
+    // Build upcoming vacancies: active leases expiring within 90 days
+    const now = new Date();
+    const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+    const upcomingVacancies = (leases || [])
+      .filter(l => {
+        if (!l.endDate || l.status === 'Expired' || l.status === 'Terminated') return false;
+        const end = new Date(l.endDate);
+        return end >= now && end <= in90Days;
+      })
+      .map(l => {
+        const apt = apartments.find(a => a.id === l.unitId || a.id === l.apartmentId);
+        const prop = apt ? properties.find(p => p.id === apt.propertyId) : null;
+        return {
+          id: l.id,
+          tenantName: l.tenantName || l.tenant || 'Unknown Tenant',
+          unitName: apt ? (apt.unitNumber || apt.name || `Unit ${apt.id}`) : (l.unitName || l.unit || 'Unknown Unit'),
+          building: prop ? prop.name : (l.building || 'Unknown Building'),
+          vacantDate: l.endDate,
+          daysLeft: Math.max(0, Math.ceil((new Date(l.endDate) - now) / (1000 * 60 * 60 * 24)))
+        };
+      })
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+
     return {
       total,
       vacant,
@@ -425,7 +449,9 @@ export const mockDashboardService = {
       totalVacantBedrooms,
       fullUnitCount,
       bedroomWiseCount,
-      vacancyByBuilding
+      vacancyByBuilding,
+      willBeVacant: upcomingVacancies.length,
+      upcomingVacancies
     };
   }),
   cancelRefund: (tenantId, unitId) => withDelay(() => {
