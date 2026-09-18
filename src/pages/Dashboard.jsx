@@ -322,23 +322,24 @@ export const Dashboard = () => {
           <>
             {/* STAT CARDS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
-                {[
-                    { title: 'Total Properties', value: totalProperties || 0, subValue: 'Active Properties', icon: Building2, color: 'bg-blue-500', path: '/properties/buildings' },
-                    { title: 'Upcoming Renewals to Send', value: renewals.length || 0, subValue: 'Requires Action', icon: FileText, color: 'bg-orange-500', path: '/leases/renewals' },
-                    { title: 'Total Units', value: totalUnits || 0, subValue: 'Registered Units', icon: Home, color: 'bg-emerald-500', path: '/properties/buildings' },
-                    { title: 'Outstanding Rent', value: `$${(collectionMetrics.totalOutstanding || 0).toLocaleString('en-CA')}`, subValue: 'AR Receivables', icon: Wallet, color: 'bg-rose-500', path: '/payments/collection' },
-                    { title: 'Collection Rate', value: `${collectionMetrics.collectionRate || 0}%`, subValue: 'Overall Performance', icon: TrendingUp, color: 'bg-indigo-500', path: '/payments/collection' },
-                    { title: 'Overdue Invoices', value: collectionMetrics.overdueCount || 0, subValue: 'Requires Collection', icon: Clock, color: 'bg-amber-500', path: '/payments/collection' },
-                    { title: 'This Month Collected', value: `$${(collectionMetrics.thisMonthCollection || 0).toLocaleString('en-CA')}`, subValue: 'Cash Inflow', icon: TrendingUp, color: 'bg-emerald-500', path: '/payments/collection' },
-                    { title: 'Active TAL Cases', value: legalSummary.activeCasesCount || 0, subValue: 'In Litigation', icon: Gavel, color: 'bg-violet-500', path: '/tal-cases' },
-                    { title: 'Upcoming Hearings', value: legalSummary.upcomingHearingsCount || 0, subValue: 'Next 7 Days', icon: Calendar, color: 'bg-orange-500', path: '/tal-cases/calendar' },
-                    { title: 'Notes Hub', value: notesStats.totalNotes || 0, subValue: `${notesStats.recentCount || 0} This Week`, icon: StickyNote, color: 'bg-indigo-500', path: '/notes-hub' },
-                    { title: 'Monthly Revenue', value: `$${(actualRevenue || 0).toLocaleString('en-CA')}`, subValue: 'This Month', icon: TrendingUp, color: 'bg-emerald-500', path: '/accounting' },
-                    { title: 'Vacant Units', value: occupancy?.vacant || 0, subValue: 'Available Units', icon: Home, color: 'bg-blue-500', path: '/properties/buildings' }
-                ].map((card, idx) => (
-                    <div
+                {(() => {
+                    const upcomingVacancies = sortedLeaseAlertList.filter(a => a.daysLeft > 0);
+                    return [
+                        { title: 'Upcoming Renewals', value: renewals.length || 0, subValue: 'Requires Action', icon: FileText, color: 'bg-orange-500', path: '/leases/renewals' },
+                        { title: 'Upcoming Vacancies', value: upcomingVacancies.length || 0, subValue: upcomingVacancies.length > 0 ? `Next: ${formatTableDate(upcomingVacancies[0].expiryDate)}` : 'None upcoming', icon: Calendar, color: 'bg-teal-500', path: '/vacancy' },
+                        { title: 'Outstanding Rent', value: `$${(collectionMetrics.totalOutstanding || 0).toLocaleString('en-CA')}`, subValue: 'AR Receivables', icon: Wallet, color: 'bg-rose-500', path: '/payments/outstanding' },
+                        { title: 'Collection Rate', value: `${collectionMetrics.collectionRate || 0}%`, subValue: 'Overall Performance', icon: TrendingUp, color: 'bg-indigo-500', path: '/payments/collection' },
+                        { title: 'Overdue Invoices', value: collectionMetrics.overdueCount || 0, subValue: 'Requires Collection', icon: Clock, color: 'bg-amber-500', path: '/payments/invoices' },
+                        { title: 'This Month Collected', value: `$${(collectionMetrics.thisMonthCollection || 0).toLocaleString('en-CA')}`, subValue: 'Cash Inflow', icon: TrendingUp, color: 'bg-emerald-500', path: '/payments/received' },
+                        { title: 'Active TAL Cases', value: legalSummary.activeCasesCount || 0, subValue: 'In Litigation', icon: Gavel, color: 'bg-violet-500', path: '/tal-cases' },
+                        { title: 'Notes Hub', value: notesStats.totalNotes || 0, subValue: `${notesStats.recentCount || 0} This Week`, icon: StickyNote, color: 'bg-indigo-500', path: '/notes-hub' },
+                        { title: 'Vacant Units', value: occupancy?.vacant || 0, subValue: 'Available Units', icon: Home, color: 'bg-blue-500', path: '/vacancy' }
+                    ];
+                })().map((card, idx) => (
+                    <Link
                         key={idx}
-                        className="saas-card p-4 flex flex-col justify-between h-fit"
+                        to={card.path}
+                        className="saas-card p-4 flex flex-col justify-between h-fit hover:ring-2 hover:ring-indigo-500 hover:-translate-y-1 transition-all cursor-pointer block"
                     >
                         <div>
                             <div className="flex justify-between items-start mb-3">
@@ -352,7 +353,7 @@ export const Dashboard = () => {
                         <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{card.subValue}</span>
                         </div>
-                    </div>
+                    </Link>
                 ))}
             </div>
 
