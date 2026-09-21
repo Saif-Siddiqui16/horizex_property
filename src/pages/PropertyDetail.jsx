@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { DashboardLayout } from '../layouts/DashboardLayout';
+
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Table } from '../components/Table';
@@ -40,7 +40,7 @@ export const PropertyDetail = () => {
     if (!property) return <div>Loading...</div>;
 
     return (
-        <DashboardLayout title="Property Details">
+        <>
             <div className="mb-6">
                 <Link to="/properties/buildings" className="inline-flex items-center gap-2 text-slate-500 no-underline text-sm mb-2 hover:text-blue-600 transition-colors">
                     <ArrowLeft size={16} /> Back to Properties
@@ -164,6 +164,6 @@ export const PropertyDetail = () => {
                     )}
                 />
             </Card>
-        </DashboardLayout>
+        </>
     );
 };

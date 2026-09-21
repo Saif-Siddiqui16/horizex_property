@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DashboardLayout } from '../layouts/DashboardLayout';
+
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { PaymentModal } from '../components/PaymentModal';
@@ -70,7 +70,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     const totalPages = Math.ceil(transactions.length / itemsPerPage);
 
     return (
-        <DashboardLayout title="Accounting & Ledger">
+        <>
             <div className="flex justify-between items-center mb-6">
                 <div>{/* Buttons removed as requested */}</div>
             </div>
@@ -182,6 +182,6 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     }}
                 />
             )}
-        </DashboardLayout>
+        </>
     );
 };

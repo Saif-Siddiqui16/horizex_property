@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { DashboardLayout } from '../layouts/DashboardLayout';
+
 import { Button } from '../components/Button';
 import { Table } from '../components/Table';
 import { Plus, MoreHorizontal, Building2 } from 'lucide-react';
@@ -26,11 +26,11 @@ export const Properties = () => {
     }, []);
 
     if (loading) {
-        return <DashboardLayout title="Properties"><div className="p-8">Loading properties...</div></DashboardLayout>;
+        return <><div className="p-8">Loading properties...</div></>;
     }
 
     return (
-        <DashboardLayout title="Properties">
+        <>
             <div className="flex justify-between items-center mb-6">
                 <p className="text-slate-500 text-sm">Manage your real estate portfolio, units, and listings.</p>
                 <Button size="md" icon={Plus}>Add Property</Button>
@@ -89,6 +89,6 @@ export const Properties = () => {
                     </>
                 )}
             />
-        </DashboardLayout>
+        </>
     );
 };
