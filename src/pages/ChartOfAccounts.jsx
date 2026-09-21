@@ -120,7 +120,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               <button
                 key={t}
                 className={`py-2 px-4 rounded-lg border text-sm font-medium cursor-pointer transition-all duration-200 ${filter === t
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                  ? 'bg-zinc-900 text-white border-indigo-600 shadow-sm'
                   : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
                   }`}
                 onClick={() => setFilter(t)}
@@ -133,7 +133,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
           {/* Add Button */}
           {hasPermission('Chart of Accounts', 'add') && (
             <button
-              className="flex items-center justify-center gap-1.5 bg-green-600 text-white py-2.5 px-4 rounded-lg text-sm font-semibold cursor-pointer border-none transition-all duration-200 hover:bg-green-700 hover:-translate-y-px w-full sm:w-auto"
+              className="flex items-center justify-center gap-1.5 bg-zinc-900 text-white py-2.5 px-4 rounded-lg text-sm font-semibold cursor-pointer border-none transition-all duration-200 hover:bg-zinc-800 hover:-translate-y-px w-full sm:w-auto"
               onClick={openAddModal}
             >
               <FiPlus />
@@ -249,7 +249,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
               <div className="p-4 flex justify-end gap-2.5">
                 <button onClick={() => setShowModal(false)} className="py-2 px-4 rounded-lg border-none cursor-pointer bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium text-sm">Cancel</button>
-                <button className="py-2 px-4 rounded-lg border-none cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 font-medium text-sm" onClick={handleSave}>
+                <button className="py-2 px-4 rounded-lg border-none cursor-pointer bg-zinc-900 text-white hover:bg-zinc-800 font-medium text-sm" onClick={handleSave}>
                   Save Account
                 </button>
               </div>

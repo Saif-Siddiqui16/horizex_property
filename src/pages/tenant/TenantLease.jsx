@@ -31,7 +31,7 @@ const [lease, setLease] = React.useState(null);
             <div className="w-full space-y-8 anim-slide-up">
                 {/* LEASE SUMMARY CARD */}
                 <section className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden shadow-slate-100/50">
-                    <div className="bg-indigo-600 p-8 text-white flex justify-between items-center">
+                    <div className="bg-zinc-900 p-8 text-white flex justify-between items-center">
                         <div className="space-y-1">
                             <h2 className="text-2xl font-bold">Standard Lease Agreement</h2>
                             <p className="text-indigo-100 font-medium tracking-wide">Agreement ID: {lease.id}</p>
@@ -126,7 +126,7 @@ const [lease, setLease] = React.useState(null);
                             </div>
                             <Link
                                 to="/tenant/communication"
-                                className="block w-full py-4 rounded-2xl bg-indigo-600 text-white font-bold text-center hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                                className="block w-full py-4 rounded-2xl bg-zinc-900 text-white font-bold text-center hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-95"
                             >
                                 Message Admin
                             </Link>

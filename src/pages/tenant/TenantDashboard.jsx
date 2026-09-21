@@ -138,7 +138,7 @@ const [name, setName] = React.useState('Tenant');
                                         <h4 className="font-bold text-slate-800 text-lg">You have {unreadCount} new message{unreadCount > 1 ? 's' : ''}!</h4>
                                         <p className="text-sm text-slate-500 font-medium">Please check your inbox to read messages from the management.</p>
                                     </div>
-                                    <Link to="/tenant/communication" className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-100">
+                                    <Link to="/tenant/communication" className="bg-zinc-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-zinc-800 transition-all active:scale-95 shadow-lg shadow-zinc-200">
                                         Open Inbox
                                     </Link>
                                 </div>

@@ -208,7 +208,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         className={`p-4 flex items-center gap-3 cursor-pointer border-b border-slate-50 transition-all ${isSelected ? 'bg-indigo-50/50 border-l-4 border-l-indigo-600' : 'hover:bg-slate-50 border-l-4 border-l-transparent'}`}
                                     >
                                         <div className="relative">
-                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-base ${unread ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-500'}`}>
+                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-base ${unread ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200' : 'bg-slate-100 text-slate-500'}`}>
                                                 {conv.name?.charAt(0) || 'T'}
                                             </div>
                                             {unread && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 border border-white rounded-full"></span>}
@@ -251,7 +251,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     <button onClick={() => setShowSidebar(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-xl transition-colors">
                                         <ChevronLeft className="h-6 w-6 text-slate-600" />
                                     </button>
-                                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
+                                    <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-bold">
                                         {selectedUser.name?.charAt(0)}
                                     </div>
                                     <div>
@@ -285,7 +285,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         return (
                                             <div key={msg.id || idx} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                                                 <div className={`max-w-[85%] md:max-w-[75%] lg:max-w-xl xl:max-w-2xl group`}>
-                                                    <div className={`relative px-6 py-4 rounded-3xl text-sm leading-relaxed shadow-sm transition-all hover:shadow-md break-words whitespace-pre-wrap ${isOutbound ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-100'}`}>
+                                                    <div className={`relative px-6 py-4 rounded-3xl text-sm leading-relaxed shadow-sm transition-all hover:shadow-md break-words whitespace-pre-wrap ${isOutbound ? 'bg-zinc-900 text-white' : 'bg-white text-slate-700 border border-slate-100'}`}>
                                                         {msg.content}
                                                         <div className={`mt-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter ${isOutbound ? 'text-indigo-200' : 'text-slate-400'}`}>
                                                             <span>{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
@@ -343,7 +343,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         <button 
                                             type="submit" 
                                             disabled={sending || !newMessage.trim()}
-                                            className="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center transition-all shadow-xl shadow-indigo-100 active:scale-90 disabled:opacity-50 disabled:shadow-none"
+                                            className="w-14 h-14 bg-zinc-900 hover:bg-zinc-800 text-white rounded-full flex items-center justify-center transition-all shadow-xl shadow-zinc-200 active:scale-90 disabled:opacity-50 disabled:shadow-none"
                                         >
                                             <Send className="h-6 w-6" />
                                         </button>

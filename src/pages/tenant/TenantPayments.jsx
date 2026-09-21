@@ -103,7 +103,7 @@ const [selectedMethod, setSelectedMethod] = useState('card');
                                         <div className="mt-auto pt-4 flex items-end justify-between">
                                             <span className="text-lg font-black text-slate-900">${(inv.balanceDue || inv.amount).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
                                             {selectedInvoice?.id === inv.id && (
-                                                <div className="bg-indigo-600 text-white rounded-full p-1 shadow-md">
+                                                <div className="bg-zinc-900 text-white rounded-full p-1 shadow-md">
                                                     <CheckCircle size={14} />
                                                 </div>
                                             )}

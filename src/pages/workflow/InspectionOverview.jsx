@@ -122,7 +122,7 @@ const navigate = useNavigate();
                         {inspection.status !== 'COMPLETED' && (
                             <button
                                 onClick={() => navigate(`/admin/workflow/inspections/${id}/form`)}
-                                className="px-8 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
+                                className="px-8 py-2.5 bg-zinc-900 text-white rounded-2xl text-sm font-black shadow-xl shadow-zinc-200 hover:bg-zinc-800 transition-all active:scale-95"
                             >
                                 {inspection.responses?.length > 0 ? 'Resume Inspection' : 'Start Inspection'}
                             </button>
@@ -277,14 +277,14 @@ const navigate = useNavigate();
                                 <QuickAction
                                     icon={ArrowRight}
                                     label={inspection.responses?.length > 0 ? 'Resume Inspection' : 'Start Inspection'}
-                                    color="bg-indigo-600 text-white"
+                                    color="bg-zinc-900 text-white"
                                     onClick={() => navigate(`/admin/workflow/inspections/${id}/form`)}
                                 />
                             ) : (
                                 <QuickAction
                                     icon={FileText}
                                     label="View Full Report"
-                                    color="bg-indigo-600 text-white"
+                                    color="bg-zinc-900 text-white"
                                     onClick={async () => {
                                         try {
                                             const response = await api.get(`/api/admin/workflow/inspections/${id}/download`, { responseType: 'blob' });

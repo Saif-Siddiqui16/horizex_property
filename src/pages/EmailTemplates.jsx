@@ -196,7 +196,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     {hasPermission('Email Templates', 'add') && (
                         <button 
                             onClick={() => openModal()}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 h-10 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 w-full sm:w-auto font-bold text-xs shrink-0"
+                            className="bg-zinc-900 hover:bg-zinc-800 text-white px-4 h-10 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 w-full sm:w-auto font-bold text-xs shrink-0"
                         >
                             <Plus className="h-4 w-4 shrink-0" />
                             <span className="whitespace-nowrap">New Template</span>
@@ -411,7 +411,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             <button 
                                 form="email-template-form"
                                 type="submit"
-                                className="w-full sm:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg hover:shadow-indigo-100 text-sm text-center"
+                                className="w-full sm:w-auto px-8 py-3 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-2xl transition-all shadow-lg hover:shadow-zinc-200 text-sm text-center"
                             >
                                 {currentTemplate.id ? 'Update Template' : 'Create Template'}
                             </button>

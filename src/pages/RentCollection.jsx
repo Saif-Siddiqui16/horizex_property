@@ -267,7 +267,7 @@ const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'invoic
                       <p className="text-xs text-slate-400 font-medium">Instantly generate cycles or adjust balances</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-4">
-                      <Button onClick={() => openModal('generate')} className="w-full text-xs bg-indigo-600 text-white border-0 hover:bg-indigo-700">Gen Invoice</Button>
+                      <Button onClick={() => openModal('generate')} className="w-full text-xs bg-zinc-900 text-white border-0 hover:bg-zinc-800">Gen Invoice</Button>
                       <Button onClick={() => { setActiveTab('invoices'); }} variant="secondary" className="w-full text-xs text-slate-800 bg-white">View Ledger</Button>
                     </div>
                   </Card>

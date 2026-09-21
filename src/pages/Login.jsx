@@ -84,7 +84,7 @@ export const Login = () => {
       {/* Dynamic Gradients for depth */}
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/80 via-slate-900/80 to-black/90 mix-blend-multiply"></div>
       <div className="absolute -top-[30%] -left-[10%] w-[70%] h-[70%] bg-blue-500/20 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] bg-purple-600/20 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] bg-zinc-900/20 blur-[120px] rounded-full pointer-events-none"></div>
 
       {/* --- MAIN LOGIN CARD --- */}
       <div className="relative z-10 w-full max-w-[440px] px-4 md:px-0 anim-slide-up">
@@ -95,8 +95,8 @@ export const Login = () => {
 
           {/* Logo Area */}
           <div className="flex flex-col items-center justify-center mb-8 relative z-10">
-            <div className="w-20 h-20 bg-white/95 rounded-2xl shadow-xl flex items-center justify-center p-3 mb-4 rotate-3 hover:rotate-0 transition-transform duration-300 ring-4 ring-white/10">
-              <img src="/assets/logo.png" alt="Horizex Logo" className="w-full h-full object-contain" />
+            <div className="w-20 h-20 bg-white rounded-full shadow-2xl flex items-center justify-center p-1 mb-4 ring-4 ring-white/20 overflow-hidden">
+              <img src="/assets/logo.png" alt="Horizex Logo" className="w-18 h-18 object-contain" />
             </div>
             <h1 className="text-2xl font-black text-white tracking-widest uppercase">Horizex Group</h1>
             <p className="text-[10px] font-bold text-blue-300 tracking-[0.3em] uppercase mt-1">Real Estate Management</p>

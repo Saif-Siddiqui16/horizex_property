@@ -115,7 +115,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               <div className="flex justify-between items-center mb-3.5">
                 <span className="text-[13px] font-medium text-slate-700">Two-Factor Authentication</span>
                 <button
-                  className={`w-11 h-[22px] rounded-full relative cursor-pointer border-none transition-colors ${settings.twoFactor ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                  className={`w-11 h-[22px] rounded-full relative cursor-pointer border-none transition-colors ${settings.twoFactor ? 'bg-zinc-900' : 'bg-gray-200'}`}
                   onClick={() => toggle('twoFactor')}
                 >
                   <span className={`block w-[18px] h-[18px] bg-white rounded-full absolute top-[2px] transition-all shadow-sm ${settings.twoFactor ? 'left-[24px]' : 'left-[2px]'}`} />
@@ -207,7 +207,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               <div className="flex justify-between items-center mb-3.5">
                 <span className="text-[13px] font-medium text-slate-700">Email Notifications</span>
                 <button
-                  className={`w-11 h-[22px] rounded-full relative cursor-pointer border-none transition-colors ${settings.notifications ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                  className={`w-11 h-[22px] rounded-full relative cursor-pointer border-none transition-colors ${settings.notifications ? 'bg-zinc-900' : 'bg-gray-200'}`}
                   onClick={() => toggle('notifications')}
                 >
                   <span className={`block w-[18px] h-[18px] bg-white rounded-full absolute top-[2px] transition-all shadow-sm ${settings.notifications ? 'left-[24px]' : 'left-[2px]'}`} />
@@ -217,7 +217,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               <div className="flex justify-between items-center mb-3.5">
                 <span className="text-[13px] font-medium text-slate-700">Auto Invoice Generation</span>
                 <button
-                  className={`w-11 h-[22px] rounded-full relative cursor-pointer border-none transition-colors ${settings.autoInvoices ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                  className={`w-11 h-[22px] rounded-full relative cursor-pointer border-none transition-colors ${settings.autoInvoices ? 'bg-zinc-900' : 'bg-gray-200'}`}
                   onClick={() => toggle('autoInvoices')}
                 >
                   <span className={`block w-[18px] h-[18px] bg-white rounded-full absolute top-[2px] transition-all shadow-sm ${settings.autoInvoices ? 'left-[24px]' : 'left-[2px]'}`} />

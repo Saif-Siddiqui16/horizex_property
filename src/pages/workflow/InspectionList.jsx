@@ -123,7 +123,7 @@ const navigate = useNavigate();
                     </div>
                     <button 
                         onClick={() => navigate('/admin/workflow/inspections/new')}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 sm:py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 sm:py-2.5 bg-zinc-900 text-white rounded-2xl text-sm font-black hover:bg-zinc-800 shadow-xl shadow-zinc-200 transition-all active:scale-95"
                     >
                         <Plus size={18} />
                         New Inspection
@@ -220,7 +220,7 @@ const navigate = useNavigate();
                                                             navigate(`/admin/workflow/inspections/${insp.id}/form`);
                                                         }
                                                     }}
-                                                    className="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black text-gray-700 uppercase hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                    className="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black text-gray-700 uppercase hover:bg-zinc-900 hover:text-white transition-all shadow-sm"
                                                 >
                                                     {insp.status === 'Completed' ? 'Report' : 'Open'}
                                                 </button>
@@ -294,7 +294,7 @@ const navigate = useNavigate();
                                 <button 
                                     key={i}
                                     onClick={() => setPagination(prev => ({ ...prev, page: i + 1 }))}
-                                    className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-black transition-all ${pagination.page === i + 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 border border-gray-100'}`}
+                                    className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-black transition-all ${pagination.page === i + 1 ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200' : 'bg-white text-gray-500 border border-gray-100'}`}
                                 >
                                     {i + 1}
                                 </button>

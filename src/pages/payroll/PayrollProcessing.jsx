@@ -156,7 +156,7 @@ const [records, setRecords] = useState([]);
               {canManage && (
                 <button 
                   onClick={() => setRunModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg border-none flex items-center gap-1.5 cursor-pointer"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg border-none flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus size={14} /> Run Payroll
                 </button>

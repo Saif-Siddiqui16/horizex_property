@@ -359,7 +359,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
             <Button
               type="submit"
               variant="primary"
-              className="flex-[2] h-[58px] rounded-2xl shadow-xl shadow-indigo-100 text-sm font-black uppercase tracking-widest"
+              className="flex-[2] h-[58px] rounded-2xl shadow-xl shadow-zinc-200 text-sm font-black uppercase tracking-widest"
               disabled={saving}
             >
               {saving ? (

@@ -123,7 +123,7 @@ const [shifts, setShifts] = useState([]);
           {canManage && (
             <button 
               onClick={() => { resetForm(); setAddModal(true); }}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg border-none flex items-center gap-1.5 cursor-pointer"
+              className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg border-none flex items-center gap-1.5 cursor-pointer"
             >
               <Plus size={14} /> Define Shift
             </button>
@@ -370,7 +370,7 @@ const [shifts, setShifts] = useState([]);
                 alert('Shift rotation cycle scheduled successfully (mock).');
                 setRotationModal(false);
               }}
-              className="w-full mt-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl border-none shadow-lg cursor-pointer"
+              className="w-full mt-4 py-2.5 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl border-none shadow-lg cursor-pointer"
             >
               Apply Scheme
             </button>

@@ -275,7 +275,7 @@ const navigate = useNavigate();
                                     ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
                                     : item.status === 'INSPECTION_IN_PROGRESS'
                                         ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
-                                        : isBlocked ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                                        : isBlocked ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-zinc-900 text-white border-indigo-500 shadow-sm'
                                 } ${loading || isBlocked ? 'cursor-not-allowed opacity-70' : 'hover:brightness-110 active:scale-95'}`}
                         >
                             <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ const navigate = useNavigate();
                         </button>
                         <button
                             onClick={() => navigate('/admin/workflow/inspections/new')}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 shadow-md uppercase tracking-widest"
+                            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-xl text-xs font-black hover:bg-zinc-800 shadow-md uppercase tracking-widest"
                         >
                             <Calendar size={14} />
                             Schedule

@@ -89,7 +89,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     {hasPermission('Templates', 'add') && (
                         <button 
                             onClick={() => openModal()}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 h-10 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 w-full sm:w-auto font-bold text-xs shrink-0"
+                            className="bg-zinc-900 hover:bg-zinc-800 text-white px-4 h-10 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 w-full sm:w-auto font-bold text-xs shrink-0"
                         >
                             <Plus className="h-4 w-4 shrink-0" />
                             <span className="whitespace-nowrap">Create Template</span>
@@ -232,7 +232,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                         key={tag}
                                                         type="button"
                                                         onClick={() => insertPlaceholder(tag)}
-                                                        className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all"
+                                                        className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg border border-indigo-100 hover:bg-zinc-900 hover:text-white transition-all"
                                                     >
                                                         +{tag.replace('_', ' ')}
                                                     </button>
@@ -255,7 +255,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 <button 
                                     form="sms-template-form"
                                     type="submit"
-                                    className="w-full sm:w-auto px-10 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-xl shadow-indigo-100 text-sm text-center"
+                                    className="w-full sm:w-auto px-10 py-3 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-2xl transition-all shadow-xl shadow-zinc-200 text-sm text-center"
                                 >
                                     {currentTemplate.id ? 'Save Changes' : 'Create Template'}
                                 </button>

@@ -304,7 +304,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 setSelectedUnitId(item.unitId);
                                 setShowModal(true);
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100"
+                            className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-md shadow-zinc-200"
                         >
                             Process
                         </button>
@@ -460,7 +460,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         onClick={() => fetchRecords(p)}
                         className={`w-9 h-9 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           currentPage === p
-                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                            ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200'
                             : 'text-slate-500 hover:bg-slate-100 border border-transparent'
                         }`}
                       >

@@ -447,7 +447,7 @@ const [activeTab, setActiveTab] = useState(defaultTab);
                     <p className="text-xs text-slate-400 font-medium">Verify court filings are submitted 15 days before hearings.</p>
                   </div>
                   <div className="mt-5">
-                    <Button onClick={() => setActiveTab('cases')} className="w-full text-xs font-bold bg-indigo-600 border-none hover:bg-indigo-700">Open Case List</Button>
+                    <Button onClick={() => setActiveTab('cases')} className="w-full text-xs font-bold bg-zinc-900 border-none hover:bg-zinc-800">Open Case List</Button>
                   </div>
                 </div>
               </div>

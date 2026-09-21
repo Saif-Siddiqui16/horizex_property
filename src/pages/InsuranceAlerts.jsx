@@ -621,7 +621,7 @@ const { t } = useTranslation();
                                                     }
                                                     if (url) window.open(url, '_blank');
                                                 }}
-                                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all flex items-center gap-2 group"
+                                                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all flex items-center gap-2 group"
                                             >
                                                 <Download size={14} strokeWidth={3} className="group-hover:-translate-y-0.5 transition-transform" /> 
                                                 View Policy File

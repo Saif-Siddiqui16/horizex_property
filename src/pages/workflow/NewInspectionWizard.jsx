@@ -170,7 +170,7 @@ const navigate = useNavigate();
                             <React.Fragment key={s.id}>
                                 <div className="flex flex-col items-center gap-2 group cursor-pointer min-w-[80px]" onClick={() => step > s.id && setStep(s.id)}>
                                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm
-                                    ${step === s.id ? 'bg-indigo-600 text-white scale-110 shadow-indigo-100' :
+                                    ${step === s.id ? 'bg-zinc-900 text-white scale-110 shadow-zinc-200' :
                                             step > s.id ? 'bg-green-100 text-green-600' : 'bg-white text-gray-400 border border-gray-100'}`}>
                                         <s.icon size={18} className="md:w-[22px] md:h-[22px]" />
                                     </div>
@@ -359,7 +359,7 @@ const navigate = useNavigate();
                             </button>
                             <button
                                 onClick={handleNext}
-                                className="px-10 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
+                                className="px-10 py-3 bg-zinc-900 text-white rounded-2xl text-sm font-black shadow-xl shadow-zinc-200 hover:bg-zinc-800 transition-all active:scale-95 flex items-center gap-2"
                             >
                                 {step === 3 ? 'Create & Start Inspection' : 'Next'}
                                 <ArrowRight size={18} />

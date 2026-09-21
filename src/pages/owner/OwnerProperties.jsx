@@ -72,7 +72,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
                         {ownerProperties.map((prop) => (
                             <div
                                 key={prop.id}
-                                className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-indigo-100/50 hover:-translate-y-2 transition-all duration-500 overflow-hidden group"
+                                className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-zinc-200/50 hover:-translate-y-2 transition-all duration-500 overflow-hidden group"
                             >
                                 {/* Card Image */}
                                 <div className="h-56 relative overflow-hidden group-hover:scale-95 group-hover:m-2 group-hover:rounded-[2rem] transition-all duration-700">
@@ -116,7 +116,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
 
                                     <button
                                         onClick={() => setViewingProperty(prop)}
-                                        className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-indigo-600 text-white font-black text-sm tracking-widest uppercase transition-all flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-slate-200"
+                                        className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-zinc-900 text-white font-black text-sm tracking-widest uppercase transition-all flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-slate-200"
                                     >
                                         View Summary
                                         <ArrowRight size={18} />

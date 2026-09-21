@@ -245,7 +245,7 @@ const { id } = useParams();
                   if (isCompleted) {
                     bulletColor = 'bg-emerald-500 text-white border-emerald-600';
                   } else if (isCurrent) {
-                    bulletColor = 'bg-indigo-600 text-white border-indigo-700 ring-4 ring-indigo-100';
+                    bulletColor = 'bg-zinc-900 text-white border-indigo-700 ring-4 ring-indigo-100';
                   }
 
                   return (

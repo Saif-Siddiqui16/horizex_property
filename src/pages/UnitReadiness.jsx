@@ -206,7 +206,7 @@ const UnitReadiness = () => {
           {showSettings && (
             <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-600 text-white">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-zinc-900 text-white">
                   <h2 className="text-xl font-bold">Timeline Engine Settings</h2>
                   <button onClick={() => setShowSettings(false)} className="hover:rotate-90 transition-all">✕</button>
                 </div>
@@ -255,7 +255,7 @@ const UnitReadiness = () => {
                 </div>
                 <div className="p-6 bg-slate-50 flex gap-3">
                   <button onClick={() => setShowSettings(false)} className="flex-1 py-3 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all">Cancel</button>
-                  <button onClick={saveSettings} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">Save Changes</button>
+                  <button onClick={saveSettings} className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold shadow-lg shadow-zinc-200 hover:bg-zinc-800 transition-all">Save Changes</button>
                 </div>
               </div>
             </div>
@@ -265,7 +265,7 @@ const UnitReadiness = () => {
           {showHolidays && (
             <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-600 text-white">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-zinc-900 text-white">
                   <h2 className="text-xl font-bold">Canadian Holiday Calendar</h2>
                   <button onClick={() => setShowHolidays(false)} className="hover:rotate-90 transition-all">✕</button>
                 </div>
@@ -284,7 +284,7 @@ const UnitReadiness = () => {
                        value={newHoliday.date}
                        onChange={e => setNewHoliday({...newHoliday, date: e.target.value})}
                      />
-                     <button onClick={handleAddHoliday} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">Add</button>
+                     <button onClick={handleAddHoliday} className="px-4 py-2 bg-zinc-900 text-white rounded-lg font-bold hover:bg-zinc-800 transition-all shadow-md shadow-zinc-200">Add</button>
                   </div>
                   {holidays.map((h) => (
                     <div key={h.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -619,7 +619,7 @@ const UnitReadiness = () => {
                           <button
                             key={p}
                             onClick={() => setPage(p)}
-                            className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${page === p ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-600'}`}
+                            className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${page === p ? 'bg-zinc-900 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-600 hover:border-indigo-600'}`}
                           >
                             {p}
                           </button>
@@ -696,7 +696,7 @@ const ReserveModal = ({ unit, onClose, onReserved }) => {
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden anim-zoom-in">
-        <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-indigo-600 text-white">
+        <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-zinc-900 text-white">
           <div>
             <h3 className="text-2xl font-black tracking-tight">Reserve Unit {unit.unitNumber}</h3>
             <p className="text-indigo-100 text-sm font-medium mt-1">Direct Prospect Entry</p>
@@ -768,7 +768,7 @@ const ReserveModal = ({ unit, onClose, onReserved }) => {
             <button 
               type="submit" 
               disabled={loading}
-              className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50"
+              className="flex-1 py-4 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 shadow-xl shadow-zinc-200 transition-all active:scale-95 disabled:opacity-50"
             >
               {loading ? 'Reserving...' : 'Confirm Reservation'}
             </button>

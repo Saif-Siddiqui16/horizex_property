@@ -371,7 +371,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             <React.Fragment key={s.id}>
                                 <div className={`flex items-center gap-2.5 transition-all shrink-0 ${step >= s.id ? 'text-indigo-600' : 'text-gray-400'}`}>
                                     <div className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold transition-all border-2 text-xs ${
-                                        step === s.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-105' : 
+                                        step === s.id ? 'bg-zinc-900 text-white border-indigo-600 shadow-md scale-105' : 
                                         step > s.id ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-gray-50 border-gray-50'
                                     }`}>
                                         {s.id}
@@ -741,7 +741,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 onClick={() => handleTemplateSelect(t)}
                                 className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-left hover:border-indigo-600 transition-all hover:shadow-xl group"
                             >
-                                <div className="bg-indigo-50 p-3 rounded-2xl w-fit mb-4 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                <div className="bg-indigo-50 p-3 rounded-2xl w-fit mb-4 text-indigo-600 group-hover:bg-zinc-900 group-hover:text-white transition-all">
                                     <Layout className="h-6 w-6" />
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-900">{t.name}</h3>
@@ -805,7 +805,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                             <button 
                                                 key={ph}
                                                 onClick={() => insertPlaceholder(ph)}
-                                                className="bg-gray-800 hover:bg-indigo-600 text-[9px] font-bold px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
+                                                className="bg-gray-800 hover:bg-zinc-900 text-[9px] font-bold px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
                                             >
                                                 { ph.split(/(?=[A-Z])/).join(' ') }
                                             </button>
@@ -938,7 +938,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             </button>
                             <button 
                                 onClick={() => window.location.href = '/admin/email/history'}
-                                className="p-2.5 h-10 text-xs bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md active:scale-95"
+                                className="p-2.5 h-10 text-xs bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md active:scale-95"
                             >
                                 View Mail History
                             </button>
@@ -974,7 +974,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     <button 
                                         onClick={handleSend}
                                         disabled={loading || getFilteredRecipients().length === 0}
-                                        className="bg-indigo-600 text-white px-6 h-10 rounded-xl font-bold flex items-center gap-1.5 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group text-xs"
+                                        className="bg-zinc-900 text-white px-6 h-10 rounded-xl font-bold flex items-center gap-1.5 hover:bg-zinc-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group text-xs"
                                     >
                                         {loading ? (
                                             <>

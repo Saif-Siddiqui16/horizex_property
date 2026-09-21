@@ -7,7 +7,7 @@ export const Support = () => {
             <div className="max-w-4xl mx-auto space-y-8">
                 
                 {/* HERO SECTION */}
-                <div className="bg-blue-600 rounded-[32px] p-10 text-white shadow-xl shadow-blue-100 flex flex-col md:flex-row justify-between items-center gap-8">
+                <div className="bg-zinc-900 rounded-[32px] p-10 text-white shadow-xl shadow-zinc-200 flex flex-col md:flex-row justify-between items-center gap-8">
                     <div className="space-y-4 text-center md:text-left">
                         <h1 className="text-4xl font-black tracking-tight">App Support Center</h1>
                         <p className="text-blue-100 text-lg font-medium max-w-md">

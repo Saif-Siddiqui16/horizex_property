@@ -189,7 +189,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     <div className="flex gap-2 items-end">
                         <button
                             onClick={fetchHistory}
-                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 h-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 text-xs font-bold"
+                            className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white px-4 h-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 text-xs font-bold"
                         >
                             <Filter className="h-4 w-4" />
                             Apply Filters
@@ -341,7 +341,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                             onClick={() => fetchHistory(i + 1)}
                                             className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
                                                 pagination.page === i + 1
-                                                    ? 'z-10 bg-indigo-600 text-white'
+                                                    ? 'z-10 bg-zinc-900 text-white'
                                                     : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
                                             }`}
                                         >

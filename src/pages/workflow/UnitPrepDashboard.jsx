@@ -163,10 +163,10 @@ const navigate = useNavigate();
                 }}
                 className={`w-full py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2
                 ${item.hasRequiredTickets ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
-                        columnTitle.includes('Deficiencies') ? 'bg-indigo-600 text-white hover:bg-indigo-700' :
+                        columnTitle.includes('Deficiencies') ? 'bg-zinc-900 text-white hover:bg-zinc-800' :
                             columnTitle.includes('Ready for Cleaning') ? 'bg-amber-600 text-white hover:bg-amber-700' :
-                                columnTitle.includes('Progress') ? 'bg-blue-600 text-white hover:bg-blue-700' :
-                                    'bg-green-600 text-white hover:bg-green-700'}`}>
+                                columnTitle.includes('Progress') ? 'bg-zinc-900 text-white hover:bg-zinc-800' :
+                                    'bg-zinc-900 text-white hover:bg-zinc-800'}`}>
                 {item.hasRequiredTickets ? 'Blocked by Tickets' :
                     item.current_stage === 'PENDING_TICKETS' ? 'Move to Cleaning' :
                         item.current_stage === 'READY_FOR_CLEANING' ? 'Start Cleaning' :
@@ -210,7 +210,7 @@ const navigate = useNavigate();
                         </button>
                         <button
                             onClick={() => navigate('/admin/workflow/inspections/new')}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-zinc-900 text-white rounded-2xl text-sm font-black hover:bg-zinc-800 shadow-xl shadow-zinc-200 transition-all active:scale-95"
                         >
                             <Sparkles size={18} />
                             Schedule Inspection

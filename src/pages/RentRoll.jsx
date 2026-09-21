@@ -455,7 +455,7 @@ if (!hasPermission('Rent Roll', 'view')) {
                                             <td className="px-3 py-4">
                                                 <div className="flex flex-col items-center gap-1">
                                                     {row.status === 'Occupied' ? (
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white border border-indigo-700 shadow-sm transition-all">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-white border border-indigo-700 shadow-sm transition-all">
                                                             {row.status}
                                                         </span>
                                                     ) : row.status === 'Reserved' ? (
@@ -488,7 +488,7 @@ if (!hasPermission('Rent Roll', 'view')) {
                                                                 });
                                                                 setShowReserveModal(true);
                                                             }}
-                                                            className="px-3 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-[10px] font-black uppercase hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                            className="px-3 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-[10px] font-black uppercase hover:bg-zinc-900 hover:text-white transition-all shadow-sm"
                                                         >
                                                             Reserve
                                                         </button>
@@ -534,7 +534,7 @@ if (!hasPermission('Rent Roll', 'view')) {
                                                     className={clsx(
                                                         "w-8 h-8 text-xs font-black rounded-lg transition-all",
                                                         currentPage === pageNum
-                                                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110"
+                                                            ? "bg-zinc-900 text-white shadow-lg shadow-zinc-200 scale-110"
                                                             : "bg-white border border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 shadow-sm"
                                                     )}
                                                 >
@@ -621,7 +621,7 @@ const ReserveModal = ({ unit, onClose, onReserved }) => {
 
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[999] p-4 anim-fade-in">
-            <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl shadow-indigo-200/50 overflow-hidden border border-slate-100 flex flex-col anim-zoom-in">
+            <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl shadow-zinc-200/50 overflow-hidden border border-slate-100 flex flex-col anim-zoom-in">
 
                 {/* Header */}
                 <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-8 text-white relative">
@@ -712,7 +712,7 @@ const ReserveModal = ({ unit, onClose, onReserved }) => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-[1.5] px-8 py-4 bg-gradient-to-br from-indigo-600 to-violet-700 text-white font-black uppercase tracking-widest rounded-2xl hover:brightness-110 transition-all shadow-xl shadow-indigo-200 border-b-4 border-indigo-900 active:border-b-0 active:translate-y-1 disabled:opacity-50"
+                            className="flex-[1.5] px-8 py-4 bg-gradient-to-br from-indigo-600 to-violet-700 text-white font-black uppercase tracking-widest rounded-2xl hover:brightness-110 transition-all shadow-xl shadow-zinc-200 border-b-4 border-indigo-900 active:border-b-0 active:translate-y-1 disabled:opacity-50"
                         >
                             {loading ? 'Processing...' : 'Confirm Reservation'}
                         </button>
