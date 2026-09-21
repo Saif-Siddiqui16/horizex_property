@@ -13,7 +13,7 @@ export const kpiService = {
     const employees = analyticsEngineService.getEmployees(companyId, buildingId);
 
     return {
-      totalCompanies: companyId ? 1 : 3, // Apex, Soros, Masteko
+      totalCompanies: companyId ? 1 : 3, // Apex, Soros, Horizex
       totalBuildings: properties.length,
       totalApartments: occupancy.total,
       occupiedApartments: occupancy.occupied,

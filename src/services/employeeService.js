@@ -192,7 +192,7 @@ export const employeeService = {
     // Resolve company code
     let companyCode = 'APEX';
     if (String(data.companyId) === '2') companyCode = 'SOROS';
-    if (String(data.companyId) === '3') companyCode = 'MASTEKO';
+    if (String(data.companyId) === '3') companyCode = 'HORIZEX';
     
     const empNo = generateEmployeeNumber(companyCode, newId);
     

@@ -673,7 +673,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                     <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-xl italic">P</div>
                                                 )}
                                                 <h2 className="text-xl font-black tracking-tighter text-slate-900 uppercase italic">
-                                                    {settings.companyName || 'Masteko'}
+                                                    {settings.companyName || 'Horizex'}
                                                 </h2>
                                             </div>
                                             <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed whitespace-pre-line">

@@ -28,7 +28,7 @@ export { mockNotes, mockNoteComments, mockNoteAttachments, mockCommTimeline };
 
 // Initialize localStorage databases with mock seed data if empty
 export const initMockDatabase = () => {
-  if (localStorage.getItem('mock_db_version') !== '2.5') {
+  if (localStorage.getItem('mock_db_version') !== '2.6') {
     localStorage.removeItem('mock_dashboard_stats');
     localStorage.removeItem('mock_revenue_analytics');
     localStorage.removeItem('mock_properties');
@@ -78,7 +78,7 @@ export const initMockDatabase = () => {
     localStorage.removeItem('mock_ledger');
     localStorage.removeItem('mock_reports_analytics');
     localStorage.removeItem('mock_companies');
-    localStorage.setItem('mock_db_version', '2.5');
+    localStorage.setItem('mock_db_version', '2.6');
   }
 
   const checkAndSeed = (key, initialData) => {

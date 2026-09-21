@@ -14,7 +14,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     notifications: true,
     autoInvoices: true,
     twoFactor: false,
-    companyName: 'Masteko',
+    companyName: 'Horizex',
     currency: 'CAD ($)',
     paymentCycle: 'Monthly',
     lateFee: 5
@@ -177,7 +177,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 <textarea
                   value={settings.GLOBAL_EMAIL_SIGNATURE || ''}
                   onChange={(e) => saveSetting('GLOBAL_EMAIL_SIGNATURE', e.target.value)}
-                  placeholder="<p>Best regards,<br><b>Masteko Team</b></p>"
+                  placeholder="<p>Best regards,<br><b>Horizex Team</b></p>"
                   className="px-2.5 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono text-xs text-slate-900 min-h-[100px] bg-slate-50"
                 />
               </label>

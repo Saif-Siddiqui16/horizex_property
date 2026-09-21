@@ -59,7 +59,7 @@ export const mockProperties = [
   {
     id: 4,
     companyId: 3,
-    companyName: 'Masteko Group',
+    companyName: 'Horizex Group',
     name: 'Lakeside Villas',
     address: '320 Lakeshore Road, Dorval, QC',
     status: 'Active',

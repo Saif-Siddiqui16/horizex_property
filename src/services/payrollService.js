@@ -101,7 +101,7 @@ export const payrollService = {
     
     let companyCode = 'APEX';
     if (String(companyId) === '2') companyCode = 'SOROS';
-    if (String(companyId) === '3') companyCode = 'MASTEKO';
+    if (String(companyId) === '3') companyCode = 'HORIZEX';
 
     const payrollNo = generatePayrollNumber(companyCode, runSeq);
     localStorage.setItem(RUN_SEQ_KEY, String(runSeq + 1));

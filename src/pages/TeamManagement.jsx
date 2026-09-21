@@ -628,7 +628,7 @@ export const TeamManagement = () => {
                                 onChange={handleInputChange} 
                                 required 
                                 className="px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold transition-all"
-                                placeholder="john.doe@masteko.com"
+                                placeholder="john.doe@horizex.com"
                             />
                         </div>
 

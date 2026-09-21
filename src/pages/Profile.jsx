@@ -385,7 +385,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         onChange={handleProfileChange}
                                         disabled={profile.role !== 'ADMIN'}
                                         className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
-                                        placeholder="e.g. Masteko Properties"
+                                        placeholder="e.g. Horizex Properties"
                                     />
                                 </div>
                                 <div className="space-y-1.5">

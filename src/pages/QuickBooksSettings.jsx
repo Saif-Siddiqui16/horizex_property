@@ -318,7 +318,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     >
                       <option value="Apex Real Estate Partners">Apex Real Estate Partners</option>
                       <option value="Soros Property Management">Soros Property Management</option>
-                      <option value="Masteko Properties Ltd.">Masteko Properties Ltd.</option>
+                      <option value="Horizex Properties Ltd.">Horizex Properties Ltd.</option>
                     </select>
                   </div>
 
