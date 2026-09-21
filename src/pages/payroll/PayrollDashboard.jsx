@@ -333,13 +333,13 @@ const navigate = useNavigate();
             <div className="flex gap-3 mt-2">
               <button 
                 onClick={handleClockIn}
-                className="flex-1 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl border-none shadow-lg shadow-blue-600/10 transition-all cursor-pointer"
+                className="flex-1 py-2.5 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl border-none shadow-lg shadow-blue-600/10 transition-all cursor-pointer"
               >
                 Clock In Today
               </button>
               <button 
                 onClick={handleClockOut}
-                className="flex-1 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl border-none shadow-lg shadow-indigo-600/10 transition-all cursor-pointer"
+                className="flex-1 py-2.5 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl border-none shadow-lg shadow-indigo-600/10 transition-all cursor-pointer"
               >
                 Clock Out Today
               </button>

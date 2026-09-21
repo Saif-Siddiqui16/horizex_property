@@ -22,7 +22,7 @@ return (
                     <div className="flex flex-col gap-4">
                         {/* Option 1: Full Unit */}
                         <div className="flex items-start gap-4 p-4 border border-blue-500 bg-blue-50 rounded-lg cursor-pointer transition-all ring-1 ring-blue-500 shadow-sm">
-                            <div className="w-5 h-5 rounded-full border-blue-600 bg-blue-600 shadow-[inset_0_0_0_4px_white] mt-0.5 shrink-0"></div>
+                            <div className="w-5 h-5 rounded-full border-blue-600 bg-zinc-900 shadow-[inset_0_0_0_4px_white] mt-0.5 shrink-0"></div>
                             <div>
                                 <h4 className="font-semibold text-slate-900">Full Unit Rental</h4>
                                 <p className="text-sm text-slate-500">Single lease for the entire property.</p>

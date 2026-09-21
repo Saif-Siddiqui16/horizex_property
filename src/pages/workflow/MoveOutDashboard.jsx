@@ -439,7 +439,7 @@ const navigate = useNavigate();
                     </button>
                     <button 
                         onClick={() => navigate('/admin/workflow/inspections/new')}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 shadow-md transition-all active:scale-95"
+                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-xl text-xs font-black hover:bg-zinc-800 shadow-md transition-all active:scale-95"
                     >
                         <Search size={14} />
                         Schedule
@@ -589,7 +589,7 @@ const navigate = useNavigate();
                                     </button>
                                     <button 
                                         type="submit"
-                                        className="flex-[2] py-3.5 px-6 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-95 uppercase tracking-widest"
+                                        className="flex-[2] py-3.5 px-6 bg-zinc-900 text-white rounded-2xl text-sm font-black hover:bg-zinc-800 shadow-lg shadow-zinc-400/20 transition-all active:scale-95 uppercase tracking-widest"
                                     >
                                         Confirm Appointment
                                     </button>

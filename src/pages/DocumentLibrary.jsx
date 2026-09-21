@@ -248,7 +248,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     </div>
                     <div className="flex items-center gap-3">
                         {hasPermission('Documents', 'add') && (
-                            <Button variant="primary" className="h-12 px-6 rounded-2xl shadow-lg shadow-indigo-100" onClick={() => setShowUploadModal(true)}>
+                            <Button variant="primary" className="h-12 px-6 rounded-2xl shadow-lg shadow-zinc-200" onClick={() => setShowUploadModal(true)}>
                                 <Plus size={20} className="mr-2" />
                                 Upload Document
                             </Button>
@@ -462,7 +462,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     key={i}
                                     type="button"
                                     onClick={() => setCurrentPage(i + 1)}
-                                    className={`w-10 h-10 flex items-center justify-center rounded-xl text-xs font-black transition-all ${currentPage === i + 1 ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                                    className={`w-10 h-10 flex items-center justify-center rounded-xl text-xs font-black transition-all ${currentPage === i + 1 ? 'bg-zinc-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
                                 >
                                     {i + 1}
                                 </button>
@@ -616,7 +616,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         </Button>
                                         <Button
                                             variant="primary"
-                                            className="flex-1 h-14 rounded-2xl shadow-xl shadow-indigo-100"
+                                            className="flex-1 h-14 rounded-2xl shadow-xl shadow-zinc-200"
                                             type="submit"
                                             disabled={uploading}
                                         >

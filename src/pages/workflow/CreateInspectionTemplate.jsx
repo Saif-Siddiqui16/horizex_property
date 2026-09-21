@@ -250,7 +250,7 @@ const navigate = useNavigate();
                     <button 
                         onClick={handleSave}
                         disabled={loading}
-                        className="flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50"
+                        className="flex items-center gap-2 px-8 py-3 bg-zinc-900 text-white rounded-2xl text-sm font-black hover:bg-zinc-800 shadow-xl shadow-zinc-200 transition-all active:scale-95 disabled:opacity-50"
                     >
                         {loading ? 'Saving...' : <><Save size={18} /> Save Template</>}
                     </button>
@@ -586,7 +586,7 @@ const SortableQuestion = ({ q, room, qIndex, formData, setFormData, series, navi
                                             : [...selected, choice.label];
                                         setFormData({ ...formData, rooms: newRooms });
                                     }}
-                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${(!q.selectedChoices || q.selectedChoices.length === 0 || q.selectedChoices.includes(choice.label)) ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 border border-indigo-100'}`}
+                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${(!q.selectedChoices || q.selectedChoices.length === 0 || q.selectedChoices.includes(choice.label)) ? 'bg-zinc-900 text-white' : 'bg-white text-gray-400 border border-indigo-100'}`}
                                 >
                                     {choice.label}
                                 </button>

@@ -140,7 +140,7 @@ const { t } = useTranslation();
             </div>
 
             {hasPermission('Vehicles', 'add') && (
-              <Button variant="primary" onClick={() => { setEditingVehicle(null); setShowForm(true); }} className="whitespace-nowrap rounded-xl shadow-lg shadow-indigo-100 w-full sm:w-auto justify-center">
+              <Button variant="primary" onClick={() => { setEditingVehicle(null); setShowForm(true); }} className="whitespace-nowrap rounded-xl shadow-lg shadow-zinc-200 w-full sm:w-auto justify-center">
                 <Plus size={18} />
                 {t('vehicle.register')}
               </Button>
@@ -307,7 +307,7 @@ const { t } = useTranslation();
                       className={clsx(
                         "w-8 h-8 rounded-lg text-xs font-black transition-all",
                         page === i + 1 
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" 
+                          ? "bg-zinc-900 text-white shadow-md shadow-zinc-200" 
                           : "text-slate-400 hover:bg-white hover:text-slate-600 border border-transparent hover:border-slate-200"
                       )}
                     >

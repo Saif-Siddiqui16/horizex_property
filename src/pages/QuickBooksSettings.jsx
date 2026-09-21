@@ -339,7 +339,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
                   <button 
                     onClick={() => handleSyncIntegration('quickbooks')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl border-none shadow-sm cursor-pointer"
+                    className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold py-2.5 rounded-xl border-none shadow-sm cursor-pointer"
                   >
                     Trigger Manual Sync
                   </button>

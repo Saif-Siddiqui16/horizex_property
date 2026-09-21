@@ -246,7 +246,7 @@ const navigate = useNavigate();
                     {/* Quick Access / Notice & Activity */}
                     <div className="space-y-6">
                         {insuranceExpiryCount > 0 && (
-                            <div className="bg-indigo-600 rounded-3xl p-8 flex flex-col justify-between text-white shadow-2xl shadow-indigo-200 overflow-hidden relative group">
+                            <div className="bg-zinc-900 rounded-3xl p-8 flex flex-col justify-between text-white shadow-2xl shadow-zinc-200 overflow-hidden relative group">
                                 <div className="relative z-10 space-y-6">
                                     <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
                                         <AlertCircle size={24} />

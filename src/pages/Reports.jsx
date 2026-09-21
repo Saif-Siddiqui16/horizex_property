@@ -783,7 +783,7 @@ export const Reports = () => {
               <div className="flex flex-col gap-3 mt-2 border-t border-slate-50 pt-4">
                 <button 
                   onClick={handleBuilderQuery}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg border-none cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl shadow-lg border-none cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Plus size={14} /> Generate Custom Report
                 </button>
@@ -915,7 +915,7 @@ export const Reports = () => {
                 <h4 className="font-bold text-slate-800 text-sm">Scheduled Automations</h4>
                 <button 
                   onClick={() => setScheduleModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-2.5 py-1.5 rounded-lg border-none cursor-pointer flex items-center gap-1"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs px-2.5 py-1.5 rounded-lg border-none cursor-pointer flex items-center gap-1"
                 >
                   <Plus size={12} /> Schedule
                 </button>

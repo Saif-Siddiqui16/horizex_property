@@ -203,7 +203,7 @@ const { id } = useParams();
                   />
                   <button
                     type="submit"
-                    className="absolute right-3 bottom-3 p-1.5 bg-indigo-600 text-white rounded-xl"
+                    className="absolute right-3 bottom-3 p-1.5 bg-zinc-900 text-white rounded-xl"
                   >
                     <Send size={12} />
                   </button>

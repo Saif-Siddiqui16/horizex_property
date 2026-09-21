@@ -345,7 +345,7 @@ const navigate = useNavigate();
                                         disabled={isLoading}
                                         className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-200 ${
                                             pagination.page === pageNum
-                                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                                            ? 'bg-zinc-900 text-white shadow-md shadow-zinc-200'
                                             : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
                                         }`}
                                     >

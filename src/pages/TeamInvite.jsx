@@ -114,7 +114,7 @@ export const TeamInvite = () => {
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-8 space-y-8 anim-zoom-in">
                 <div className="text-center space-y-2">
-                    <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto shadow-lg shadow-indigo-200">
+                    <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto shadow-lg shadow-zinc-200">
                         <Users size={30} />
                     </div>
                     <h1 className="text-2xl font-bold text-slate-800">Welcome to the Team, {user?.firstName}!</h1>
@@ -166,7 +166,7 @@ export const TeamInvite = () => {
                     <Button
                         type="submit"
                         variant="primary"
-                        className="w-full h-12 rounded-xl text-base font-bold shadow-lg shadow-indigo-100"
+                        className="w-full h-12 rounded-xl text-base font-bold shadow-lg shadow-zinc-200"
                         disabled={isLoading}
                     >
                         {isLoading ? 'Activating...' : 'Activate Team Account'}

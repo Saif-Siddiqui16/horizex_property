@@ -781,7 +781,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                               key={pageNum}
                               onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
                               className={`min-w-[32px] h-8 rounded-lg text-xs font-bold transition-all ${pagination.page === pageNum
-                                ? 'bg-indigo-600 text-white shadow-md'
+                                ? 'bg-zinc-900 text-white shadow-md'
                                 : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600 bg-white border border-slate-200'
                                 }`}
                             >
@@ -1156,7 +1156,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   onClick={() => setInviteMethods(prev => ({ ...prev, email: !prev.email }))}
                   className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${inviteMethods.email ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 bg-white hover:border-slate-200'}`}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${inviteMethods.email ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-400'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${inviteMethods.email ? 'bg-zinc-900 text-white' : 'bg-slate-50 text-slate-400'}`}>
                     <Mail size={20} />
                   </div>
                   <div className="text-left">
@@ -1170,7 +1170,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   onClick={() => setInviteMethods(prev => ({ ...prev, sms: !prev.sms }))}
                   className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${inviteMethods.sms ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 bg-white hover:border-slate-200'}`}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${inviteMethods.sms ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-400'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${inviteMethods.sms ? 'bg-zinc-900 text-white' : 'bg-slate-50 text-slate-400'}`}>
                     <Smartphone size={20} />
                   </div>
                   <div className="text-left">
@@ -1192,7 +1192,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               </Button>
               <Button
                 variant="primary"
-                className="flex-1 shadow-lg shadow-indigo-100"
+                className="flex-1 shadow-lg shadow-zinc-200"
                 onClick={processInvite}
                 isLoading={isSendingInvite}
                 disabled={!inviteMethods.email && !inviteMethods.sms}
@@ -1649,7 +1649,7 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
             >
               {tab}
               {activeTab === tab && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full anim-slide-up"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-900 rounded-full anim-slide-up"></div>
               )}
             </button>
           ))}

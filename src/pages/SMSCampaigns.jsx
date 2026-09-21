@@ -253,7 +253,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         {hasPermission('Campaign Manager', 'add') && (
                             <button 
                                 onClick={() => setIsModalOpen(true)}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 h-10 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 w-full sm:w-auto font-bold text-xs"
+                                className="bg-zinc-900 hover:bg-zinc-800 text-white px-4 h-10 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 w-full sm:w-auto font-bold text-xs"
                             >
                                 <Plus className="h-4 w-4 shrink-0" />
                                 <span className="whitespace-nowrap">New Campaign</span>
@@ -312,7 +312,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                 </div>
                                                 <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden border border-gray-50">
                                                     <div 
-                                                        className="h-full bg-indigo-600 transition-all duration-1000"
+                                                        className="h-full bg-zinc-900 transition-all duration-1000"
                                                         style={{ width: `${( (campaign.successCount + campaign.failedCount) / campaign.totalRecipients) * 100}%` }}
                                                     />
                                                 </div>
@@ -430,7 +430,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                                     onClick={() => setCurrentPage(pageNum)}
                                                                     className={`w-10 h-10 rounded-xl font-bold text-xs transition-all ${
                                                                         currentPage === pageNum 
-                                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 scale-110' 
+                                                                        ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200 scale-110' 
                                                                         : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
                                                                     }`}
                                                                 >
@@ -541,14 +541,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                     <button 
                                                         type="button"
                                                         onClick={() => setUseTemplate(true)}
-                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${useTemplate ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}
+                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${useTemplate ? 'bg-zinc-900 text-white' : 'bg-gray-100 text-gray-400'}`}
                                                     >
                                                         Use Template
                                                     </button>
                                                     <button 
                                                         type="button"
                                                         onClick={() => setUseTemplate(false)}
-                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${!useTemplate ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}
+                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${!useTemplate ? 'bg-zinc-900 text-white' : 'bg-gray-100 text-gray-400'}`}
                                                     >
                                                         Custom Message
                                                     </button>
@@ -686,7 +686,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 <button 
                                     form="campaign-form"
                                     type="submit"
-                                    className="w-full sm:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 active:scale-95 text-sm"
+                                    className="w-full sm:w-auto px-8 py-3 bg-zinc-900 hover:bg-zinc-800 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-zinc-200 flex items-center justify-center gap-3 active:scale-95 text-sm"
                                 >
                                     <Send size={16} />
                                     Start Broadcast

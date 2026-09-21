@@ -331,15 +331,15 @@ export const Sidebar = ({ isOpen, onClose }) => {
         "lg:translate-x-0"
       )}>
         <div className="h-14 sm:h-16 flex items-center px-4 lg:px-6 justify-between shrink-0 border-b border-zinc-800/50">
-          <div className="flex items-center gap-4">
-            <div className="bg-[#1a1a1a] border border-slate-700/50 rounded-2xl shrink-0 w-[52px] h-[52px] flex items-center justify-center overflow-hidden">
-              <img src="/assets/logo.png" alt="Horizex Logo" className="w-[80%] h-[80%] object-contain brightness-0 invert" />
+          <Link to="/dashboard" className="flex items-center gap-3">
+            <div className="bg-white rounded-full p-0.5 shadow-md shrink-0 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center overflow-hidden">
+              <img src="/assets/logo.png" alt="Horizex Logo" className="h-10 w-10 sm:h-11 sm:w-11 object-contain" />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-bold text-white tracking-wide leading-none">HORIZEX</span>
-              <span className="text-[11px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1">WORKSPACE</span>
+              <span className="text-base font-black text-white uppercase tracking-wider leading-none">Horizex</span>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Real Estate</span>
             </div>
-          </div>
+          </Link>
           <button className="lg:hidden p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 rounded-[var(--radius-md)] transition-colors" onClick={onClose}>
             <X size={18} />
           </button>

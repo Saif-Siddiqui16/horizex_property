@@ -520,7 +520,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                 className={clsx(
                                                     "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
                                                     selectedTicket.status === status
-                                                        ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100"
+                                                        ? "bg-zinc-900 text-white border-indigo-600 shadow-lg shadow-zinc-200"
                                                         : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"
                                                 )}
                                             >

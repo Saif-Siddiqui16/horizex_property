@@ -615,7 +615,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 onClick={() => setCurrentPage(idx + 1)}
                                 className={`w-10 h-10 rounded-xl text-sm font-black transition-all border ${
                                     currentPage === idx + 1 
-                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' 
+                                    ? 'bg-zinc-900 text-white border-indigo-600 shadow-lg shadow-zinc-200' 
                                     : 'bg-white text-slate-500 border-slate-100 hover:border-indigo-300 hover:text-indigo-600'
                                 }`}
                             >
@@ -670,7 +670,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                 {settings.companyLogo ? (
                                                     <img src={settings.companyLogo} alt="Logo" className="w-10 h-10 object-contain" />
                                                 ) : (
-                                                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-xl italic">P</div>
+                                                    <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-black text-xl italic">P</div>
                                                 )}
                                                 <h2 className="text-xl font-black tracking-tighter text-slate-900 uppercase italic">
                                                     {settings.companyName || 'Masteko'}
@@ -758,7 +758,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                 <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Taxes (0%)</span>
                                                 <span className="font-bold text-slate-600 font-mono italic">$ 0</span>
                                             </div>
-                                            <div className="bg-indigo-600 rounded-2xl p-6 shadow-xl shadow-indigo-100 flex justify-between items-center text-white mt-4 relative overflow-hidden group">
+                                            <div className="bg-zinc-900 rounded-2xl p-6 shadow-xl shadow-zinc-200 flex justify-between items-center text-white mt-4 relative overflow-hidden group">
                                                 <div className="relative z-10">
                                                     <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Total Due</p>
                                                     <p className="text-2xl font-black tracking-tight mt-1 italic">$ {(viewInvoice.amount || 0).toLocaleString('en-CA')}</p>
@@ -797,7 +797,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         {hasPermission('SMS Hub', 'add') && (
                                             <Button
                                                 onClick={() => markSent(viewInvoice.id)}
-                                                className="flex-[2] rounded-2xl py-4 h-auto font-black shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group relative overflow-hidden"
+                                                className="flex-[2] rounded-2xl py-4 h-auto font-black shadow-xl shadow-zinc-200 flex items-center justify-center gap-3 group relative overflow-hidden"
                                             >
                                                 <span className="relative z-10">Send to Tenant</span>
                                                 <Send size={18} className="relative z-10 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
@@ -1084,7 +1084,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     </div>
                                 </div>
 
-                                <div className="bg-indigo-600 rounded-2xl p-5 text-white shadow-xl shadow-indigo-100 flex justify-between items-center">
+                                <div className="bg-zinc-900 rounded-2xl p-5 text-white shadow-xl shadow-zinc-200 flex justify-between items-center">
                                     <div className="space-y-0.5">
                                         <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">Total Calculation</p>
                                         <p className="text-xs font-semibold opacity-60">Rent + Service Fees</p>
@@ -1114,7 +1114,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     <button
                                         type="button"
                                         onClick={(e) => handleSave(e, 'sent')}
-                                        className="flex-1 py-3.5 rounded-xl border-none cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-sm shadow-lg shadow-indigo-100 transition-all active:scale-95"
+                                        className="flex-1 py-3.5 rounded-xl border-none cursor-pointer bg-zinc-900 text-white hover:bg-zinc-800 font-bold text-sm shadow-lg shadow-zinc-200 transition-all active:scale-95"
                                     >
                                         {editInvoice ? 'Update & Save' : 'Finalize & Send'}
                                     </button>
@@ -1165,7 +1165,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                             }}
                                             className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-100 hover:border-indigo-500 hover:bg-indigo-50/50 transition-all group active:scale-[0.98]"
                                         >
-                                            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 group-hover:bg-zinc-900 group-hover:text-white transition-all">
                                                 <CreditCard size={24} />
                                             </div>
                                             <div className="text-left flex-1">
@@ -1220,7 +1220,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                             The invoice has been updated.
                                         </p>
                                     </div>
-                                    <Button variant="primary" className="w-full h-14 rounded-2xl py-0 font-bold shadow-xl shadow-indigo-100" onClick={() => setIsPaying(null)}>
+                                    <Button variant="primary" className="w-full h-14 rounded-2xl py-0 font-bold shadow-xl shadow-zinc-200" onClick={() => setIsPaying(null)}>
                                         Return to Dashboard
                                     </Button>
                                 </div>
@@ -1249,7 +1249,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                             fetchServiceItems();
                                         } catch (e) { alert('Failed to create'); }
                                     }}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2 rounded-lg transition-colors"
+                                    className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-sm px-4 py-2 rounded-lg transition-colors"
                                 >Add</button>
                             </div>
 

@@ -463,7 +463,7 @@ const { t } = useTranslation();
                     </select>
                     <button 
                       onClick={() => setShowRequestModal(true)}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-sm transition-all whitespace-nowrap w-full sm:w-auto"
+                      className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-semibold hover:bg-zinc-800 shadow-sm transition-all whitespace-nowrap w-full sm:w-auto"
                     >
                       Add Request
                     </button>
@@ -505,7 +505,7 @@ const { t } = useTranslation();
                           <td className="px-4 py-3 text-right">
                             {req.status === 'pending' && (
                               <div className="flex gap-2 justify-end">
-                                <button onClick={() => handleApproveRequest(req.id)} className="px-3 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 shadow-sm">Approve</button>
+                                <button onClick={() => handleApproveRequest(req.id)} className="px-3 py-1 bg-zinc-900 text-white rounded-md text-xs font-bold hover:bg-zinc-800 shadow-sm">Approve</button>
                                 <button onClick={() => handleRejectRequest(req.id)} className="px-3 py-1 bg-red-50 text-red-600 rounded-md text-xs font-bold hover:bg-red-100 border border-red-100">Reject</button>
                               </div>
                             )}
@@ -578,7 +578,7 @@ const { t } = useTranslation();
                     </button>
                     <button 
                       onClick={handleOpenAddModal}
-                      className="flex-1 md:flex-none px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-md shadow-indigo-100"
+                      className="flex-1 md:flex-none px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-semibold hover:bg-zinc-800 shadow-md shadow-zinc-200"
                     >
                       {t('shuttle.add_base_trip')}
                     </button>
@@ -675,7 +675,7 @@ const { t } = useTranslation();
                       />
                       <Search size={16} className="text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     </div>
-                    <button onClick={openInviteModal} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[11px] font-bold hover:bg-indigo-700 shadow-md shadow-indigo-100 flex items-center justify-center gap-2 transition-all active:scale-95 w-full sm:w-auto whitespace-nowrap">
+                    <button onClick={openInviteModal} className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-[11px] font-bold hover:bg-zinc-800 shadow-md shadow-zinc-200 flex items-center justify-center gap-2 transition-all active:scale-95 w-full sm:w-auto whitespace-nowrap">
                       <Plus size={14} /> Invite New Tenants
                     </button>
                     <button 
@@ -748,7 +748,7 @@ const { t } = useTranslation();
                   </div>
                   <button 
                     onClick={() => { setIsEditing(false); setNewDriver({ name: '', email: '', phone: '+1 ' }); setShowDriverModal(true); }}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-md shadow-indigo-100"
+                    className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-semibold hover:bg-zinc-800 shadow-md shadow-zinc-200"
                   >
                     Add Driver
                   </button>
@@ -859,7 +859,7 @@ const { t } = useTranslation();
                   </div>
                   <button 
                     onClick={() => { setSelectedLocation(null); setNewLocation({ name: '' }); setShowLocationModal(true); }}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-md shadow-indigo-100 flex items-center gap-2"
+                    className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-semibold hover:bg-zinc-800 shadow-md shadow-zinc-200 flex items-center gap-2"
                   >
                     <Plus size={16} /> Add Location
                   </button>
@@ -1008,7 +1008,7 @@ const { t } = useTranslation();
                     </div>
                   </div>
                 )}
-                <button type="submit" className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98]">
+                <button type="submit" className="w-full py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-[0.98]">
                   {isEditing ? 'Save Changes' : 'Create Trip'}
                 </button>
               </form>
@@ -1116,7 +1116,7 @@ const { t } = useTranslation();
 
               {/* Sticky Footer */}
               <div className="sticky bottom-0 bg-white border-t border-gray-150 p-6 flex items-center justify-end shrink-0 z-10 w-full">
-                <button type="submit" className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98]">Create Request</button>
+                <button type="submit" className="w-full py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-[0.98]">Create Request</button>
               </div>
             </form>
           </div>
@@ -1158,7 +1158,7 @@ const { t } = useTranslation();
 
               {/* Sticky Footer */}
               <div className="sticky bottom-0 bg-white border-t border-gray-100 p-6 flex items-center justify-end shrink-0 z-10 w-full">
-                <button type="submit" className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98]">
+                <button type="submit" className="w-full py-3.5 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-[0.98]">
                   {isEditing ? 'Save Changes' : 'Add Driver'}
                 </button>
               </div>
@@ -1202,7 +1202,7 @@ const { t } = useTranslation();
                       placeholder="e.g. Main Gate" 
                       autoFocus
                     />
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all flex items-center gap-1">
+                    <button type="submit" className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-xs font-bold hover:bg-zinc-800 transition-all flex items-center gap-1">
                       {selectedLocation ? 'Update' : <><Plus size={14} /> Add</>}
                     </button>
                     {selectedLocation && (
@@ -1348,7 +1348,7 @@ const InvitePMSModal = ({ onClose, tenants, templates, selectedTenants, setSelec
              <button 
               disabled={loading || selectedTenants.length === 0}
               onClick={onSend}
-              className={`flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+              className={`flex-1 py-3 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 shadow-lg shadow-zinc-200 transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
              >
                {loading ? 'Sending...' : `Send ${selectedTenants.length} Invitation(s)`}
                {!loading && <Send size={16} />}
@@ -1385,7 +1385,7 @@ const DuplicateModal = ({ onClose, onDuplicate, targetDate }) => {
              <button onClick={onClose} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
              <button 
               onClick={() => onDuplicate(sourceDate)}
-              className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200"
+              className="flex-1 py-2.5 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 shadow-lg shadow-zinc-200"
              >
                Copy Trips
              </button>
@@ -1445,7 +1445,7 @@ const BulkDisableModal = ({ onClose, users, selectedIds, setSelectedIds, onConfi
                >
                  <div className="flex items-center gap-3">
                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                     selectedIds.includes(user.id) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-300'
+                     selectedIds.includes(user.id) ? 'bg-zinc-900 border-indigo-600' : 'bg-white border-slate-300'
                    }`}>
                      {selectedIds.includes(user.id) && <CheckCircle size={14} className="text-white" />}
                    </div>

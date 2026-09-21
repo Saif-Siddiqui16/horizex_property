@@ -191,7 +191,7 @@ const { id } = useParams();
                                 <div className="text-[9px] text-amber-600 uppercase font-bold tracking-wider">Current Owner</div>
                                 <div className="text-base font-black text-slate-800">{unit.current_owner || 'GC'}</div>
                             </Card>
-                            <Card className={`p-3 flex flex-col gap-0.5 border-blue-100 ${unit.reserved_flag ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-50'}`}>
+                            <Card className={`p-3 flex flex-col gap-0.5 border-blue-100 ${unit.reserved_flag ? 'bg-zinc-900 text-white shadow-lg shadow-blue-200' : 'bg-slate-50'}`}>
                                 <div className={`text-[9px] uppercase font-bold tracking-wider ${unit.reserved_flag ? 'text-blue-100' : 'text-slate-400'}`}>Reservation Status</div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-base font-black">{unit.reserved_flag ? 'RESERVED' : 'NONE'}</span>
@@ -209,7 +209,7 @@ const { id } = useParams();
                             <Card title="Construction Tracking" className="p-1">
                                 <div className={`mb-3 p-3 rounded-xl flex justify-between items-center shadow-lg transition-all ${
                                     steps.slice(0, 6).every(s => unit[`${s.key}_completed`]) 
-                                    ? 'bg-indigo-600 shadow-indigo-100' 
+                                    ? 'bg-zinc-900 shadow-zinc-200' 
                                     : 'bg-slate-300 shadow-none opacity-60 grayscale'
                                 }`}>
                                     <div className="flex flex-col">

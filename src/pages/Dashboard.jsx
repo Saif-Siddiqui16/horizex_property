@@ -476,7 +476,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 <div className="grid grid-cols-2 gap-2 mt-4">
                   <button
                     onClick={() => window.location.href = '/payments/collection'}
-                    className="py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all"
+                    className="py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-xl transition-all"
                   >
                     Open Workspace
                   </button>
@@ -552,7 +552,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 <div className="bg-slate-900 text-white border border-slate-950 rounded-3xl p-5 shadow-card flex flex-col justify-between gap-3">
                   <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Time & Payroll Workspaces</span>
                   <div className="flex gap-2">
-                    <Link to="/payroll/dashboard" className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold transition-all border-none">
+                    <Link to="/payroll/dashboard" className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-[10px] font-bold transition-all border-none">
                       Dashboard
                     </Link>
                     <Link to="/payroll/run" className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-900 text-[10px] font-bold transition-all border-none">
@@ -627,7 +627,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             {item.isNewConstruction ? (
                               <button
                                 onClick={() => navigate(`/unit-readiness`)}
-                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200"
+                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-zinc-900 transition-all shadow-lg shadow-slate-200"
                               >
                                 View Readiness
                               </button>
@@ -673,7 +673,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 onClick={() => setReservedUnitPage(p)}
                                 className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-black transition-all cursor-pointer ${
                                   reservedUnitPage === p
-                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                                    ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200'
                                     : 'text-slate-500 hover:bg-slate-50 border border-transparent'
                                 }`}
                               >

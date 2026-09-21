@@ -89,7 +89,7 @@ const [availableReports, setAvailableReports] = useState([]);
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 md:gap-8">
                         {availableReports.map((report, idx) => (
-                            <div key={report.id || idx} className="bg-white rounded-2xl md:rounded-2.5rem p-6 md:p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-100/50 transition-all duration-500 group flex flex-col sm:flex-row gap-6 md:gap-8">
+                            <div key={report.id || idx} className="bg-white rounded-2xl md:rounded-2.5rem p-6 md:p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group flex flex-col sm:flex-row gap-6 md:gap-8">
                                 <div className={`w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-2xl ${report.bg || 'bg-slate-50'} ${report.color || 'text-slate-600'} flex items-center justify-center transition-transform group-hover:scale-110 duration-500 shadow-inner mx-auto sm:mx-0`}>
                                     <report.icon size={32} className="md:w-9 md:h-9" />
                                 </div>

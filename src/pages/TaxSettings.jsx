@@ -138,7 +138,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
         {hasPermission('Tax Settings', 'add') && (
             <div className="flex justify-end">
-              <button className="bg-indigo-600 text-white border-none py-2.5 px-4 rounded-lg cursor-pointer transition-colors hover:bg-indigo-700 font-medium text-sm" onClick={() => {
+              <button className="bg-zinc-900 text-white border-none py-2.5 px-4 rounded-lg cursor-pointer transition-colors hover:bg-zinc-800 font-medium text-sm" onClick={() => {
                 setForm({ name: '', rate: '', appliesTo: 'Rent', status: 'active' });
                 setIsEditing(false);
                 setShowModal(true);
@@ -247,7 +247,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
               <div className="flex justify-end gap-2.5 mt-5">
                 <button onClick={() => setShowModal(false)} className="py-2 px-3.5 rounded-lg border-none cursor-pointer bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm font-medium">Cancel</button>
-                <button className="py-2 px-3.5 rounded-lg border-none cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-medium" onClick={handleSave}>
+                <button className="py-2 px-3.5 rounded-lg border-none cursor-pointer bg-zinc-900 text-white hover:bg-zinc-800 text-sm font-medium" onClick={handleSave}>
                   Save Tax
                 </button>
               </div>

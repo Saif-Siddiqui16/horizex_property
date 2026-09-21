@@ -232,7 +232,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 {hasPermission('Communication', 'add') && (
                   <button
                     onClick={() => setShowBulkModal(true)}
-                    className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 transition-colors"
+                    className="px-3 py-1.5 bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-zinc-800 transition-colors"
                   >
                     📱 Bulk SMS
                   </button>
@@ -456,7 +456,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     <button
                                       key={p}
                                       onClick={() => fetchAuditLogs(p)}
-                                      className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${currentPage === p ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                                      className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${currentPage === p ? 'bg-zinc-900 text-white shadow-md shadow-zinc-200' : 'text-slate-400 hover:bg-slate-50'}`}
                                     >
                                       {p}
                                     </button>
@@ -506,7 +506,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     <ArrowLeft size={20} className="text-slate-600" />
                   </button>
 
-                  <div className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+                  <div className="w-10 h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-sm">
                     {selectedUser.name?.charAt(0) || 'U'}
                   </div>
                   <div>
@@ -523,7 +523,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   return (
                     <div key={msg.id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[70%] space-y-1`}>
-                        <div className={`px-5 py-3 rounded-2xl text-sm ${isMe ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 shadow-sm border border-slate-100'}`}>
+                        <div className={`px-5 py-3 rounded-2xl text-sm ${isMe ? 'bg-zinc-900 text-white' : 'bg-white text-slate-700 shadow-sm border border-slate-100'}`}>
                           {msg.content}
                         </div>
                       </div>
@@ -544,7 +544,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     className={`flex-1 h-12 px-5 bg-slate-50 border border-slate-200 rounded-xl text-sm ${!hasPermission('Communication', 'add') ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
                   {hasPermission('Communication', 'add') && (
-                    <button type="submit" disabled={sending} className="h-12 w-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center">
+                    <button type="submit" disabled={sending} className="h-12 w-12 bg-zinc-900 text-white rounded-xl flex items-center justify-center">
                       <Send size={20} />
                     </button>
                   )}
@@ -659,7 +659,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               <button
                 onClick={handleSendBulkSMS}
                 disabled={sending || !bulkMessage.trim()}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sending ? 'Sending...' : `Send SMS ${bulkRecipient === 'custom' ? `(${selectedRecipients.length})` : ''}`}
               </button>

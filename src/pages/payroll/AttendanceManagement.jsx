@@ -325,7 +325,7 @@ const [logs, setLogs] = useState([]);
               />
             </div>
 
-            <button type="submit" className="w-full mt-2 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl border-none shadow-lg cursor-pointer">
+            <button type="submit" className="w-full mt-2 py-2.5 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl border-none shadow-lg cursor-pointer">
               Submit Request for Review
             </button>
           </form>

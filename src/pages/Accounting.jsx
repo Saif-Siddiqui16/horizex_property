@@ -160,7 +160,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 key={page}
                                 onClick={() => setCurrentPage(page)}
                                 className={`w-8 h-8 rounded-lg text-xs font-black transition-all border ${currentPage === page
-                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                    ? 'bg-zinc-900 text-white border-indigo-600 shadow-sm'
                                     : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-500 hover:text-indigo-600'
                                     }`}
                             >

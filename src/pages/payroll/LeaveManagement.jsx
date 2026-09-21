@@ -177,7 +177,7 @@ const [leaves, setLeaves] = useState([]);
             {canManage && (
               <button 
                 onClick={() => { resetForm(); setRequestModal(true); }}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg border-none flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ml-auto sm:ml-0"
+                className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg border-none flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ml-auto sm:ml-0"
               >
                 <Plus size={14} /> Request Leave
               </button>

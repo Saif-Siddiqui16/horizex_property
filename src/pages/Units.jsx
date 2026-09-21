@@ -586,7 +586,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         key={pageNum}
                         onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
                         className={`min-w-[32px] h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-all ${pagination.page === pageNum
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                          ? 'bg-zinc-900 text-white shadow-md shadow-zinc-400/20'
                           : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200'
                           }`}
                       >

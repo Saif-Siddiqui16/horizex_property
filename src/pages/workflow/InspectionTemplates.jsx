@@ -71,7 +71,7 @@ const navigate = useNavigate();
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => navigate('/admin/workflow/templates/new')}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-zinc-900 text-white rounded-2xl text-sm font-black hover:bg-zinc-800 shadow-xl shadow-zinc-200 transition-all active:scale-95"
                         >
                             <Plus size={18} />
                             Create Template
@@ -209,7 +209,7 @@ const navigate = useNavigate();
                                     <button
                                         key={pageNum}
                                         onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
-                                        className={`w-8 h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all ${pagination.page === pageNum ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-transparent hover:border-gray-100'}`}
+                                        className={`w-8 h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all ${pagination.page === pageNum ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200' : 'bg-white text-gray-500 hover:bg-gray-50 border border-transparent hover:border-gray-100'}`}
                                     >
                                         {pageNum}
                                     </button>

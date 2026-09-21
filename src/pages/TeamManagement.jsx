@@ -343,7 +343,7 @@ export const TeamManagement = () => {
           </div>
           <button 
             onClick={() => { resetForm(); setShowModal(true); }}
-            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all group cursor-pointer"
+            className="flex items-center gap-2 px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold shadow-xl shadow-zinc-200 hover:bg-zinc-800 transition-all group cursor-pointer"
           >
             <UserPlus size={20} className="group-hover:scale-110 transition-transform" />
             {t('team.new_member')}
@@ -379,7 +379,7 @@ export const TeamManagement = () => {
                             >
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-sm uppercase ${
-                                         selectedMember?.id === member.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
+                                         selectedMember?.id === member.id ? 'bg-zinc-900 text-white' : 'bg-slate-100 text-slate-500'
                                      }`}>
                                          {(member.firstName && member.firstName !== 'undefined') ? member.firstName[0] : (member.name?.[0] || member.email?.[0] || 'U')}
                                          {(member.lastName && member.lastName !== 'undefined') ? member.lastName[0] : ''}
@@ -758,7 +758,7 @@ export const TeamManagement = () => {
                             </button>
                             <button 
                                 type="submit"
-                                className="flex-3 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all uppercase tracking-tighter cursor-pointer"
+                                className="flex-3 py-4 bg-zinc-900 text-white font-black rounded-2xl shadow-xl shadow-zinc-200 hover:bg-zinc-800 transition-all uppercase tracking-tighter cursor-pointer"
                             >
                                 {isEditing ? t('team.update_profile') : t('team.create_profile')}
                             </button>
@@ -798,7 +798,7 @@ export const TeamManagement = () => {
                                         <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors truncate">{template.name}</h4>
                                         <p className="text-[10px] text-slate-400 font-medium truncate uppercase italic">{template.subject}</p>
                                     </div>
-                                    <div className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all">
+                                    <div className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center group-hover:bg-zinc-900 group-hover:text-white group-hover:border-indigo-600 transition-all">
                                         <Mail size={14} />
                                     </div>
                                 </button>

@@ -108,7 +108,7 @@ const [messages, setMessages] = useState([]);
                         return (
                             <div key={index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[85%] sm:max-w-[80%] px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-sm font-medium shadow-sm ${isMe
-                                        ? 'bg-indigo-600 text-white rounded-br-none'
+                                        ? 'bg-zinc-900 text-white rounded-br-none'
                                         : 'bg-slate-100 text-slate-700 rounded-bl-none'
                                     }`}>
                                     {msg.content}
@@ -135,7 +135,7 @@ const [messages, setMessages] = useState([]);
                         <button
                             type="submit"
                             disabled={sending || !newMessage}
-                            className="h-12 w-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                            className="h-12 w-12 bg-zinc-900 text-white rounded-xl flex items-center justify-center hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                         >
                             {sending ? <RefreshCw className="animate-spin" size={20} /> : <Send size={20} />}
                         </button>

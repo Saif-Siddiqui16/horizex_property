@@ -128,7 +128,7 @@ const navigate = useNavigate();
                     <div className="lg:col-span-5 space-y-6">
                         <div className="bg-white p-8 rounded-[40px] shadow-xl border border-gray-100 sticky top-8">
                             <div className="flex items-center gap-3 mb-8">
-                                <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+                                <div className="w-10 h-10 bg-zinc-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-zinc-200">
                                     <PlusCircle size={24} />
                                 </div>
                                 <h2 className="text-xl font-black text-gray-900 tracking-tight">
@@ -219,7 +219,7 @@ const navigate = useNavigate();
                                     <button 
                                         onClick={handleSave}
                                         disabled={saving}
-                                        className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest"
+                                        className="flex-[2] py-4 bg-zinc-900 text-white rounded-2xl text-xs font-black hover:bg-zinc-800 shadow-xl shadow-zinc-200 transition-all active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest"
                                     >
                                         {saving ? 'Saving...' : <><Save size={18} /> {isEditing ? 'Update Group' : 'Save Group'}</>}
                                     </button>
@@ -260,7 +260,7 @@ const navigate = useNavigate();
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
                                             <button 
                                                 onClick={() => editSeries(s)}
-                                                className="p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                className="p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-zinc-900 hover:text-white transition-all shadow-sm"
                                             >
                                                 <Edit3 size={16} />
                                             </button>

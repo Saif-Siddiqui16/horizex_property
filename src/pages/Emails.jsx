@@ -329,7 +329,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         onClick={() => goToPage(num)}
                                         disabled={loading}
                                         className={`min-w-[36px] h-9 px-2 rounded-lg border text-sm font-medium transition-colors ${page === num
-                                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                                            ? 'bg-zinc-900 border-indigo-600 text-white'
                                             : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                                             } disabled:opacity-50`}
                                     >

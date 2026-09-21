@@ -208,7 +208,7 @@ const [insurance, setInsurance] = useState(null);
                         </div>
 
                         <div className="space-y-8">
-                            <div className="p-8 rounded-[32px] bg-indigo-600 text-white border-0 shadow-xl shadow-indigo-100/30 flex flex-col">
+                            <div className="p-8 rounded-[32px] bg-zinc-900 text-white border-0 shadow-xl shadow-zinc-200/30 flex flex-col">
                                 <Info size={32} className="mb-6 text-indigo-200" />
                                 <h4 className="text-xl font-black mb-3 italic tracking-tight uppercase text-white">Why Insurance?</h4>
                                 <p className="text-indigo-100 text-sm font-medium leading-relaxed">
@@ -303,7 +303,7 @@ const [insurance, setInsurance] = useState(null);
                             </div>
                             <div className="pt-4 flex gap-4 sticky bottom-0 bg-white pb-2">
                                 <Button type="button" variant="secondary" className="flex-1 h-16 rounded-2xl" onClick={() => setShowUploadModal(false)}>Cancel</Button>
-                                <Button type="submit" variant="primary" className="flex-1 h-16 rounded-2xl shadow-xl shadow-indigo-100" disabled={isUploading}>
+                                <Button type="submit" variant="primary" className="flex-1 h-16 rounded-2xl shadow-xl shadow-zinc-200" disabled={isUploading}>
                                     {isUploading ? 'Finalizing...' : 'Submit Policy'}
                                 </Button>
                             </div>

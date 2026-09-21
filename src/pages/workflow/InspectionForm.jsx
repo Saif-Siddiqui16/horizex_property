@@ -502,7 +502,7 @@ const navigate = useNavigate();
                         ))}
                         <button
                             onClick={() => scrollToSection('finalize')}
-                            className="flex items-center justify-between group p-3 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-100 mt-4"
+                            className="flex items-center justify-between group p-3 rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-200 mt-4"
                         >
                             <span className="text-sm font-black tracking-tight">Finalize & Sign</span>
                             <CheckCircle2 size={16} />
@@ -1006,7 +1006,7 @@ const PhotoSelector = ({ q, responses, isEditMode, inspection, handlePhotoUpload
                                                 photoIndex: idx
                                             });
                                         }}
-                                        className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-2xl active:scale-90 transition-transform flex items-center justify-center cursor-pointer pointer-events-auto"
+                                        className="p-2.5 bg-zinc-900 text-white rounded-xl shadow-2xl active:scale-90 transition-transform flex items-center justify-center cursor-pointer pointer-events-auto"
                                         title="Edit / Mark Photo"
                                     >
                                         <Edit3 size={16} />
@@ -1023,7 +1023,7 @@ const PhotoSelector = ({ q, responses, isEditMode, inspection, handlePhotoUpload
                         )}
 
                         {idx === 0 && (
-                            <div className="absolute bottom-0 inset-x-0 bg-indigo-600/80 backdrop-blur-sm py-0.5 text-center">
+                            <div className="absolute bottom-0 inset-x-0 bg-zinc-900/80 backdrop-blur-sm py-0.5 text-center">
                                 <span className="text-[7px] font-black text-white uppercase tracking-widest">Primary</span>
                             </div>
                         )}

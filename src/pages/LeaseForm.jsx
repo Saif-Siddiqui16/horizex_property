@@ -379,7 +379,7 @@ const navigate = useNavigate();
           <Button variant="secondary" onClick={() => navigate('/leases')}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSave} className="min-w-[140px] shadow-lg shadow-indigo-200">
+          <Button variant="primary" onClick={handleSave} className="min-w-[140px] shadow-lg shadow-zinc-200">
             Save Lease
           </Button>
         </div>
