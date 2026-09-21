@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
-import api from '../api/client';
-import { User, Mail, Lock, Phone, Save, CheckCircle, AlertCircle, Eye, EyeOff, MapPin, X } from 'lucide-react';
 
+import api from '../api/client';
+import { User, Mail, Lock, Phone, Save, CheckCircle, AlertCircle, Eye, EyeOff, MapPin, X } from 'lucide-react';
 export const Profile = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -154,21 +153,21 @@ export const Profile = () => {
 
     if (loading) {
         return (
-            <MainLayout title="My Profile">
+            <>
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
                 </div>
-            </MainLayout>
+            </>
         );
     }
 
     return (
-        <MainLayout title="Personal Profile">
+        <>
             <div className="max-w-4xl mx-auto space-y-8 animate-fade-up">
 
                 {/* Floating Notification */}
                 {message.text && (
-                    <div className="fixed top-24 right-8 z-[100] animate-in slide-in-from-right-10 duration-300">
+                    <div className="fixed top-24 right-8 z-[100] anim-slide-up">
                         <div className={`p-4 pr-12 rounded-2xl flex items-center gap-3 border shadow-[0_20px_40px_rgba(0,0,0,0.12)] backdrop-blur-md transition-all ${message.type === 'success'
                             ? 'bg-emerald-50/90 text-emerald-800 border-emerald-100'
                             : 'bg-red-50/90 text-red-800 border-red-100'
@@ -468,6 +467,6 @@ export const Profile = () => {
                     </div>
                 </form>
             </div>
-        </MainLayout>
+        </>
     );
 };

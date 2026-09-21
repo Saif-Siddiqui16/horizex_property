@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
-import { TenantLayout } from '../../layouts/TenantLayout';
+
 import { Wrench, Plus, X, CheckCircle2, Clock, MessageSquare, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/Button';
-import api from '../../api/client';
-
+import api from '../../api/client';
 const initialTickets = [
     { id: 'T-1025', subject: 'Leaking Kitchen Sink', status: 'In Progress', priority: 'High', date: '2026-01-05', desc: 'Water is dripping from the main pipe under the sink.' },
     { id: 'T-1024', subject: 'AC Filter Replacement', status: 'Resolved', priority: 'Low', date: '2026-01-02', desc: 'Regular maintenance.' },
 ];
 
 export const TenantTickets = () => {
-    const [tickets, setTickets] = useState([]);
+const [tickets, setTickets] = useState([]);
     const [showNew, setShowNew] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState(null);
@@ -71,8 +70,8 @@ export const TenantTickets = () => {
     };
 
     return (
-        <TenantLayout title="Maintenance Tickets">
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <>
+            <div className="space-y-6 anim-slide-up">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                     <div className="space-y-1">
                         <h2 className="text-xl font-black text-slate-800 tracking-tight">Support Requests</h2>
@@ -127,8 +126,8 @@ export const TenantTickets = () => {
 
             {/* NEW TICKET MODAL */}
             {showNew && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-0 md:p-6 overflow-y-auto animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-md rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-0 md:p-6 overflow-y-auto anim-fade-in">
+                    <div className="bg-white w-full max-w-md rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
                         
                         {/* Sticky Modal Header */}
                         <div className="sticky top-0 bg-white border-b border-slate-50 p-6 flex items-center justify-between shrink-0 z-10">
@@ -188,8 +187,8 @@ export const TenantTickets = () => {
 
             {/* TICKET DETAIL MODAL */}
             {selectedTicket && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[90vh]">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 anim-fade-in">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl anim-zoom-in overflow-y-auto max-h-[90vh]">
                         <div className="p-6 border-b border-slate-50 flex items-center justify-between">
                             <h3 className="text-xl font-black text-slate-800">{selectedTicket.id} Detail</h3>
                             <button onClick={() => setSelectedTicket(null)} className="p-2 text-slate-400 hover:bg-slate-50 rounded-xl transition-all">
@@ -240,6 +239,6 @@ export const TenantTickets = () => {
                     </div>
                 </div>
             )}
-        </TenantLayout>
+        </>
     );
 };

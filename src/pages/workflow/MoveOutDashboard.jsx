@@ -15,13 +15,12 @@ import {
     ClipboardList,
     Edit2
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { MainLayout } from '../../layouts/MainLayout';
+import { format } from 'date-fns';
 
 
 
 const MoveOutDashboard = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [moveOuts, setMoveOuts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedMoveOut, setSelectedMoveOut] = useState(null);
@@ -204,7 +203,7 @@ const MoveOutDashboard = () => {
                             </button>
                             
                             {menuOpen && (
-                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in duration-100">
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 anim-zoom-in">
                                     <button 
                                         onClick={() => handleAction('CANCEL')}
                                         className="w-full text-left px-4 py-2 text-xs font-black text-red-600 hover:bg-red-50 transition-colors uppercase tracking-wider"
@@ -423,7 +422,7 @@ const MoveOutDashboard = () => {
     if (loading) return <div className="p-8 text-center text-gray-500 font-black">SYNCING DASHBOARD...</div>;
 
     return (
-        <MainLayout title="Move-Out Dashboard">
+        <>
             <div className="p-0 bg-transparent min-h-screen">
             {/* Header */}
             <div className="flex items-center justify-between mb-4 mt-2">
@@ -529,7 +528,7 @@ const MoveOutDashboard = () => {
             {/* Schedule Modal */}
             {showScheduleModal && (
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200 border border-gray-100 overflow-hidden">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl anim-zoom-in border border-gray-100 overflow-hidden">
                         <form onSubmit={handleSchedule}>
                             <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
                                 <div>
@@ -611,7 +610,7 @@ const MoveOutDashboard = () => {
                 </div>
             )}
             </div>
-        </MainLayout>
+        </>
     );
 };
 

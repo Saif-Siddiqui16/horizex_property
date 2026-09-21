@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import {
   Plus, AlertCircle, Calendar, DollarSign, User, Building,
   Trash2, Edit2, History, ChevronRight, ChevronLeft, Eye, ShieldCheck,
@@ -10,10 +10,9 @@ import {
 import { Button } from '../components/Button';
 import api from '../api/client';
 import { useLocation } from 'react-router-dom';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 const RefundsAdjustments = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -250,11 +249,11 @@ const RefundsAdjustments = () => {
   };
 
   return (
-    <MainLayout title="Refunds & Adjustments">
+    <>
       <div className="flex flex-col gap-6">
 
         {success && (
-          <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 p-4 rounded-xl flex items-center gap-3 anim-slide-up">
             <CheckCircle2 className="text-emerald-500" />
             <span className="font-bold">Refund record {success} successfully!</span>
           </div>
@@ -490,7 +489,7 @@ const RefundsAdjustments = () => {
         {/* CREATE/EDIT MODAL */}
         {showModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+            <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl overflow-hidden anim-zoom-inflex flex-col max-h-[95vh] sm:max-h-[90vh]">
               <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
                   <h3 className="text-xl font-bold text-slate-800">{editingRecord ? 'Edit Refund' : 'Create Refund/Adjustment'}</h3>
@@ -643,7 +642,7 @@ const RefundsAdjustments = () => {
                   {loadingCalc && <div className="text-center text-xs text-slate-400 font-bold animate-pulse">Calculating refund recommendations...</div>}
 
                   {calcData && (
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 animate-in fade-in duration-300">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 anim-fade-in">
                       <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest mb-3 border-b border-slate-200 pb-1 flex items-center gap-1">
                         <Clock size={14} className="text-slate-500" /> System Calculation (Prioritized)
                       </h4>
@@ -729,8 +728,8 @@ const RefundsAdjustments = () => {
 
         {/* VIEW MODAL (Enhanced) */}
         {selected && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white p-6 rounded-xl w-[520px] shadow-2xl animate-in zoom-in-95">
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm anim-fade-in">
+            <div className="bg-white p-6 rounded-xl w-[520px] shadow-2xl anim-zoom-in">
               <div className="flex items-center justify-between mb-6 pb-3 border-b border-slate-100">
                 <h3 className="text-lg font-bold text-slate-800">{selected.type} Details</h3>
                 <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
@@ -782,7 +781,7 @@ const RefundsAdjustments = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };
 

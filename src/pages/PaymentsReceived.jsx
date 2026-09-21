@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Eye, RotateCcw, X } from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 const PaymentsReceived = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -104,7 +103,7 @@ const PaymentsReceived = () => {
   };
 
   return (
-    <MainLayout title="Payments Received">
+    <>
       <div className="p-0 pb-16">
         
         {/* FILTER BAR */}
@@ -235,8 +234,8 @@ const PaymentsReceived = () => {
 
         {/* VIEW PAYMENT MODAL */}
         {selectedPayment && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white p-6 rounded-xl w-[520px] shadow-2xl animate-in zoom-in-95">
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm anim-fade-in">
+            <div className="bg-white p-6 rounded-xl w-[520px] shadow-2xl anim-zoom-in">
               <div className="flex items-center justify-between mb-6 pb-3 border-b border-slate-100">
                 <h3 className="text-lg font-bold text-slate-800">Payment Details</h3>
                 <button onClick={() => setSelectedPayment(null)} className="text-slate-400 hover:text-slate-600">
@@ -285,7 +284,7 @@ const PaymentsReceived = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };
 

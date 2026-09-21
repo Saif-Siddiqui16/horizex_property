@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../../layouts/MainLayout';
+
 import { Search, Calendar, FileText, Check, X, Plus } from 'lucide-react';
 import leaveService from '../../services/leaveService';
 import employeeService from '../../services/employeeService';
 import permissionService from '../../services/permissionService';
-import LeaveCalendar from '../../components/payroll/LeaveCalendar';
-
+import LeaveCalendar from '../../components/payroll/LeaveCalendar';
 export const LeaveManagement = () => {
-  const [leaves, setLeaves] = useState([]);
+const [leaves, setLeaves] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'calendar'
   
@@ -109,7 +108,7 @@ export const LeaveManagement = () => {
   const canManage = permissionService.canManageLeaves();
 
   return (
-    <MainLayout title="Leave Planner">
+    <>
       <div className="flex flex-col gap-6">
         
         {/* Header Options */}
@@ -360,7 +359,7 @@ export const LeaveManagement = () => {
         </div>
       )}
 
-    </MainLayout>
+    </>
   );
 };
 

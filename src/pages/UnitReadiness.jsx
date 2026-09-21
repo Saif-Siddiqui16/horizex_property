@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import api from '../api/client';
 import { 
   CheckCircle, 
@@ -13,12 +13,11 @@ import {
   Filter
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 // Timezone-safe date parser: extracts YYYY-MM-DD and parses at local noon.
 // This prevents UTC midnight dates from shifting back 1 day in Canadian timezones (UTC-3:30 to UTC-8).
 const safeDate = (dateStr) => {
-  if (!dateStr) return null;
+if (!dateStr) return null;
   const datePart = String(dateStr).substring(0, 10); // e.g. "2026-04-01"
   return new Date(datePart + 'T12:00:00');           // local noon = same day in all of Canada
 };
@@ -199,7 +198,7 @@ const UnitReadiness = () => {
   };
 
   return (
-    <MainLayout title="Unit Readiness Dashboard">
+    <>
       <div className="page-container mt-6">
         <div className="w-full space-y-6">
           
@@ -657,7 +656,7 @@ const UnitReadiness = () => {
           onReserved={fetchData}
         />
       )}
-    </MainLayout>
+    </>
   );
 };
 
@@ -696,7 +695,7 @@ const ReserveModal = ({ unit, onClose, onReserved }) => {
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden anim-zoom-in">
         <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-indigo-600 text-white">
           <div>
             <h3 className="text-2xl font-black tracking-tight">Reserve Unit {unit.unitNumber}</h3>

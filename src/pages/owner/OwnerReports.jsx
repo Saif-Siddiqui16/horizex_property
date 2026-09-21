@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { OwnerLayout } from '../../layouts/owner/OwnerLayout';
+
 import {
     BarChart3,
     PieChart,
@@ -12,8 +12,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { Button } from '../../components/Button';
-import api from '../../api/client';
-
+import api from '../../api/client';
 const ICON_MAP = {
     monthly_summary: BarChart3,
     annual_overview: CircleDollarSign,
@@ -28,7 +27,7 @@ const COLOR_MAP = {
 };
 
 export const OwnerReports = () => {
-    const [availableReports, setAvailableReports] = useState([]);
+const [availableReports, setAvailableReports] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -65,7 +64,7 @@ export const OwnerReports = () => {
 
 
     return (
-        <OwnerLayout title="Performance Reports">
+        <>
             <div className="space-y-8 pb-12">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                     <div>
@@ -174,6 +173,6 @@ export const OwnerReports = () => {
                     </div>
                 )}
             </div>
-        </OwnerLayout>
+        </>
     );
 };

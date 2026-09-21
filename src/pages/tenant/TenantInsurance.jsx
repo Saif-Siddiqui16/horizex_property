@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TenantLayout } from '../../layouts/TenantLayout';
+
 import { ShieldCheck, AlertTriangle, Calendar, Info, Eye, X, FileText, Upload, Download, Clock } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import api from '../../api/client';
-
+import api from '../../api/client';
 export const TenantInsurance = () => {
-    const [insurance, setInsurance] = useState(null);
+const [insurance, setInsurance] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showPreview, setShowPreview] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
@@ -101,8 +100,8 @@ export const TenantInsurance = () => {
     const canEdit = false; // Uploads are strictly managed by Admin at this stage
 
     return (
-        <TenantLayout title="Insurance Compliance">
-            <div className="max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <>
+            <div className="max-w-4xl space-y-8 anim-slide-up">
                 {/* STATUS BAR */}
                 {insurance && (
                     <div className={`p-6 rounded-3xl border ${statusConfig.bg} ${statusConfig.border} flex items-center justify-between`}>
@@ -223,8 +222,8 @@ export const TenantInsurance = () => {
 
             {/* UPLOAD MODAL */}
             {showUploadModal && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 anim-fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl anim-zoom-in max-h-[90vh] flex flex-col">
                         <div className="p-8 border-b border-slate-50 flex items-center justify-between shrink-0 bg-white">
                             <h3 className="text-2xl font-black text-slate-800 tracking-tight">Upload Policy</h3>
                             <button onClick={() => setShowUploadModal(false)} className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-2xl transition-all">
@@ -315,8 +314,8 @@ export const TenantInsurance = () => {
 
             {/* DOCUMENT PREVIEW MODAL */}
             {showPreview && insurance?.documentUrl && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[32px] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 anim-fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-3xl overflow-hidden shadow-2xl anim-zoom-in flex flex-col max-h-[90vh]">
                         <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-white shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-indigo-500 text-white rounded-lg flex items-center justify-center shadow-lg">
@@ -374,6 +373,6 @@ export const TenantInsurance = () => {
                     </div>
                 </div>
             )}
-        </TenantLayout>
+        </>
     );
 };

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { MessageSquare, Edit2, Trash2, Plus, X, Search, FileText, Check } from 'lucide-react';
-import { MainLayout } from '../layouts/MainLayout';
-import { hasPermission } from '../utils/permissions';
 
+import { hasPermission } from '../utils/permissions';
 const SMSTemplates = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -77,7 +76,7 @@ const SMSTemplates = () => {
     );
 
     return (
-        <MainLayout title="SMS Templates">
+        <>
             <div className="space-y-4 text-slate-800 w-full max-w-full overflow-hidden">
                 <div className="flex flex-col sm:flex-row justify-between items-center text-center sm:text-left bg-white p-4 rounded-xl shadow-sm border border-gray-100 gap-4 w-full">
                     <div className="min-w-0">
@@ -171,7 +170,7 @@ const SMSTemplates = () => {
                 {/* Modal */}
                 {isModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-6 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
-                        <div className="bg-white w-full max-w-2xl rounded-none md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
+                        <div className="bg-white w-full max-w-2xl rounded-none md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
                             
                             {/* Sticky Modal Header */}
                             <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 md:px-8 md:py-6 flex justify-between items-center shrink-0 z-20">
@@ -265,7 +264,7 @@ const SMSTemplates = () => {
                     </div>
                 )}
             </div>
-        </MainLayout>
+        </>
     );
 };
 

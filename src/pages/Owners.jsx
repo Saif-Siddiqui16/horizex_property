@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Plus, Search, User, Eye, Trash2, Pencil, Calendar, AlertCircle, Building, Building2, UserPlus, Mail, Smartphone, Send, CheckCircle } from 'lucide-react';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
-import { AccessControl } from '../components/AccessControl';
-
+import { AccessControl } from '../components/AccessControl';
 const initialOwners = [
     {
         id: 1,
@@ -30,7 +29,7 @@ const initialOwners = [
 ];
 
 export const Owners = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -189,7 +188,7 @@ export const Owners = () => {
     };
 
     return (
-        <MainLayout title="Owners Management">
+        <>
             <div className="flex flex-col gap-6">
 
                 {/* TOP BAR */}
@@ -371,9 +370,9 @@ export const Owners = () => {
 
                 {/* ADD/EDIT OWNER MODAL */}
                 {showModal && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in">
                         <form
-                            className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
+                            className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl anim-zoom-in max-h-[90vh] overflow-y-auto"
                             onSubmit={handleSaveOwner}
                         >
                             <div className="flex justify-between items-center mb-6">
@@ -518,8 +517,8 @@ export const Owners = () => {
 
                 {/* INVITE MODAL */}
                 {showInviteModal && invitingOwner && (
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[60] animate-in fade-in duration-300">
-                        <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-400 overflow-hidden flex flex-col">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[60] anim-fade-in">
+                        <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl anim-zoom-in overflow-hidden flex flex-col">
                             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white">
                                 <div>
                                     <h3 className="text-xl font-black text-slate-800 tracking-tight">Send Invite</h3>
@@ -592,8 +591,8 @@ export const Owners = () => {
                 {/* OWNER DETAIL MODAL */}
                 {
                     viewingOwner && (
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-                            <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300">
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in">
+                            <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl anim-zoom-in">
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100 font-bold text-lg">
@@ -654,6 +653,6 @@ export const Owners = () => {
                 }
 
             </div>
-        </MainLayout>
+        </>
     );
 };

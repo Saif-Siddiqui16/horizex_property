@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../../layouts/MainLayout';
+
 import { Search, DollarSign, Settings, Plus, Eye, CheckCircle2, ChevronRight, HelpCircle } from 'lucide-react';
 import payrollService from '../../services/payrollService';
 import payrollSettingsService from '../../services/payrollSettingsService';
 import permissionService from '../../services/permissionService';
 import PayrollTable from '../../components/payroll/PayrollTable';
-import PayslipCard from '../../components/payroll/PayslipCard';
-
+import PayslipCard from '../../components/payroll/PayslipCard';
 export const PayrollProcessing = () => {
-  const [records, setRecords] = useState([]);
+const [records, setRecords] = useState([]);
   const [activeTab, setActiveTab] = useState('runs'); // 'runs' | 'settings'
   const [settings, setSettings] = useState({});
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -106,7 +105,7 @@ export const PayrollProcessing = () => {
   const uniqueMonths = Array.from(new Set(payrollService.getAll().map(r => r.payrollMonth)));
 
   return (
-    <MainLayout title="Payroll Processing">
+    <>
       <div className="flex flex-col gap-6">
         
         {/* Navigation Tabs */}
@@ -314,7 +313,7 @@ export const PayrollProcessing = () => {
         </div>
       )}
 
-    </MainLayout>
+    </>
   );
 };
 

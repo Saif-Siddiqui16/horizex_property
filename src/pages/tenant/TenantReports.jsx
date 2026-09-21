@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TenantLayout } from '../../layouts/TenantLayout';
+
 import api from '../../api/client';
 import {
     FileText,
@@ -13,8 +13,7 @@ import {
     Eye,
     ArrowLeft
 } from 'lucide-react';
-import { Button } from '../../components/Button';
-
+import { Button } from '../../components/Button';
 const ICON_MAP = {
     payment_history: CreditCard,
     invoice_summary: Receipt
@@ -25,7 +24,7 @@ const COLOR_MAP = {
 };
 
 export const TenantReports = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [reports, setReports] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -79,7 +78,7 @@ export const TenantReports = () => {
         const isPayment = selectedReport.type === 'payment_history';
 
         return (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-6 anim-slide-up">
                 <div className="flex items-center justify-between">
                     <button
                         onClick={() => setSelectedReport(null)}
@@ -155,7 +154,7 @@ export const TenantReports = () => {
     };
 
     return (
-        <TenantLayout title="My Reports">
+        <>
             <div className="space-y-8 pb-12">
                 {!selectedReport && (
                     <>
@@ -228,7 +227,7 @@ export const TenantReports = () => {
                     <p className="relative z-10 font-bold opacity-80">For detailed invoices and payment history, use <span className="text-primary-400">My Invoices</span> and <span className="text-primary-400">Pay Rent</span> from the menu.</p>
                 </div>
             </div>
-        </TenantLayout>
+        </>
     );
 };
 

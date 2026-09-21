@@ -1,12 +1,11 @@
 import React from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { DollarSign, Calendar, CreditCard, Info } from 'lucide-react';
-
+import { DollarSign, Calendar, CreditCard, Info } from 'lucide-react';
 export const PaymentForm = () => {
-    return (
-        <MainLayout title="Record Payment">
+return (
+        <>
             <div className="max-w-4xl mx-auto flex flex-col gap-6">
 
                 {/* Info Banner */}
@@ -22,7 +21,7 @@ export const PaymentForm = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
                     {/* Left: Main Details */}
                     <div className="flex flex-col gap-6">
-                        <Card title="Payment Details" className="animate-in slide-in-from-bottom-4 duration-500 fade-in">
+                        <Card title="Payment Details" className="anim-slide-up fade-in">
                             <div className="flex flex-col gap-5">
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Linked Invoice</label>
@@ -69,7 +68,7 @@ export const PaymentForm = () => {
 
                     {/* Right: Summary / Actions */}
                     <div className="flex flex-col gap-6">
-                        <Card className="animate-in slide-in-from-right-4 duration-500 fade-in delay-100 h-fit sticky top-6">
+                        <Card className="anim-slide-up fade-in delay-100 h-fit sticky top-6">
                             <h4 className="text-xs font-bold uppercase text-slate-400 mb-6 tracking-wider border-b border-slate-100 pb-2">Invoice Balance</h4>
 
                             <div className="space-y-4">
@@ -96,6 +95,6 @@ export const PaymentForm = () => {
                 </div>
 
             </div>
-        </MainLayout>
+        </>
     );
 };

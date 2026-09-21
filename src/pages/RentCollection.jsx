@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Search, Plus, Filter, ClipboardList, TrendingUp, CreditCard, ChevronRight, FileText, X } from 'lucide-react';
@@ -18,10 +18,9 @@ import { CollectionStatusChart } from '../components/collection/CollectionStatus
 import { TenantLedgerCard } from '../components/collection/TenantLedgerCard';
 import { InvoiceTable } from '../components/collection/InvoiceTable';
 import { RecentPaymentsWidget } from '../components/collection/RecentPaymentsWidget';
-import api from '../api/client';
-
+import api from '../api/client';
 export const RentCollection = () => {
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'invoices', 'ledger', 'aging'
+const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'invoices', 'ledger', 'aging'
   const [loading, setLoading] = useState(true);
 
   // Data States
@@ -209,7 +208,7 @@ export const RentCollection = () => {
   };
 
   return (
-    <MainLayout title="Rent Collection & Accounts Receivable">
+    <>
       <div className="flex flex-col gap-6">
 
         {/* Tab Selection Bar */}
@@ -583,6 +582,6 @@ export const RentCollection = () => {
         </div>
       )}
 
-    </MainLayout>
+    </>
   );
 };

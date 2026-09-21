@@ -1,5 +1,5 @@
 import React from 'react';
-import { OwnerLayout } from '../../layouts/owner/OwnerLayout';
+
 import {
     Building2,
     Users,
@@ -15,10 +15,9 @@ import {
     Wrench
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../../api/client';
-
+import api from '../../api/client';
 export const OwnerDashboard = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [stats, setStats] = React.useState([]);
     const [rawData, setRawData] = React.useState(null);
     const [tenants, setTenants] = React.useState([]);
@@ -125,16 +124,16 @@ export const OwnerDashboard = () => {
 
     if (loading) {
         return (
-            <OwnerLayout title="Portfolio Overview">
+            <>
                 <div className="flex items-center justify-center h-screen">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
                 </div>
-            </OwnerLayout>
+            </>
         );
     }
 
     return (
-        <OwnerLayout title="Portfolio Overview">
+        <>
             <div className="space-y-8 pb-12">
 
                 {/* STAT CARDS */}
@@ -265,6 +264,6 @@ export const OwnerDashboard = () => {
                     </div>
                 </div>
             </div>
-        </OwnerLayout>
+        </>
     );
 };

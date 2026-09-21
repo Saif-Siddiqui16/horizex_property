@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../../layouts/MainLayout';
+
 import { Search, Calendar, Clock, Edit3, ShieldAlert } from 'lucide-react';
 import attendanceService from '../../services/attendanceService';
 import employeeService from '../../services/employeeService';
 import departmentService from '../../services/departmentService';
 import permissionService from '../../services/permissionService';
 import AttendanceTable from '../../components/payroll/AttendanceTable';
-import AttendanceTimeline from '../../components/payroll/AttendanceTimeline';
-
+import AttendanceTimeline from '../../components/payroll/AttendanceTimeline';
 export const AttendanceManagement = () => {
-  const [logs, setLogs] = useState([]);
+const [logs, setLogs] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [selectedLog, setSelectedLog] = useState(null);
@@ -130,7 +129,7 @@ export const AttendanceManagement = () => {
   const canManage = permissionService.canManageAttendance();
 
   return (
-    <MainLayout title="Attendance Logs">
+    <>
       <div className="flex flex-col gap-8">
         
         {/* Filters Header bar */}
@@ -333,7 +332,7 @@ export const AttendanceManagement = () => {
         </div>
       )}
 
-    </MainLayout>
+    </>
   );
 };
 

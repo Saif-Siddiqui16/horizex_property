@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { hasPermission } from '../utils/permissions';
@@ -8,10 +8,9 @@ import { NotesKPICards } from '../components/notes/NotesKPICards';
 import { NotesTable } from '../components/notes/NotesTable';
 import { CommunicationTimeline } from '../components/notes/CommunicationTimeline';
 import { RecentNotesWidget } from '../components/notes/RecentNotesWidget';
-import { Search, Plus, Filter, StickyNote, List, LayoutDashboard, X, ShieldAlert } from 'lucide-react';
-
+import { Search, Plus, Filter, StickyNote, List, LayoutDashboard, X, ShieldAlert } from 'lucide-react';
 export const NotesHub = () => {
-  const config = notesHubService.getConfig();
+const config = notesHubService.getConfig();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState([]);
@@ -111,7 +110,7 @@ export const NotesHub = () => {
 
   if (!canView) {
     return (
-      <MainLayout title="Access Denied">
+      <>
         <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-[32px] border border-slate-100 shadow-2xl p-16 text-center">
           <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center text-rose-500 mb-6">
             <ShieldAlert size={40} />
@@ -121,12 +120,12 @@ export const NotesHub = () => {
             You do not have permission to view Notes Hub. Contact your administrator.
           </p>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout title="Notes Hub">
+    <>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl p-1 w-fit">
@@ -348,7 +347,7 @@ export const NotesHub = () => {
           </div>
         </div>
       )}
-    </MainLayout>
+    </>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OwnerLayout } from '../../layouts/owner/OwnerLayout';
+
 import {
     Building2,
     ArrowRight,
@@ -13,10 +13,9 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/Button';
 import api from '../../api/client';
-import clsx from 'clsx';
-
+import clsx from 'clsx';
 export const OwnerProperties = () => {
-    const [viewingProperty, setViewingProperty] = useState(null);
+const [viewingProperty, setViewingProperty] = useState(null);
 
     const [ownerProperties, setOwnerProperties] = useState([]);
 
@@ -57,7 +56,7 @@ export const OwnerProperties = () => {
 
 
     return (
-        <OwnerLayout title="Property Portfolio">
+        <>
             <div className="space-y-8 pb-12">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -141,8 +140,8 @@ export const OwnerProperties = () => {
 
             {/* Read-Only Modal */}
             {viewingProperty && (
-                <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md animate-in fade-in duration-300 p-4">
-                    <div className="bg-white rounded-[2rem] md:rounded-[3rem] w-full max-w-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
+                <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md anim-fade-in p-4">
+                    <div className="bg-white rounded-[2rem] md:rounded-[3rem] w-full max-w-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] anim-zoom-in flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
                         {/* Modal Header */}
                         <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                             <div>
@@ -221,6 +220,6 @@ export const OwnerProperties = () => {
                     </div>
                 </div>
             )}
-        </OwnerLayout>
+        </>
     );
 };

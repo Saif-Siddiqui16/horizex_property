@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { Button } from '../components/Button';
-import { Home, User, Calendar, DollarSign, Shield, ChevronDown, Bed } from 'lucide-react';
-
+import { Home, User, Calendar, DollarSign, Shield, ChevronDown, Bed } from 'lucide-react';
 export const LeaseForm = () => {
-  const navigate = useNavigate();
+const navigate = useNavigate();
   const [buildings, setBuildings] = useState([]);
   const [units, setUnits] = useState([]);
   const [tenants, setTenants] = useState([]);
@@ -135,8 +134,8 @@ export const LeaseForm = () => {
   };
 
   return (
-    <MainLayout title="Create New Lease">
-      <div className="max-w-[760px] mx-auto bg-white p-8 rounded-2xl shadow-lg border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <>
+      <div className="max-w-[760px] mx-auto bg-white p-8 rounded-2xl shadow-lg border border-slate-100 anim-slide-up">
         <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
           <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
             <Home size={24} />
@@ -385,6 +384,6 @@ export const LeaseForm = () => {
           </Button>
         </div>
       </div>
-    </MainLayout >
+    </>
   );
 };

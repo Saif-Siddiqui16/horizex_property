@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Plus, Search, Filter, Eye, Edit2, Trash2, X, ChevronDown, Loader2, CheckCircle, AlertCircle, Settings, User, Shield } from 'lucide-react';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 export const Units = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -399,7 +398,7 @@ export const Units = () => {
   };
 
   return (
-    <MainLayout title="Units">
+    <>
       <div className="flex flex-col gap-6">
 
         {/* Toast Notification */}
@@ -615,7 +614,7 @@ export const Units = () => {
         {
           showModal && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[95vh] flex flex-col animate-in fade-in zoom-in duration-200">
+              <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[95vh] flex flex-col anim-zoom-in">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-t-2xl">
                   <h3 className="text-xl font-bold text-white">
@@ -706,7 +705,7 @@ export const Units = () => {
                           const matchedType = unitTypes.find(t => t.typeName === formData.unitType);
                           if (!matchedType) return null;
                           return (
-                            <p className="text-[11px] font-black text-indigo-500 mt-1.5 pl-1 animate-in slide-in-from-left-1">
+                            <p className="text-[11px] font-black text-indigo-500 mt-1.5 pl-1 anim-slide-up">
                                💡 Standard Rates: Full ${parseFloat(matchedType.fullUnitRate).toLocaleString()} | Single Bed ${parseFloat(matchedType.singleBedroomRate).toLocaleString()}
                             </p>
                           );
@@ -879,7 +878,7 @@ export const Units = () => {
                       )}
 
                       {formData.reserved_flag && (
-                        <div className="space-y-4 p-4 bg-blue-50/30 rounded-2xl border border-blue-100 animate-in fade-in slide-in-from-top-2">
+                        <div className="space-y-4 p-4 bg-blue-50/30 rounded-2xl border border-blue-100 anim-slide-up">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="col-span-full">
                               <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reserved Prospect (Quick Entry)</label>
@@ -1076,8 +1075,8 @@ export const Units = () => {
       </div >
       {/* QUICK ADD TENANT MODAL (PHASE 2) */}
       {showQuickAddTenant && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[10000] animate-in fade-in duration-300">
-          <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-400 max-h-[90vh] overflow-hidden flex flex-col mx-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[10000] anim-fade-in">
+          <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl anim-zoom-in max-h-[90vh] overflow-hidden flex flex-col mx-4">
             {/* MODAL HEADER */}
             <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <div>
@@ -1273,7 +1272,7 @@ export const Units = () => {
           </div>
         </div>
       )}
-    </MainLayout >
+    </>
   );
 };
 
@@ -1340,7 +1339,7 @@ const ManageTypesModal = ({ types, onClose, onRefresh }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl anim-zoom-in">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-2xl">
           <div className="flex items-center gap-2">
             <Settings size={20} className="text-indigo-600" />

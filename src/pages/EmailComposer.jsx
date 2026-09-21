@@ -6,11 +6,10 @@ import {
     Users, Layout, Edit3, Paperclip, Send, ChevronRight, ChevronLeft, 
     Building, Search, Filter, CheckCircle2, AlertCircle, X, PlusCircle, FileText
 } from 'lucide-react';
-import { MainLayout } from '../layouts/MainLayout';
-import { hasPermission } from '../utils/permissions';
 
+import { hasPermission } from '../utils/permissions';
 const EmailComposer = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -19,14 +18,14 @@ const EmailComposer = () => {
 
     if (!hasPermission('Send Email', 'view')) {
         return (
-            <MainLayout title="Permission Denied">
+            <>
                 <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
                     <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
                     <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
                         You do not have permission to view this section. Please contact your administrator.
                     </p>
                 </div>
-            </MainLayout>
+            </>
         );
     }
 
@@ -345,7 +344,7 @@ const EmailComposer = () => {
     ];
 
     return (
-        <MainLayout title="Professional Email Broadcasting">
+        <>
             <style>
                 {`
                     .ql-container {
@@ -387,7 +386,7 @@ const EmailComposer = () => {
 
                 {/* STEP 1: RECIPIENT SELECTION */}
                 {step === 1 && (
-                    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 anim-slide-up">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                             {/* Left Column: Team, Buildings & Individual Search */}
                             <div className="space-y-6">
@@ -728,7 +727,7 @@ const EmailComposer = () => {
 
                 {/* STEP 2: TEMPLATE SELECTION */}
                 {step === 2 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 anim-slide-up">
                         <button 
                             onClick={() => setStep(3)}
                             className="bg-white border-2 border-dashed border-gray-200 p-8 rounded-3xl flex flex-col items-center justify-center text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-all group"
@@ -760,7 +759,7 @@ const EmailComposer = () => {
 
                 {/* STEP 3: EDITOR */}
                 {step === 3 && (
-                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-5 anim-slide-up">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 space-y-4">
                                 <div>
@@ -829,7 +828,7 @@ const EmailComposer = () => {
 
                 {/* STEP 4: REVIEW & ATTACHMENTS */}
                 {step === 4 && (
-                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-6 anim-slide-up">
                         <div className="bg-indigo-900 rounded-xl p-5 text-white relative overflow-hidden">
                             <div className="relative z-10">
                                 <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
@@ -859,7 +858,7 @@ const EmailComposer = () => {
 
                                     {/* Manual Uploads */}
                                     {manualAttachments.map(doc => (
-                                        <div key={doc.id} className="p-3 bg-indigo-50/50 rounded-xl flex items-center justify-between border border-indigo-100 animate-in zoom-in-95 duration-200">
+                                        <div key={doc.id} className="p-3 bg-indigo-50/50 rounded-xl flex items-center justify-between border border-indigo-100 anim-zoom-in">
                                             <div className="flex items-center gap-2">
                                                 <FileText className="h-5 w-5 text-indigo-500" />
                                                 <div className="flex flex-col">
@@ -920,7 +919,7 @@ const EmailComposer = () => {
 
                 {/* STEP 5: SUCCESS & SUMMARY */}
                 {step === 5 && (
-                    <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 flex flex-col items-center text-center animate-in zoom-in-95 duration-500">
+                    <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 flex flex-col items-center text-center anim-zoom-in">
                         <div className="h-16 w-16 bg-green-100/50 text-green-600 rounded-full flex items-center justify-center mb-4">
                             <CheckCircle2 className="h-8 w-8" />
                         </div>
@@ -997,7 +996,7 @@ const EmailComposer = () => {
 
                 {/* STATUS NOTIFICATION */}
                 {status && (
-                    <div className={`fixed bottom-10 right-10 p-6 rounded-3xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-right-10 duration-500 z-50 ${
+                    <div className={`fixed bottom-10 right-10 p-6 rounded-3xl shadow-2xl flex items-center gap-4 anim-slide-up z-50 ${
                         status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 
                         status.type === 'info' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
                         'bg-red-50 text-red-700 border border-red-200'
@@ -1016,7 +1015,7 @@ const EmailComposer = () => {
                     </div>
                 )}
             </div>
-        </MainLayout>
+        </>
     );
 };
 

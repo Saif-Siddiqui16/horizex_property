@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
 import { 
@@ -23,10 +23,9 @@ import {
 import api from '../api/client';
 import { VehicleForm } from './VehicleForm';
 import { hasPermission } from '../utils/permissions';
-import clsx from 'clsx';
-
+import clsx from 'clsx';
 export const Vehicles = () => {
-  const { t } = useTranslation();
+const { t } = useTranslation();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const initialFilter = queryParams.get('filter');
@@ -109,7 +108,7 @@ export const Vehicles = () => {
   };
 
   return (
-    <MainLayout title={t('sidebar.vehicles')}>
+    <>
       <div className="flex flex-col gap-6">
         
         {/* TOP BAR / FILTERS */}
@@ -332,8 +331,8 @@ export const Vehicles = () => {
       </div>
 
       {viewingVehicle && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-400 max-h-[90vh] overflow-hidden flex flex-col border border-slate-100">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 anim-fade-in">
+          <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl anim-zoom-in max-h-[90vh] overflow-hidden flex flex-col border border-slate-100">
             <div className="px-8 py-6 border-b border-slate-100 bg-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
@@ -451,6 +450,6 @@ export const Vehicles = () => {
           editingVehicle={editingVehicle}
         />
       )}
-    </MainLayout>
+    </>
   );
 };

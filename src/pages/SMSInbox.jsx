@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 import { Search, Send, User, MessageSquare, Clock, Filter, CheckCheck, RefreshCw, ChevronLeft, LayoutPanelLeft } from 'lucide-react';
-import { MainLayout } from '../layouts/MainLayout';
-import { hasPermission } from '../utils/permissions';
 
+import { hasPermission } from '../utils/permissions';
 const SMSInbox = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -132,7 +131,7 @@ const SMSInbox = () => {
     });
 
     return (
-        <MainLayout title="SMS Inbox">
+        <>
             <div className="flex flex-col lg:flex-row h-[calc(100vh-140px)] lg:h-[calc(100vh-165px)] bg-white rounded-[22px] border border-slate-200 shadow-sm overflow-hidden">
                 
                 {/* Conversations Sidebar */}
@@ -364,7 +363,7 @@ const SMSInbox = () => {
                     )}
                 </div>
             </div>
-        </MainLayout>
+        </>
     );
 };
 

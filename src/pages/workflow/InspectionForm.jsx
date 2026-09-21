@@ -24,14 +24,13 @@ import {
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
-import { MainLayout } from '../../layouts/MainLayout';
+
 
 import api from '../../api/client';
 import PhotoAnnotationModal from '../../components/PhotoAnnotationModal';
-import TicketCreationModal from '../../components/TicketCreationModal';
-
+import TicketCreationModal from '../../components/TicketCreationModal';
 const InspectionForm = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const { id } = useParams();
     const [inspection, setInspection] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -429,7 +428,7 @@ const InspectionForm = () => {
     };
 
     return (
-        <MainLayout title="Professional Inspection">
+        <>
             <style dangerouslySetInnerHTML={{
                 __html: `
                 @media (max-width: 1280px) {
@@ -842,7 +841,7 @@ const InspectionForm = () => {
                 onSubmit={handleTicketSubmit}
                 initialData={ticketModal.initialData}
             />
-        </MainLayout>
+        </>
     );
 };
 

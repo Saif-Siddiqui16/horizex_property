@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { hasPermission } from '../utils/permissions';
 
 // Services
@@ -29,13 +29,12 @@ import {
 } from '../components/integrations/IntegrationWidgets';
 
 // Lucide Icons
-import {
-  RefreshCw, Gavel, Calendar as CalendarIcon, Landmark, HelpCircle, 
+import {  RefreshCw, Gavel, Calendar as CalendarIcon, Landmark, HelpCircle, 
   Trash2, Mail, Play, AlertCircle, Plus, Edit2, FileText, Check, ShieldAlert
 } from 'lucide-react';
 
 export const QuickBooksSettings = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -45,14 +44,14 @@ export const QuickBooksSettings = () => {
   // RBAC check
   if (!hasPermission('QuickBooks Sync', 'view')) {
     return (
-      <MainLayout title="Permission Denied">
+      <>
         <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
           <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
           <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
             You do not have permission to view this section. Please contact your administrator.
           </p>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
@@ -234,7 +233,7 @@ export const QuickBooksSettings = () => {
   ];
 
   return (
-    <MainLayout title="QuickBooks Sync & Integrations">
+    <>
       <div className="flex flex-col gap-6 w-full pb-24">
         
         {/* KPI CARDS & STATUS */}
@@ -619,6 +618,6 @@ export const QuickBooksSettings = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };

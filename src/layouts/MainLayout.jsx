@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import api from '../api/client';
 
-export const MainLayout = ({ children, title = 'Overview' }) => {
+export const MainLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
 
@@ -51,18 +51,17 @@ export const MainLayout = ({ children, title = 'Overview' }) => {
     const closeSidebar = () => setIsSidebarOpen(false);
 
     return (
-        <div className="flex w-full min-h-screen bg-bg overflow-x-hidden">
+        <div className="flex w-full min-h-screen overflow-x-hidden">
             {/* Fixed Sidebar */}
             <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
 
-            {/* Main Content Wrapper */}
             <div className="flex flex-col flex-1 min-w-0 transition-all duration-200 ml-0 lg:ml-[280px]">
                 {/* Sticky Top Header */}
-                <Topbar title={title} onMenuClick={toggleSidebar} />
+                <Topbar onMenuClick={toggleSidebar} />
 
                 {/* Scrollable Page Content */}
-                <main className="flex-1 w-full max-w-[1400px] mx-auto flex flex-col gap-4 sm:gap-6 p-3 sm:p-4 lg:p-6 pb-20 lg:pb-8">
-                    {children}
+                <main className="page-container flex-1 pt-4 md:pt-6">
+                    <Outlet />
                 </main>
             </div>
         </div>

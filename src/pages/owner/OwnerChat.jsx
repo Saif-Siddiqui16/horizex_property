@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { OwnerLayout } from '../../layouts/owner/OwnerLayout';
-import { communicationService } from '../../services/communicationService';
-import { Send, RefreshCw, User, MessageSquare } from 'lucide-react';
 
+import { communicationService } from '../../services/communicationService';
+import { Send, RefreshCw, User, MessageSquare } from 'lucide-react';
 export const OwnerChat = () => {
-    const [messages, setMessages] = useState([]);
+const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [adminUser, setAdminUser] = useState(null);
     const [currentOwnerId, setCurrentOwnerId] = useState(null);
@@ -74,7 +73,7 @@ export const OwnerChat = () => {
     };
 
     return (
-        <OwnerLayout title="Messages">
+        <>
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden h-[calc(100vh-160px)] md:h-[calc(100vh-140px)] flex flex-col">
 
                 {/* Header */}
@@ -137,6 +136,6 @@ export const OwnerChat = () => {
                     </form>
                 </div>
             </div>
-        </OwnerLayout>
+        </>
     );
 };

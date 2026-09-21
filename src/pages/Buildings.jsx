@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Plus, Search, Filter, Eye, Pencil, Trash2, Building2, Home, X } from 'lucide-react';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 export const Buildings = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -183,7 +182,7 @@ export const Buildings = () => {
   const calculatedActiveBuildings = buildings.filter(b => b.status === 'Active').length;
 
   return (
-    <MainLayout title="Buildings">
+    <>
       <div className="flex flex-col gap-6">
         {/* STAT CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -406,8 +405,8 @@ export const Buildings = () => {
 
         {/* Add Building Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 overflow-y-auto p-0 md:p-6">
-            <form id="add-building-form" className="bg-white w-full max-w-lg rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={addBuilding}>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in overflow-y-auto p-0 md:p-6">
+            <form id="add-building-form" className="bg-white w-full max-w-lg rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={addBuilding}>
               
               {/* Sticky Modal Header */}
               <div className="sticky top-0 bg-white border-b border-slate-100 p-6 md:p-8 flex justify-between items-center shrink-0 z-10">
@@ -550,8 +549,8 @@ export const Buildings = () => {
 
         {/* View Building Modal */}
         {showViewModal && currentBuilding && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 overflow-y-auto py-8">
-            <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in overflow-y-auto py-8">
+            <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl anim-zoom-in my-auto">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="m-0 text-slate-800 text-2xl font-bold">Building Details</h3>
                 <button
@@ -634,8 +633,8 @@ export const Buildings = () => {
 
         {/* Edit Building Modal */}
         {showEditModal && currentBuilding && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 overflow-y-auto p-0 md:p-6">
-            <form id="edit-building-form" className="bg-white w-full max-w-lg rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={updateBuilding}>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in overflow-y-auto p-0 md:p-6">
+            <form id="edit-building-form" className="bg-white w-full max-w-lg rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={updateBuilding}>
               
               {/* Sticky Modal Header */}
               <div className="sticky top-0 bg-white border-b border-slate-100 p-6 md:p-8 flex justify-between items-center shrink-0 z-10">
@@ -805,7 +804,7 @@ export const Buildings = () => {
           </div>
         )}
       </div>
-    </MainLayout>
+    </>
   );
 };
 

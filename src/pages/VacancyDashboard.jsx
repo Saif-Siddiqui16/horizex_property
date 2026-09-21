@@ -1,15 +1,14 @@
 import React from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Card } from '../components/Card';
 
 import { useState, useEffect } from 'react';
 import api from '../api/client';
-import { Calendar, Home, Building2 } from 'lucide-react';
-
+import { Calendar, Home, Building2 } from 'lucide-react';
 
 
 export const VacancyDashboard = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -71,7 +70,7 @@ export const VacancyDashboard = () => {
   };
 
   return (
-    <MainLayout title="Vacancy Dashboard">
+    <>
       <div className="flex flex-col gap-8">
 
         {loading ? (
@@ -228,6 +227,6 @@ export const VacancyDashboard = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };

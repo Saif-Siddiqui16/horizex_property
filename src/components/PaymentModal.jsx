@@ -16,7 +16,7 @@ export const PaymentModal = ({ invoice, onClose, onSubmit }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden transform transition-all anim-zoom-in">
                 <div className="flex items-center justify-between p-4 border-b border-slate-200">
                     <h3 className="text-lg font-semibold text-slate-900">Record Payment</h3>
                     <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded text-slate-500 transition-colors">

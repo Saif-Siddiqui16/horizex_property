@@ -13,12 +13,11 @@ import {
     ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { MainLayout } from '../../layouts/MainLayout';
 
-import api from '../../api/client';
 
+import api from '../../api/client';
 const InspectionTemplates = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({
@@ -62,7 +61,7 @@ const InspectionTemplates = () => {
     if (loading) return <div className="p-8 text-center text-gray-500 font-black">FETCHING TEMPLATES...</div>;
 
     return (
-        <MainLayout title="Inspection Templates">
+        <>
             <div className="p-0 bg-transparent min-h-screen">
                 <div className="flex items-center justify-between mb-8">
                     <div>
@@ -229,7 +228,7 @@ const InspectionTemplates = () => {
                     </div>
                 </div>
             </div>
-        </MainLayout>
+        </>
     );
 };
 

@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
-import { OwnerLayout } from '../layouts/owner/OwnerLayout';
+
+
 import { Button } from '../components/Button';
 import { Search, Filter, Building2, Download, Building, Users, Wallet, KeySquare, DoorOpen, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Edit2, X, Trash2, ShieldAlert, Calendar } from 'lucide-react';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
-import clsx from 'clsx';
-
+import clsx from 'clsx';
 export const RentRoll = () => {
-    if (!hasPermission('Rent Roll', 'view')) {
+if (!hasPermission('Rent Roll', 'view')) {
         return (
-            <MainLayout title="Access Denied">
+            <>
                 <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center">
                     <ShieldAlert size={64} className="text-red-500 mb-4" />
                     <h2 className="text-2xl font-black text-slate-800 mb-2">Access Restricted</h2>
                     <p className="text-slate-500 max-w-md mx-auto">You do not have permission to view the Rent Roll report.</p>
                 </div>
-            </MainLayout>
+            </>
         );
     }
 
@@ -261,10 +260,9 @@ export const RentRoll = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const isOwnerRole = user.role === 'OWNER' || localStorage.getItem('isOwnerLoggedIn') === 'true';
     const isOwnerPath = window.location.pathname.includes('/owner');
-    const Layout = (isOwnerRole || isOwnerPath) ? OwnerLayout : MainLayout;
 
     return (
-        <Layout title="Rent Roll Overview">
+        <>
             <div className="flex flex-col gap-4 md:gap-6 pb-10">
 
                 {/* SUMMARY KPIS - Exact Client Labels */}
@@ -576,7 +574,7 @@ export const RentRoll = () => {
                     }}
                 />
             )}
-        </Layout>
+        </>
     );
 };
 
@@ -622,8 +620,8 @@ const ReserveModal = ({ unit, onClose, onReserved }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[999] p-4 animate-in fade-in duration-300">
-            <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl shadow-indigo-200/50 overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[999] p-4 anim-fade-in">
+            <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl shadow-indigo-200/50 overflow-hidden border border-slate-100 flex flex-col anim-zoom-in">
 
                 {/* Header */}
                 <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-8 text-white relative">

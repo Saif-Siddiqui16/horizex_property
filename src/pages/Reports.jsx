@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { 
   Building2, Users, Home, TrendingUp, Wallet, BadgeDollarSign, 
   ShieldAlert, FileText, Gavel, Calendar, Clock, Landmark, AlertTriangle, 
@@ -20,15 +20,14 @@ import savedFilterService from '../services/savedFilterService';
 import reportPermissionService from '../services/reportPermissionService';
 
 // Executive Widgets
-import { 
-  ExecutiveKPICards, ExecutiveAlertsWidget, RevenueTrendWidget, 
+import {   ExecutiveKPICards, ExecutiveAlertsWidget, RevenueTrendWidget, 
   OccupancyWidget, OutstandingBalanceWidget, RentRollWidget, 
   RenewalWidget, LegalCasesWidget, AttendanceWidget, PayrollWidget, 
   VacancyWidget, ListingStatusWidget, UpcomingTasksWidget 
 } from '../components/reports/ExecutiveWidgets';
 
 export const Reports = () => {
-  // Global selector company binding
+// Global selector company binding
   const [companyId, setCompanyId] = useState(localStorage.getItem('global_company_id') || 'all');
   
   useEffect(() => {
@@ -339,18 +338,18 @@ export const Reports = () => {
 
   if (!hasAccess) {
     return (
-      <MainLayout title="Enterprise Reports Hub">
+      <>
         <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-8 bg-white border border-slate-100 rounded-3xl shadow-card max-w-md mx-auto mt-12 gap-4">
           <ShieldAlert size={48} className="text-rose-500 animate-bounce" />
           <h2 className="text-lg font-black text-slate-800 uppercase tracking-wide">Access Restricted</h2>
           <p className="text-xs text-slate-500 leading-relaxed font-semibold">Your system role does not have authorization to view portfolios, payroll costs, or tribunal records.</p>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout title="Enterprise Reports & Portfolio Analytics">
+    <>
       <div className="flex flex-col gap-6">
         
         {/* VIEW NAVIGATION TABS */}
@@ -1072,7 +1071,7 @@ export const Reports = () => {
         </div>
       )}
 
-    </MainLayout>
+    </>
   );
 };
 

@@ -12,11 +12,10 @@ import {
     Settings2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { MainLayout } from '../../layouts/MainLayout';
-import api from '../../api/client';
 
+import api from '../../api/client';
 const ResponseGroups = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [series, setSeries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -110,7 +109,7 @@ const ResponseGroups = () => {
     };
 
     return (
-        <MainLayout title="Response Groups">
+        <>
             <div className="max-w-6xl mx-auto py-8 px-4">
                 <div className="flex items-center justify-between mb-10">
                     <div className="flex items-center gap-4">
@@ -284,7 +283,7 @@ const ResponseGroups = () => {
                     </div>
                 </div>
             </div>
-        </MainLayout>
+        </>
     );
 };
 

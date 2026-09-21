@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ArrowLeft, User, Calendar, DollarSign, Clock, FileText, ClipboardList, Scale, Download, Shield, ShieldAlert, CheckCircle, Edit2 } from 'lucide-react';
@@ -12,10 +12,9 @@ import { CaseDocuments } from '../components/tal/CaseDocuments';
 import { CaseNotes } from '../components/tal/CaseNotes';
 import { CaseTasks } from '../components/tal/CaseTasks';
 import { CaseHearingList } from '../components/tal/CaseHearingList';
-import api from '../api/client';
-
+import api from '../api/client';
 export const TALCaseDetail = () => {
-  const { id } = useParams();
+const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [caseData, setCaseData] = useState(null);
 
@@ -173,7 +172,7 @@ export const TALCaseDetail = () => {
   };
 
   return (
-    <MainLayout title="TAL Legal Case File Details">
+    <>
       <div className="flex flex-col gap-6 p-6">
         
         {/* Header Action Row */}
@@ -445,6 +444,6 @@ export const TALCaseDetail = () => {
           </div>
         )}
       </div>
-    </MainLayout>
+    </>
   );
 };

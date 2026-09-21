@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../../layouts/MainLayout';
+
 import { Search, Calendar, FileText, Check, X, Plus, Clock, Zap } from 'lucide-react';
 import overtimeService from '../../services/overtimeService';
 import employeeService from '../../services/employeeService';
-import permissionService from '../../services/permissionService';
-
+import permissionService from '../../services/permissionService';
 export const OvertimeTracking = () => {
-  const [logs, setLogs] = useState([]);
+const [logs, setLogs] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [metrics, setMetrics] = useState({ approved: 0, pending: 0, rejected: 0, cost: 0 });
 
@@ -102,7 +101,7 @@ export const OvertimeTracking = () => {
   const canManage = permissionService.canManageOvertime();
 
   return (
-    <MainLayout title="Overtime Tracking">
+    <>
       <div className="flex flex-col gap-8">
         
         {/* KPI metrics row */}
@@ -330,7 +329,7 @@ export const OvertimeTracking = () => {
         </div>
       )}
 
-    </MainLayout>
+    </>
   );
 };
 

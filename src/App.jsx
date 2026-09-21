@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 /* AUTH */
 import { Login } from "./pages/Login";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { MainLayout } from "./layouts/MainLayout";
 
 /* DASHBOARD */
 import { Dashboard } from "./pages/Dashboard";
@@ -101,6 +102,7 @@ import {
   TenantInvite,
   TenantReports
 } from "./pages/tenant";
+import { TenantLayout } from "./layouts/TenantLayout";
 
 /* OWNER PORTAL */
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
@@ -109,6 +111,7 @@ import { OwnerProperties } from "./pages/owner/OwnerProperties";
 import { OwnerFinancials } from "./pages/owner/OwnerFinancials";
 import { OwnerReports } from "./pages/owner/OwnerReports";
 import { OwnerChat } from "./pages/owner/OwnerChat"; // Added
+import { OwnerLayout } from "./layouts/owner/OwnerLayout";
 
 function App() {
   return (
@@ -123,7 +126,8 @@ function App() {
 
         {/* 🔒 PROTECTED AREA */}
         <Route element={<ProtectedRoute />}>
-          {/* DASHBOARD */}
+          <Route element={<MainLayout />}>
+            {/* DASHBOARD */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/vacancy" element={<VacancyDashboard />} />
           <Route path="/revenue" element={<RevenueDashboard />} />
@@ -218,6 +222,7 @@ function App() {
           <Route path="/admin/workflow/inspections/new" element={<Navigate to="/dashboard" replace />} />
           <Route path="/admin/workflow/inspections/:id" element={<Navigate to="/dashboard" replace />} />
           <Route path="/admin/workflow/inspections/:id/form" element={<Navigate to="/dashboard" replace />} />
+          </Route>
         </Route>
 
         {/* 📄 PUBLIC PAGES */}
@@ -228,7 +233,8 @@ function App() {
         <Route path="/tenant/login" element={<Navigate to="/login" replace />} />
         <Route path="/tenant/invite/:token" element={<TenantInvite />} />
         <Route element={<TenantProtectedRoute />}>
-          <Route path="/tenant/dashboard" element={<TenantDashboard />} />
+          <Route element={<TenantLayout />}>
+            <Route path="/tenant/dashboard" element={<TenantDashboard />} />
           <Route path="/tenant/lease" element={<TenantLease />} />
           <Route path="/tenant/invoices" element={<TenantInvoices />} />
           <Route path="/tenant/payments" element={<TenantPayments />} />
@@ -237,18 +243,21 @@ function App() {
           <Route path="/tenant/tickets" element={<TenantTickets />} />
           <Route path="/tenant/vehicles" element={<TenantVehicles />} />
           <Route path="/tenant/communication" element={<TenantChat />} />
-          <Route path="/tenant/reports" element={<TenantReports />} />
+            <Route path="/tenant/reports" element={<TenantReports />} />
+          </Route>
         </Route>
 
         {/* 🗝️ OWNER PORTAL */}
         <Route path="/owner/login" element={<Navigate to="/login" replace />} />
         <Route element={<OwnerProtectedRoute />}>
-          <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+          <Route element={<OwnerLayout />}>
+            <Route path="/owner/dashboard" element={<OwnerDashboard />} />
           <Route path="/owner/properties" element={<OwnerProperties />} />
           <Route path="/owner/financials" element={<OwnerFinancials />} />
           <Route path="/owner/reports" element={<OwnerReports />} />
           <Route path="/owner/rent-roll" element={<RentRoll />} />
-          <Route path="/owner/communication" element={<OwnerChat />} /> {/* Added */}
+            <Route path="/owner/communication" element={<OwnerChat />} /> {/* Added */}
+          </Route>
         </Route>
       </Routes>
     </Router>

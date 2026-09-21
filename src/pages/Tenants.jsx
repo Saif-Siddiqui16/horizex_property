@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Plus, Search, User, Eye, Trash2, FileText, Shield, Download, Upload, ArrowLeft, Calendar, FileCheck, AlertCircle, Pencil, Mail, Smartphone, Send, CheckCircle, Building2, Gavel } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
 import { AccessControl } from '../components/AccessControl';
 import { talCaseService } from '../mock/mockServices';
-import { EntityNotesPanel } from '../components/notes/EntityNotesPanel';
-
+import { EntityNotesPanel } from '../components/notes/EntityNotesPanel';
 const initialTenants = [];
 
 export const Tenants = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -442,7 +441,7 @@ export const Tenants = () => {
 
   if (errorNotFound) {
     return (
-      <MainLayout title="Tenant Not Found">
+      <>
         <div className="flex flex-col items-center justify-center p-20 bg-white rounded-3xl shadow-sm border border-slate-100 text-center space-y-6">
           <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center text-rose-500">
             <AlertCircle size={40} />
@@ -456,7 +455,7 @@ export const Tenants = () => {
             Back to Tenants
           </Button>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
@@ -471,7 +470,7 @@ export const Tenants = () => {
           allUnits={allUnits}
         />
       ) : (
-        <MainLayout title="Tenants">
+        <>
           <div className="flex flex-col gap-4 sm:gap-6 w-full">
 
             {/* TOP BAR */}
@@ -808,13 +807,13 @@ export const Tenants = () => {
               </div>
             </section>
           </div>
-        </MainLayout>
+        </>
       )}
 
       {/* ADD/EDIT TENANT MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-400 max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 anim-fade-in">
+          <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl anim-zoom-in max-h-[90vh] overflow-hidden flex flex-col">
             {/* MODAL HEADER */}
             <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <div>
@@ -1122,8 +1121,8 @@ export const Tenants = () => {
 
       {/* INVITE MODAL */}
       {showInviteModal && invitingTenant && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[60] animate-in fade-in duration-300">
-          <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-400 overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[60] anim-fade-in">
+          <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl anim-zoom-in overflow-hidden flex flex-col">
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white">
               <div>
                 <h3 className="text-xl font-black text-slate-800 tracking-tight">Send Invite</h3>
@@ -1598,7 +1597,7 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
 
 
   return (
-    <MainLayout title={`Tenant: ${tenantData?.name || 'Loading...'}`}>
+    <>
       <div className="flex flex-col gap-6">
 
         {/* HEADER */}
@@ -1650,14 +1649,14 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
             >
               {tab}
               {activeTab === tab && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full animate-in fade-in slide-in-from-bottom-1 duration-300"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full anim-slide-up"></div>
               )}
             </button>
           ))}
         </div>
 
         {/* TAB CONTENT */}
-        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="anim-slide-up">
 
           {activeTab === 'Details' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -2199,8 +2198,8 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         {/* ADD/EDIT INSURANCE MODAL */}
         {
           showAddInsurance && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-200">
-              <form onSubmit={handleSaveInsurance} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in">
+              <form onSubmit={handleSaveInsurance} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in">
                 <h3 className="text-2xl font-bold text-slate-800 mb-6">{editingPolicy ? 'Edit' : 'Add'} Insurance Policy</h3>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -2269,8 +2268,8 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         {/* VIEW INSURANCE MODAL */}
         {
           viewingPolicy && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-200" onClick={() => setViewingPolicy(null)}>
-              <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in" onClick={() => setViewingPolicy(null)}>
+              <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-6">
                   <h3 className="text-2xl font-bold text-slate-800">Insurance Details</h3>
                   <button onClick={() => setViewingPolicy(null)} className="text-slate-400 hover:text-slate-600 transition-all">✕</button>
@@ -2354,8 +2353,8 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         {/* UPLOAD DOCUMENT MODAL */}
         {
           showAddDocument && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-200">
-              <form onSubmit={handleSaveDocument} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in">
+              <form onSubmit={handleSaveDocument} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in">
                 <h3 className="text-2xl font-bold text-slate-800 mb-6">Upload Document</h3>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -2412,8 +2411,8 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         {/* VIEW DOCUMENT MODAL */}
         {
           viewingDoc && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-200" onClick={() => setViewingDoc(null)}>
-              <div className={`bg-white rounded-2xl p-8 w-full ${previewLoading || previewUrl ? 'max-w-4xl' : 'max-w-md'} max-h-[90vh] shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col`} onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in" onClick={() => setViewingDoc(null)}>
+              <div className={`bg-white rounded-2xl p-8 w-full ${previewLoading || previewUrl ? 'max-w-4xl' : 'max-w-md'} max-h-[90vh] shadow-2xl anim-zoom-in flex flex-col`} onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h3 className="text-2xl font-bold text-slate-800">{viewingDoc.name}</h3>
@@ -2483,8 +2482,8 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         {/* ADD TICKET MODAL */}
         {
           showAddTicket && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-200">
-              <form onSubmit={handleSaveTicket} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in">
+              <form onSubmit={handleSaveTicket} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in">
                 <h3 className="text-2xl font-bold text-slate-800 mb-6">Create Maintenance Ticket</h3>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -2551,8 +2550,8 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         {/* CONTACT TENANT MODAL */}
         {
           showContactTenant && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-200" onClick={() => setShowContactTenant(false)}>
-              <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in" onClick={() => setShowContactTenant(false)}>
+              <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl anim-zoom-in" onClick={e => e.stopPropagation()}>
                 <h3 className="text-2xl font-bold text-slate-800 mb-6">Contact Tenant</h3>
                 <div className="space-y-6">
                   <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
@@ -2579,8 +2578,8 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         {/* ADD PAST LEASE MODAL */}
         {
           showAddLease && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-200">
-              <form onSubmit={handleSaveLease} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in">
+              <form onSubmit={handleSaveLease} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in">
                 <h3 className="text-2xl font-bold text-slate-800 mb-6">Add Historical Lease</h3>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -2632,8 +2631,8 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
 
         {
           showRentModal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] animate-in fade-in duration-200">
-              <form onSubmit={handleSaveRent} className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] anim-fade-in">
+              <form onSubmit={handleSaveRent} className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl anim-zoom-in">
                 <h3 className="text-2xl font-bold text-slate-800 mb-6">Set Lease Rent</h3>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -2664,6 +2663,6 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         }
 
       </div >
-    </MainLayout >
+    </>
   );
 };

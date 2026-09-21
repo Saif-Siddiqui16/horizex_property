@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Card } from '../components/Card';
 import {
   BarChart,
@@ -12,11 +12,10 @@ import {
   LabelList
 } from 'recharts';
 
-import api from '../api/client';
-
+import api from '../api/client';
 
 export const RevenueDashboard = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -140,7 +139,7 @@ export const RevenueDashboard = () => {
   });
 
   return (
-    <MainLayout title="Revenue Dashboard">
+    <>
       <div className="flex flex-col gap-4">
 
         {/* TOP BAR / FILTERS */}
@@ -280,6 +279,6 @@ export const RevenueDashboard = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };

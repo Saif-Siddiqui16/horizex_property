@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { FiPlus, FiEdit, FiX, FiTrash2 } from 'react-icons/fi';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
-import { AccessControl } from '../components/AccessControl';
-
+import { AccessControl } from '../components/AccessControl';
 export const ChartOfAccounts = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -15,14 +14,14 @@ export const ChartOfAccounts = () => {
 
   if (!hasPermission('Chart of Accounts', 'view')) {
     return (
-        <MainLayout title="Permission Denied">
+        <>
             <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
                 <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
                 <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
                     You do not have permission to view this section. Please contact your administrator.
                 </p>
             </div>
-        </MainLayout>
+        </>
     );
   }
 
@@ -110,7 +109,7 @@ export const ChartOfAccounts = () => {
         });
 
   return (
-    <MainLayout title="Chart of Accounts">
+    <>
       <div className="p-4 sm:p-6 animate-[fadeIn_0.4s_ease-in-out]">
 
         {/* HEADER – filter tabs + add button */}
@@ -258,7 +257,7 @@ export const ChartOfAccounts = () => {
           </div>
         )}
       </div>
-    </MainLayout>
+    </>
   );
 };
 

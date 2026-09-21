@@ -21,11 +21,10 @@ import {
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import api from '../../api/client';
-import { MainLayout } from '../../layouts/MainLayout';
+import api from '../../api/client';
 
 const InspectionOverview = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const { id } = useParams();
     const [inspection, setInspection] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -63,7 +62,7 @@ const InspectionOverview = () => {
     stats.percent = stats.totalItems > 0 ? Math.round((stats.completed / stats.totalItems) * 100) : 0;
 
     return (
-        <MainLayout title="Inspection Details">
+        <>
             <div className="p-0 bg-transparent min-h-screen">
                 {/* Header */}
                 <div className="max-w-7xl mx-auto flex items-center justify-between mb-8">
@@ -372,7 +371,7 @@ const InspectionOverview = () => {
                     </div>
                 </div>
             </div>
-        </MainLayout>
+        </>
     );
 };
 

@@ -3,11 +3,10 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import api from '../api/client';
 import { Mail, Edit2, Trash2, Plus, X, Search, FileText, Paperclip, Check } from 'lucide-react';
-import { MainLayout } from '../layouts/MainLayout';
-import { hasPermission } from '../utils/permissions';
 
+import { hasPermission } from '../utils/permissions';
 const EmailTemplates = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -16,14 +15,14 @@ const EmailTemplates = () => {
 
     if (!hasPermission('Email Templates', 'view')) {
         return (
-            <MainLayout title="Permission Denied">
+            <>
                 <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
                     <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
                     <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
                         You do not have permission to view this section. Please contact your administrator.
                     </p>
                 </div>
-            </MainLayout>
+            </>
         );
     }
 
@@ -172,7 +171,7 @@ const EmailTemplates = () => {
     );
 
     return (
-        <MainLayout title="Email Templates">
+        <>
             <style>
                 {`
                     .ql-container {
@@ -281,7 +280,7 @@ const EmailTemplates = () => {
             {/* Modal - Simplified Create/Edit */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-6 bg-black/40 backdrop-blur-sm overflow-y-auto">
-                    <div className="bg-white w-full max-w-4xl rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
+                    <div className="bg-white w-full max-w-4xl rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
                         
                         {/* Sticky Modal Header */}
                         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 md:px-8 md:py-6 flex justify-between items-center shrink-0 z-20">
@@ -421,7 +420,7 @@ const EmailTemplates = () => {
                 </div>
             )}
         </div>
-        </MainLayout>
+        </>
     );
 };
 

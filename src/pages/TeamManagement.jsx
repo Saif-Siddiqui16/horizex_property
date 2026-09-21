@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import api from '../api/client';
 import { useTranslation } from 'react-i18next';
-import { 
-  Users, 
+import {   Users, 
   UserPlus, 
   Mail, 
   Phone, 
@@ -19,7 +18,7 @@ import {
 } from 'lucide-react';
 
 const getModuleDisplayName = (name, t) => {
-  const map = {
+const map = {
     'Dashboard': t('sidebar.dashboard'),
     'Overview': `↳ ${t('sidebar.overview')}`,
     'Vacancy Dashboard': `↳ ${t('sidebar.vacancy')}`,
@@ -333,7 +332,7 @@ export const TeamManagement = () => {
   };
 
   return (
-    <MainLayout title={t('sidebar.team')}>
+    <>
       <div className="flex flex-col gap-8">
         
         {/* HEADER SECTION */}
@@ -832,7 +831,7 @@ export const TeamManagement = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };
 

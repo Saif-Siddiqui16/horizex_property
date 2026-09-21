@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { TenantLayout } from '../../layouts/TenantLayout';
+
 import { Download, Eye, FileText, CheckCircle2, Clock, X } from 'lucide-react';
 import { Button } from '../../components/Button';
-import api from '../../api/client';
-
+import api from '../../api/client';
 const dummyInvoices = [
     { id: 'INV-001', month: 'January 2026', amount: '$1,200.00', status: 'Paid', date: '2026-01-01' },
     { id: 'INV-002', month: 'February 2026', amount: '$1,200.00', status: 'Due', date: '2026-02-01' },
@@ -11,7 +10,7 @@ const dummyInvoices = [
 ];
 
 export const TenantInvoices = () => {
-    const [invoices, setInvoices] = useState([]);
+const [invoices, setInvoices] = useState([]);
     const [viewingInvoice, setViewingInvoice] = useState(null);
 
     React.useEffect(() => {
@@ -31,8 +30,8 @@ export const TenantInvoices = () => {
     }, []);
 
     return (
-        <TenantLayout title="My Invoices">
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <>
+            <div className="space-y-6 anim-slide-up">
                 <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                     <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/20">
                         <h3 className="font-black text-slate-800 text-lg">Invoice History</h3>
@@ -113,8 +112,8 @@ export const TenantInvoices = () => {
 
             {/* INVOICE MODAL */}
             {viewingInvoice && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setViewingInvoice(null)}>
-                    <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 anim-fade-in" onClick={() => setViewingInvoice(null)}>
+                    <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl anim-zoom-in" onClick={e => e.stopPropagation()}>
                         <div className="p-8 border-b border-slate-50 flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-2xl bg-primary-50 text-primary-600 flex items-center justify-center">
@@ -203,6 +202,6 @@ export const TenantInvoices = () => {
                     </div>
                 </div>
             )}
-        </TenantLayout>
+        </>
     );
 };

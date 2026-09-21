@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ArrowLeft, Clock, FileText, Send, Calendar, CheckCircle2, AlertCircle, Plus, Trash2, Download } from 'lucide-react';
 import { mockRenewalService } from '../mock/mockServices';
-import { RENEWAL_STATUSES } from '../mock/renewals';
-
+import { RENEWAL_STATUSES } from '../mock/renewals';
 export const RenewalDetail = () => {
-  const { id } = useParams();
+const { id } = useParams();
   const navigate = useNavigate();
   const [renewal, setRenewal] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -73,29 +72,29 @@ export const RenewalDetail = () => {
 
   if (loading) {
     return (
-      <MainLayout title="Lease Renewal Details">
+      <>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
   if (!renewal) {
     return (
-      <MainLayout title="Renewal Not Found">
+      <>
         <div className="p-6 text-center">
           <p className="text-slate-500">The renewal record could not be loaded.</p>
           <Button onClick={() => navigate('/leases/renewals')} className="mt-4">Back to Renewals</Button>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
   const currentStatusConfig = RENEWAL_STATUSES[renewal.status.toUpperCase().replace(' ', '_')] || RENEWAL_STATUSES.DRAFT;
 
   return (
-    <MainLayout title={`Lease Renewal: ${renewal.tenantName}`}>
+    <>
       <div className="flex flex-col gap-6 p-6">
         
         {/* Navigation & Status Header */}
@@ -374,6 +373,6 @@ export const RenewalDetail = () => {
         </div>
 
       </div>
-    </MainLayout>
+    </>
   );
 };

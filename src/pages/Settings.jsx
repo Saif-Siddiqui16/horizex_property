@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
-import GoogleTranslate from '../components/GoogleTranslate';
-import api from '../api/client';
 
+import GoogleTranslate from '../components/GoogleTranslate';
+import api from '../api/client';
 const Settings = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -63,7 +62,7 @@ const Settings = () => {
   };
 
   return (
-    <MainLayout title="Application Settings">
+    <>
       <div className="flex flex-col gap-6">
 
         {/* STATUS CARDS */}
@@ -257,7 +256,7 @@ const Settings = () => {
         </div>
 
       </div>
-    </MainLayout>
+    </>
   );
 };
 

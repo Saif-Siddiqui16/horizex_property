@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { MainLayout } from '../../layouts/MainLayout';
+
 import { Search, UserPlus, Filter, X, Plus } from 'lucide-react';
 import employeeService from '../../services/employeeService';
 import departmentService from '../../services/departmentService';
 import shiftService from '../../services/shiftService';
 import permissionService from '../../services/permissionService';
-import { EmployeeTable } from '../../components/payroll/EmployeeTable';
-
+import { EmployeeTable } from '../../components/payroll/EmployeeTable';
 const mockCompanies = [
   { id: 1, name: 'Apex Real Estate Partners', code: 'APEX' },
   { id: 2, name: 'Soros Capital LLC', code: 'SOROS' },
@@ -22,7 +21,7 @@ const mockBuildings = [
 ];
 
 export const EmployeeDirectory = () => {
-  const location = useLocation();
+const location = useLocation();
   const [employees, setEmployees] = useState([]);
   const [companies] = useState(mockCompanies);
   const [buildings] = useState(mockBuildings);
@@ -175,7 +174,7 @@ export const EmployeeDirectory = () => {
   const canManage = permissionService.canManageEmployees();
 
   return (
-    <MainLayout title="Employee Directory">
+    <>
       <div className="flex flex-col gap-6">
         
         {/* Filters and Header Operations */}
@@ -545,7 +544,7 @@ export const EmployeeDirectory = () => {
         </div>
       )}
 
-    </MainLayout>
+    </>
   );
 };
 

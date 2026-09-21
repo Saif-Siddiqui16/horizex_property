@@ -1,13 +1,12 @@
 import React from 'react';
-import { TenantLayout } from '../../layouts/TenantLayout';
+
 import { CreditCard, FileText, Wrench, ShieldCheck, ArrowRight, AlertCircle, Car } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import api from '../../api/client';
-
+import api from '../../api/client';
 // ... dashboard cards defined in state below
 
 export const TenantDashboard = () => {
-    const [name, setName] = React.useState('Tenant');
+const [name, setName] = React.useState('Tenant');
     const [recentTickets, setRecentTickets] = React.useState([]);
     const [unreadCount, setUnreadCount] = React.useState(0);
     const [nextDue, setNextDue] = React.useState('');
@@ -79,8 +78,8 @@ export const TenantDashboard = () => {
     }, []);
 
     return (
-        <TenantLayout title="Dashboard">
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <>
+            <div className="space-y-8 anim-slide-up">
 
                 {/* WELCOME BANNER */}
                 <section className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[22px] p-8 text-white relative overflow-hidden shadow-xl shadow-blue-200">
@@ -180,6 +179,6 @@ export const TenantDashboard = () => {
                     </section>
                 </div>
             </div>
-        </TenantLayout>
+        </>
     );
 };

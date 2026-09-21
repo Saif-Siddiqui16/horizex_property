@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { communicationService } from '../services/communicationService';
 import { Search, Send, User, MoreVertical, RefreshCw, Filter, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 const Communication = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -221,7 +220,7 @@ const Communication = () => {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
 
   return (
-    <MainLayout title="SMS Communications">
+    <>
       <div className="flex flex-col md:flex-row h-[calc(100vh-140px)] bg-white rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.06)] overflow-hidden">
 
         {/* LEFT: SIDEBAR */}
@@ -668,7 +667,7 @@ const Communication = () => {
           </div>
         </div>
       )}
-    </MainLayout>
+    </>
   );
 };
 

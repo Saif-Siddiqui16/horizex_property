@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../../layouts/MainLayout';
-import { Search, Calendar, History, User } from 'lucide-react';
-import payrollTimelineService from '../../services/payrollTimelineService';
 
+import { Search, Calendar, History, User } from 'lucide-react';
+import payrollTimelineService from '../../services/payrollTimelineService';
 export const PayrollTimelinePage = () => {
-  const [events, setEvents] = useState([]);
+const [events, setEvents] = useState([]);
   
   // Filters
   const [filters, setFilters] = useState({
@@ -38,7 +37,7 @@ export const PayrollTimelinePage = () => {
   };
 
   return (
-    <MainLayout title="Payroll Audit Logs">
+    <>
       <div className="flex flex-col gap-6">
         
         {/* Header Filter Panel */}
@@ -110,7 +109,7 @@ export const PayrollTimelinePage = () => {
         </div>
 
       </div>
-    </MainLayout>
+    </>
   );
 };
 

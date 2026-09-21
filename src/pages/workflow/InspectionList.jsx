@@ -17,11 +17,10 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import api from '../../api/client';
-import { MainLayout } from '../../layouts/MainLayout';
+import api from '../../api/client';
 
 const InspectionList = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [inspections, setInspections] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({
@@ -114,7 +113,7 @@ const InspectionList = () => {
     if (loading) return <div className="p-8 text-center text-gray-500 font-black tracking-tighter">LOADING INSPECTIONS...</div>;
 
     return (
-        <MainLayout title="Inspection List">
+        <>
             <div className="p-4 sm:p-0 bg-transparent min-h-screen">
                 {/* Responsive Header */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
@@ -316,7 +315,7 @@ const InspectionList = () => {
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             `}} />
-        </MainLayout>
+        </>
     );
 };
 

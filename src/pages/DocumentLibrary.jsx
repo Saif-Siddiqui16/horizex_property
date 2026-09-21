@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { MainLayout } from "../layouts/MainLayout";
+
 import {
     FileText,
     Search,
@@ -24,10 +24,9 @@ import {
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import api from "../api/client";
-import { hasPermission } from "../utils/permissions";
-
+import { hasPermission } from "../utils/permissions";
 export const DocumentLibrary = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -239,8 +238,8 @@ export const DocumentLibrary = () => {
     };
 
     return (
-        <MainLayout title="Document Library">
-            <div className="space-y-8 animate-in fade-in duration-500">
+        <>
+            <div className="space-y-8 anim-fade-in">
 
                 {/* STATS / HEADER */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -483,8 +482,8 @@ export const DocumentLibrary = () => {
                 {/* UPLOAD MODAL */}
                 {
                     showUploadModal && (
-                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in">
-                            <div className="bg-white rounded-[40px] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 anim-fade-in">
+                            <div className="bg-white rounded-[40px] w-full max-w-2xl shadow-2xl overflow-hidden anim-zoom-in">
                                 <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                                     <div>
                                         <h3 className="text-2xl font-black text-slate-800 tracking-tight">{isEditing ? 'Update Document' : 'Upload Document'}</h3>
@@ -594,7 +593,7 @@ export const DocumentLibrary = () => {
                                         {selectedLinks.length > 0 && (
                                             <div className="flex flex-wrap gap-2 pt-2">
                                                 {selectedLinks.map((link, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-indigo-100 text-[10px] font-bold text-slate-600 shadow-sm animate-in zoom-in-90">
+                                                    <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-indigo-100 text-[10px] font-bold text-slate-600 shadow-sm anim-zoom-in">
                                                         <span className="text-[8px] bg-indigo-50 text-indigo-500 px-1.5 py-0.5 rounded-md uppercase">{link.entityType}</span>
                                                         {link.label}
                                                         <button type="button" onClick={() => setSelectedLinks(selectedLinks.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
@@ -630,6 +629,6 @@ export const DocumentLibrary = () => {
                     )
                 }
             </div >
-        </MainLayout >
+        </>
     );
 };

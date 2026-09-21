@@ -1,12 +1,11 @@
 import React from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { AlertCircle, Plus } from 'lucide-react';
-
+import { AlertCircle, Plus } from 'lucide-react';
 export const BedroomSetup = () => {
-    return (
-        <MainLayout title="Bedroom Setup">
+return (
+        <>
             <div className="flex flex-col gap-6 max-w-[1000px] mx-auto">
 
                 {/* Informational Note */}
@@ -54,6 +53,6 @@ export const BedroomSetup = () => {
                 </Card>
 
             </div>
-        </MainLayout>
+        </>
     );
 };

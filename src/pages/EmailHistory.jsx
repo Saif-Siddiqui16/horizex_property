@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { Mail, Search, Filter, History, Paperclip, Eye, RotateCw, X, FileText } from 'lucide-react';
 import { format } from 'date-fns';
-import { MainLayout } from '../layouts/MainLayout';
-import { hasPermission } from '../utils/permissions';
 
+import { hasPermission } from '../utils/permissions';
 const EmailHistory = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -15,14 +14,14 @@ const EmailHistory = () => {
 
     if (!hasPermission('Sent Emails', 'view')) {
         return (
-            <MainLayout title="Permission Denied">
+            <>
                 <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
                     <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
                     <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
                         You do not have permission to view this section. Please contact your administrator.
                     </p>
                 </div>
-            </MainLayout>
+            </>
         );
     }
 
@@ -135,7 +134,7 @@ const EmailHistory = () => {
     };
 
     return (
-        <MainLayout title="Sent Emails History">
+        <>
             <div className="space-y-4">
                 <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <div>
@@ -200,7 +199,7 @@ const EmailHistory = () => {
 
                 {/* Status Alert */}
                 {statusMsg && (
-                    <div className={`p-4 rounded-xl border text-sm font-bold animate-in slide-in-from-top-4 duration-300 ${
+                    <div className={`p-4 rounded-xl border text-sm font-bold anim-slide-up ${
                         statusMsg.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
                     }`}>
                         {statusMsg.text}
@@ -366,8 +365,8 @@ const EmailHistory = () => {
 
                 {/* PREVIEW MODAL */}
                 {selectedLog && (
-                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 anim-fade-in">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] anim-zoom-in">
                             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900">Email Broadcast Details</h3>
@@ -436,7 +435,7 @@ const EmailHistory = () => {
                     </div>
                 )}
             </div>
-        </MainLayout>
+        </>
     );
 };
 

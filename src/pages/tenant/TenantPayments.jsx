@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { TenantLayout } from '../../layouts/TenantLayout';
+
 import { CreditCard, Wallet, Banknote, CheckCircle, ArrowRight, ShieldCheck, X } from 'lucide-react';
 import { Button } from '../../components/Button';
 
-import api from '../../api/client';
-
+import api from '../../api/client';
 export const TenantPayments = () => {
-    const [selectedMethod, setSelectedMethod] = useState('card');
+const [selectedMethod, setSelectedMethod] = useState('card');
     const [isProcessing, setIsProcessing] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -59,7 +58,7 @@ export const TenantPayments = () => {
 
     if (unpaidInvoices.length === 0 && !showSuccess) {
         return (
-            <TenantLayout title="Pay Rent">
+            <>
                 <div className="p-10 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
                     <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                         <CheckCircle size={40} />
@@ -67,13 +66,13 @@ export const TenantPayments = () => {
                     <h3 className="text-xl font-bold text-slate-800">No Pending Dues</h3>
                     <p className="text-slate-500 mt-2">You are all caught up! No rent is due at this time.</p>
                 </div>
-            </TenantLayout>
+            </>
         );
     }
 
     return (
-        <TenantLayout title="Pay Rent">
-            <div className="max-w-6xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <>
+            <div className="max-w-6xl space-y-8 anim-slide-up">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* LEFT: SELECTION & METHODS */}
                     <div className="lg:col-span-8 space-y-6">
@@ -210,8 +209,8 @@ export const TenantPayments = () => {
 
             {/* SUCCESS MODAL */}
             {showSuccess && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-500 text-center p-10 space-y-6">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 anim-fade-in">
+                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl anim-zoom-in text-center p-10 space-y-6">
                         <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce duration-1000">
                             <CheckCircle size={48} />
                         </div>
@@ -235,6 +234,6 @@ export const TenantPayments = () => {
                     </div>
                 </div>
             )}
-        </TenantLayout>
+        </>
     );
 };

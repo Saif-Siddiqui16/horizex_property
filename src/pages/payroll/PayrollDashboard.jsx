@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../../layouts/MainLayout';
+
 import { Card } from '../../components/Card';
 import { Link, useNavigate } from 'react-router-dom';
 import { Clock, UserPlus, FilePlus2, CheckCircle, DollarSign, Calendar, RefreshCw, AlertCircle } from 'lucide-react';
@@ -11,10 +11,9 @@ import employeeService from '../../services/employeeService';
 import payrollTimelineService from '../../services/payrollTimelineService';
 import { PayrollKPICards } from '../../components/payroll/PayrollKPICards';
 import { PendingLeaveWidget } from '../../components/payroll/PendingLeaveWidget';
-import { UpcomingPayrollWidget } from '../../components/payroll/UpcomingPayrollWidget';
-
+import { UpcomingPayrollWidget } from '../../components/payroll/UpcomingPayrollWidget';
 export const PayrollDashboard = () => {
-  const navigate = useNavigate();
+const navigate = useNavigate();
   const [companyId, setCompanyId] = useState(localStorage.getItem('global_selected_company_id') || '');
   const [kpis, setKpis] = useState({});
   const [pendingLeaves, setPendingLeaves] = useState([]);
@@ -144,7 +143,7 @@ export const PayrollDashboard = () => {
   };
 
   return (
-    <MainLayout title="Payroll Dashboard">
+    <>
       <div className="flex flex-col gap-8">
         
         {/* KPI Cards Grid */}
@@ -435,7 +434,7 @@ export const PayrollDashboard = () => {
         </div>
       )}
 
-    </MainLayout>
+    </>
   );
 };
 

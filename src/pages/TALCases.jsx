@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Search, Plus, Filter, Gavel, Calendar, ClipboardList, TrendingUp, X, Download, FileText } from 'lucide-react';
 import {
@@ -15,10 +15,9 @@ import { UpcomingHearingsWidget } from '../components/tal/UpcomingHearingsWidget
 import { UrgentCasesWidget } from '../components/tal/UrgentCasesWidget';
 import { HearingCalendarWidget } from '../components/tal/HearingCalendarWidget';
 import { DashboardTasksWidget } from '../components/tal/DashboardTasksWidget';
-import api from '../api/client';
-
+import api from '../api/client';
 export const TALCases = ({ defaultTab = 'overview' }) => {
-  const [activeTab, setActiveTab] = useState(defaultTab);
+const [activeTab, setActiveTab] = useState(defaultTab);
   const [loading, setLoading] = useState(true);
 
   // Data States
@@ -254,7 +253,7 @@ export const TALCases = ({ defaultTab = 'overview' }) => {
   };
 
   return (
-    <MainLayout title="TAL Cases">
+    <>
       <div className="flex flex-col gap-4">
         
         {/* Subtitle / Header Section */}
@@ -631,6 +630,6 @@ export const TALCases = ({ defaultTab = 'overview' }) => {
           </div>
         </div>
       )}
-    </MainLayout>
+    </>
   );
 };

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import { TenantSidebar } from './TenantSidebar';
 import { TenantTopbar } from './TenantTopbar';
 
-export const TenantLayout = ({ children, title = 'Tenant Portal' }) => {
+export const TenantLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -13,10 +14,10 @@ export const TenantLayout = ({ children, title = 'Tenant Portal' }) => {
             <TenantSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
 
             <div className="flex flex-col flex-1 min-w-0 transition-all duration-200 ml-0 lg:ml-[260px]">
-                <TenantTopbar title={title} onMenuClick={toggleSidebar} />
+                <TenantTopbar onMenuClick={toggleSidebar} />
 
                 <main className="flex-1 w-full max-w-[1400px] mx-auto flex flex-col gap-8 p-4 lg:p-8">
-                    {children}
+                    <Outlet />
                 </main>
             </div>
         </div>

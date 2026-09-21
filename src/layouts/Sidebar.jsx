@@ -243,20 +243,20 @@ const NavItem = ({ item, depth = 0, onClose }) => {
         onClick={handleClick}
         className={({ isActive }) =>
           clsx(
-            "flex items-center gap-3 px-4 py-[10px] rounded-2xl text-sm font-bold transition-all duration-300 group relative overflow-hidden",
+            "flex items-center gap-3 px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-semibold transition-all duration-200 group relative",
             isActive && !hasChildren
-              ? "bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white shadow-lg shadow-blue-500/20"
-              : "text-slate-400 hover:bg-[#1F2937] hover:text-white"
+              ? "bg-zinc-800/80 text-white relative before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-1/2 before:w-1 before:bg-blue-500 before:rounded-r-full"
+              : "text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-100"
           )
         }
         style={{ paddingLeft: `calc(16px + ${depth * 14}px)` }}
       >
-        {item.icon && <item.icon size={18} />}
-        <span className="flex-1">{t(item.tKey || item.label)}</span>
+        {item.icon && <item.icon size={18} className={clsx("shrink-0 transition-colors", hasChildren ? "text-zinc-400 group-hover:text-zinc-300" : "")} />}
+        <span className="flex-1 truncate">{t(item.tKey || item.label)}</span>
         {(item.label === 'SMS Hub' || item.label === 'Inbox') && (
           <UnreadSMSBadge />
         )}
-        {hasChildren && (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
+        {hasChildren && (isOpen ? <ChevronDown size={14} className="text-zinc-500" /> : <ChevronRight size={14} className="text-zinc-500" />)}
       </NavLink>
 
       {hasChildren && isOpen && (
@@ -326,28 +326,28 @@ export const Sidebar = ({ isOpen, onClose }) => {
       />
 
       <aside className={clsx(
-        "fixed left-0 top-0 h-screen w-[280px] bg-[#111827] border-r border-slate-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out flex flex-col",
+        "fixed left-0 top-0 h-screen w-[280px] bg-zinc-950 border-r border-zinc-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out flex flex-col",
         isOpen ? "translate-x-0" : "-translate-x-full",
         "lg:translate-x-0"
       )}>
-        <div className="h-16 flex items-center px-5 justify-between shrink-0 border-b border-slate-800/60">
-          <div className="flex items-center gap-3">
-            <div className="bg-white rounded-full p-0.5 shadow-md shrink-0 w-14 h-14 flex items-center justify-center overflow-hidden">
-              <img src="/assets/logo.png" alt="Horizex Logo" className="h-13 w-13 object-contain" />
+        <div className="h-14 sm:h-16 flex items-center px-4 lg:px-6 justify-between shrink-0 border-b border-zinc-800/50">
+          <div className="flex items-center gap-4">
+            <div className="bg-[#1a1a1a] border border-slate-700/50 rounded-2xl shrink-0 w-[52px] h-[52px] flex items-center justify-center overflow-hidden">
+              <img src="/assets/logo.png" alt="Horizex Logo" className="w-[80%] h-[80%] object-contain brightness-0 invert" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-black text-white uppercase tracking-wider leading-none">Horizex</span>
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Real Estate</span>
+              <span className="text-lg font-bold text-white tracking-wide leading-none">HORIZEX</span>
+              <span className="text-[11px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1">WORKSPACE</span>
             </div>
           </div>
-          <button className="lg:hidden p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-all" onClick={onClose}>
+          <button className="lg:hidden p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 rounded-[var(--radius-md)] transition-colors" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
-        <nav ref={navRef} className="flex-1 overflow-y-auto px-4 py-2 space-y-[6px] custom-scrollbar">
-          <div className="px-4 mb-2 mt-2">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Main Menu</p>
+        <nav ref={navRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
+          <div className="px-4 mb-3 mt-1">
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Main Menu</p>
           </div>
           {(() => {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -448,11 +448,11 @@ export const Sidebar = ({ isOpen, onClose }) => {
           })()}
         </nav>
 
-        <div className="p-4 border-t border-slate-800 shrink-0">
+        <div className="p-4 border-t border-zinc-800/50 shrink-0">
           <Link to="/profile" className="block no-underline">
-            <div className="bg-slate-800/20 rounded-xl p-2.5 border border-slate-800/60 group cursor-pointer hover:border-slate-700 hover:bg-[#1F2937]/30 transition-all duration-300">
+            <div className="bg-zinc-900/40 rounded-[var(--radius-md)] p-2.5 border border-zinc-800/50 group cursor-pointer hover:border-zinc-700 hover:bg-zinc-800/80 transition-all duration-200">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-primary text-white flex items-center justify-center font-bold text-xs border border-slate-800 shadow-sm shrink-0">
+                <div className="w-8 h-8 rounded-[var(--radius-sm)] overflow-hidden bg-zinc-800 text-zinc-300 flex items-center justify-center font-bold text-xs shrink-0 ring-1 ring-zinc-700/50">
                   {JSON.parse(localStorage.getItem('user') || '{}').profilePictureUrl ? (
                     <img src={JSON.parse(localStorage.getItem('user') || '{}').profilePictureUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
@@ -460,17 +460,17 @@ export const Sidebar = ({ isOpen, onClose }) => {
                   )}
                 </div>
                 <div className="overflow-hidden flex-1">
-                  <p className="text-xs font-bold text-white truncate leading-tight">{JSON.parse(localStorage.getItem('user') || '{}').firstName ? `${JSON.parse(localStorage.getItem('user') || '{}').firstName} ${JSON.parse(localStorage.getItem('user') || '{}').lastName || ''}` : 'Admin User'}</p>
-                  <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wider truncate mt-0.5">{JSON.parse(localStorage.getItem('user') || '{}').title || (JSON.parse(localStorage.getItem('user') || '{}').role === 'ADMIN' ? 'Super Admin' : 'Staff')}</p>
+                  <p className="text-xs font-semibold text-zinc-100 truncate leading-tight group-hover:text-white transition-colors">{JSON.parse(localStorage.getItem('user') || '{}').firstName ? `${JSON.parse(localStorage.getItem('user') || '{}').firstName} ${JSON.parse(localStorage.getItem('user') || '{}').lastName || ''}` : 'Admin User'}</p>
+                  <p className="text-[10px] text-zinc-500 font-medium truncate mt-0.5">{JSON.parse(localStorage.getItem('user') || '{}').title || (JSON.parse(localStorage.getItem('user') || '{}').role === 'ADMIN' ? 'Super Admin' : 'Staff')}</p>
                 </div>
               </div>
             </div>
           </Link>
           <button
             onClick={handleLogout}
-            className="w-full mt-3 flex items-center justify-center gap-2 py-2 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-rose-950/20 hover:border-rose-900/40 text-slate-400 hover:text-rose-400 text-[11px] font-bold transition-all cursor-pointer"
+            className="w-full mt-3 flex items-center justify-center gap-2 py-2 rounded-[var(--radius-md)] border border-transparent hover:bg-red-500/10 hover:text-red-400 text-zinc-500 text-xs font-semibold transition-colors cursor-pointer"
           >
-            <LogOut size={13} />
+            <LogOut size={14} />
             Logout
           </button>
         </div>

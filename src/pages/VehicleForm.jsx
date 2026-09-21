@@ -152,8 +152,8 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-      <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-400 max-h-[90vh] overflow-hidden flex flex-col border border-slate-100">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 anim-fade-in">
+      <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl anim-zoom-in max-h-[90vh] overflow-hidden flex flex-col border border-slate-100">
         
         {/* HEADER */}
         <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -206,7 +206,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
                 </div>
 
                 {selectedTenant && (
-                  <div className="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-center justify-between animate-in slide-in-from-top-2 duration-300">
+                  <div className="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-center justify-between anim-slide-up">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-indigo-600 border border-indigo-100">
                         <Building2 size={24} />

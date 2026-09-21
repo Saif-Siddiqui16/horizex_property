@@ -3,12 +3,19 @@ import { Menu, Globe, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 
-export const TenantTopbar = ({ title = 'Dashboard', onMenuClick }) => {
+export const TenantTopbar = ({ onMenuClick }) => {
     const navigate = useNavigate();
+    const [title, setTitle] = useState('Dashboard');
     const [tenantName, setTenantName] = useState('Tenant');
     const [buildingInfo, setBuildingInfo] = useState('');
     const [initials, setInitials] = useState('TN');
     const [language, setLanguage] = useState('EN');
+
+    useEffect(() => {
+        const handleTitleChange = (e) => setTitle(e.detail);
+        window.addEventListener('pageTitleChange', handleTitleChange);
+        return () => window.removeEventListener('pageTitleChange', handleTitleChange);
+    }, []);
 
     const toggleLanguage = () => {
         const newLangCode = language === 'EN' ? 'fr' : 'en';

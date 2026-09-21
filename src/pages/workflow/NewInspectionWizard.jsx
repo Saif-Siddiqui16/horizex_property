@@ -13,11 +13,10 @@ import {
     ArrowRight
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MainLayout } from '../../layouts/MainLayout';
-import api from '../../api/client';
 
+import api from '../../api/client';
 const NewInspectionWizard = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const location = useLocation();
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
@@ -149,7 +148,7 @@ const NewInspectionWizard = () => {
     const handleBack = () => setStep(s => s - 1);
 
     return (
-        <MainLayout title="Create New Inspection">
+        <>
             <div className="p-0 bg-transparent min-h-screen">
                 {/* Header */}
                 <div className="w-full max-w-4xl mx-auto flex items-center justify-between mb-6 md:mb-10 px-4 md:px-0">
@@ -192,7 +191,7 @@ const NewInspectionWizard = () => {
                 {/* Content Area */}
                 <div className="w-full max-w-4xl mx-auto bg-white rounded-[32px] md:rounded-[40px] shadow-2xl shadow-indigo-500/5 border border-gray-100 p-6 md:p-10 mb-10">
                     {step === 1 && (
-                        <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="flex flex-col gap-8 anim-slide-up">
                             <div>
                                 <h2 className="text-xl font-black text-gray-900 mb-1">Basic Information</h2>
                                 <p className="text-gray-500 text-sm">Provide the basic details for this inspection.</p>
@@ -308,7 +307,7 @@ const NewInspectionWizard = () => {
                     )}
 
                     {step === 2 && (
-                        <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <div className="flex flex-col gap-8 anim-slide-up">
                             <div>
                                 <h2 className="text-xl font-black text-gray-900 mb-1">Select Template</h2>
                                 <p className="text-gray-500 text-sm">Please select the template you want to use for this inspection.</p>
@@ -369,7 +368,7 @@ const NewInspectionWizard = () => {
                     </div>
                 </div>
             </div>
-        </MainLayout>
+        </>
     );
 };
 

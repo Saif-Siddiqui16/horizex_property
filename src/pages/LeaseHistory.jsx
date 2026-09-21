@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { useNavigate } from 'react-router-dom';
 import { Eye, Pencil, Trash2, X, FileText, Calendar, User, Home, Bed, AlertTriangle, CheckCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 // DUMMY_LEASES removed
 export const LeaseHistory = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
@@ -143,7 +142,7 @@ export const LeaseHistory = () => {
     const displayLeases = leases;
 
     return (
-        <MainLayout title="Lease History">
+        <>
             <div className="flex flex-col gap-6">
 
                 {/* FILTERS */}
@@ -252,7 +251,7 @@ export const LeaseHistory = () => {
                                 {displayLeases.map((lease, index) => (
                                     <tr
                                         key={lease.id}
-                                        className="hover:bg-slate-50/80 transition-all duration-200 animate-in slide-in-from-left-2 fade-in fill-mode-forwards"
+                                        className="hover:bg-slate-50/80 transition-all duration-200 anim-slide-upfade-in fill-mode-forwards"
                                         style={{ animationDelay: `${index * 0.05}s` }}
                                     >
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -370,8 +369,8 @@ export const LeaseHistory = () => {
 
                 {/* VIEW MODAL */}
                 {selectedLease && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-                        <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in">
+                        <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold text-slate-900">Lease Details</h3>
                                 <button
@@ -431,8 +430,8 @@ export const LeaseHistory = () => {
 
                 {/* EDIT MODAL */}
                 {editLease && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-                        <form onSubmit={handleEditSave} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in">
+                        <form onSubmit={handleEditSave} className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold text-slate-900">Edit Lease</h3>
                                 <button
@@ -525,6 +524,6 @@ export const LeaseHistory = () => {
                 )}
 
             </div>
-        </MainLayout>
+        </>
     );
 };

@@ -19,13 +19,12 @@ import {
     Trash2,
     XCircle
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { MainLayout } from '../../layouts/MainLayout';
+import { format } from 'date-fns';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const MoveInDashboard = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [moveIns, setMoveIns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
@@ -374,7 +373,7 @@ const MoveInDashboard = () => {
     if (loading) return <div className="p-8 text-center text-gray-500">Loading Dashboard...</div>;
 
     return (
-        <MainLayout title="Move-In Dashboard">
+        <>
             <div className="p-0 bg-transparent min-h-screen">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4 mt-2">
@@ -481,7 +480,7 @@ const MoveInDashboard = () => {
                     />
                 </div>
             </div>
-        </MainLayout>
+        </>
     );
 };
 

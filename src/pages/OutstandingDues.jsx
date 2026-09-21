@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Eye, CreditCard, X, Search, Filter } from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 const OutstandingDues = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -101,7 +100,7 @@ const OutstandingDues = () => {
   };
 
   return (
-    <MainLayout title="Outstanding Dues">
+    <>
       <div className="p-0">
 
         {/* SEARCH & FILTER BAR */}
@@ -253,8 +252,8 @@ const OutstandingDues = () => {
 
         {/* VIEW INVOICE MODAL */}
         {selectedInvoice && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md animate-in fade-in px-4">
-            <div className="bg-white p-8 rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 border border-slate-200">
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md anim-fade-inpx-4">
+            <div className="bg-white p-8 rounded-3xl w-full max-w-lg shadow-2xl anim-zoom-inborder border-slate-200">
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                 <h3 className="text-xl font-black text-slate-900 uppercase italic tracking-tight">Invoice Details</h3>
                 <button onClick={() => setSelectedInvoice(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
@@ -293,8 +292,8 @@ const OutstandingDues = () => {
 
         {/* RECORD PAYMENT MODAL */}
         {showPaymentModal && selectedInvoice && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] backdrop-blur-md animate-in fade-in px-4">
-            <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95 border border-slate-200">
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] backdrop-blur-md anim-fade-inpx-4">
+            <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl anim-zoom-inborder border-slate-200">
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                 <h3 className="text-xl font-black text-slate-900 uppercase italic tracking-tight">Collect Payment</h3>
                 <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
@@ -343,7 +342,7 @@ const OutstandingDues = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Search, Eye, Filter, Calendar as CalendarIcon, ClipboardList, Send, Plus, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -10,10 +10,9 @@ import { RenewalStatusChart } from '../components/renewals/RenewalStatusChart';
 import { RecentRenewalsWidget } from '../components/renewals/RecentRenewalsWidget';
 import { RenewalCalendarWidget } from '../components/renewals/RenewalCalendarWidget';
 import { UpcomingRenewalsWidget } from '../components/renewals/UpcomingRenewalsWidget';
-import api from '../api/client';
-
+import api from '../api/client';
 export const LeaseRenewals = () => {
-  const navigate = useNavigate();
+const navigate = useNavigate();
   const [renewals, setRenewals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
@@ -96,7 +95,7 @@ export const LeaseRenewals = () => {
   };
 
   return (
-    <MainLayout title="Lease Renewals Management">
+    <>
       <div className="flex flex-col gap-6 p-4 sm:p-6">
         
         {/* Toggle Mode & Action Bar */}
@@ -294,6 +293,6 @@ export const LeaseRenewals = () => {
           </>
         )}
       </div>
-    </MainLayout>
+    </>
   );
 };

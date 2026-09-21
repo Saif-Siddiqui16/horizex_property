@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { TenantLayout } from '../../layouts/TenantLayout';
+
 import { Files, Download, Eye, Upload, X, FileText, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../components/Button';
-import api from '../../api/client';
-
+import api from '../../api/client';
 const initialDocs = [
     { id: 1, name: 'Lease_Agreement_2025.pdf', type: 'Agreement', date: '2025-01-01' },
     { id: 2, name: 'Move_In_Inspection.pdf', type: 'Inspection', date: '2025-01-02' },
@@ -11,7 +10,7 @@ const initialDocs = [
 ];
 
 export const TenantDocuments = () => {
-    const [docs, setDocs] = useState([]);
+const [docs, setDocs] = useState([]);
     const [showUpload, setShowUpload] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -96,8 +95,8 @@ export const TenantDocuments = () => {
     };
 
     return (
-        <TenantLayout title="My Documents">
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <>
+            <div className="space-y-6 anim-slide-up">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                     <div className="space-y-1">
                         <h2 className="text-xl font-black text-slate-800 tracking-tight">Personal Document Vault</h2>
@@ -187,8 +186,8 @@ export const TenantDocuments = () => {
 
             {/* UPLOAD MODAL */}
             {showUpload && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-0 md:p-6 overflow-y-auto animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-md rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-0 md:p-6 overflow-y-auto anim-fade-in">
+                    <div className="bg-white w-full max-w-md rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
                         
                         {/* Sticky Modal Header */}
                         <div className="sticky top-0 bg-white border-b border-slate-50 p-6 flex items-center justify-between shrink-0 z-10">
@@ -251,6 +250,6 @@ export const TenantDocuments = () => {
                     </div>
                 </div>
             )}
-        </TenantLayout>
+        </>
     );
 };

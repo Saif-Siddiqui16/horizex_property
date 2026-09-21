@@ -10,20 +10,21 @@ export const Button = ({
     isLoading,
     ...props
 }) => {
-    const baseStyles = "inline-flex items-center justify-center rounded-[14px] font-sans font-bold cursor-pointer transition-all duration-200 border disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:border-transparent gap-2 whitespace-nowrap select-none active:scale-[0.98]";
+    const baseStyles = "saas-btn select-none";
 
     const variants = {
-        primary: "bg-gradient-to-r from-[#2563EB] to-[#3B82F6] hover:from-[#1D4ED8] hover:to-[#2563EB] text-white shadow-sm hover:translate-y-[-1px] border-transparent",
-        secondary: "bg-slate-100 text-slate-800 border-transparent hover:bg-slate-200 hover:translate-y-[-1px]",
-        outline: "bg-white border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:translate-y-[-1px]",
-        ghost: "bg-transparent border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-none",
-        danger: "bg-rose-600 text-white border-transparent hover:bg-rose-700 hover:translate-y-[-1px] shadow-sm"
+        primary: "saas-btn-primary",
+        accent: "saas-btn-accent",
+        secondary: "saas-btn-secondary",
+        outline: "saas-btn-outline",
+        ghost: "saas-btn-ghost",
+        danger: "saas-btn-danger"
     };
 
     const sizes = {
-        sm: "h-8 px-3 text-xs",
-        md: "h-10 px-4 text-sm",
-        lg: "h-12 px-6 text-base"
+        sm: "!h-8 !px-3 !text-xs",
+        md: "", // Defaults handled by saas-btn
+        lg: "!h-12 !px-6 !text-base"
     };
 
     return (

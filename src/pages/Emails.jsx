@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import api from '../api/client';
 import { Mail, CheckCircle, XCircle, Search, RefreshCw, Send, X, UserPlus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '../components/Button';
-
+import { Button } from '../components/Button';
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_BUTTONS = 5;
 
 export const Emails = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -206,7 +205,7 @@ export const Emails = () => {
     const tp = totalPages || 1;
 
     return (
-        <MainLayout title="Email Logs">
+        <>
             <div className="flex flex-col gap-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3">
@@ -486,6 +485,6 @@ export const Emails = () => {
                     </div>
                 </div>
             )}
-        </MainLayout>
+        </>
     );
 };

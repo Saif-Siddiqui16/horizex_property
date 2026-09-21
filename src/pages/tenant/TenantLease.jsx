@@ -1,11 +1,10 @@
 import React from 'react';
-import { TenantLayout } from '../../layouts/TenantLayout';
+
 import { FileText, Calendar, DollarSign, Home, CheckCircle2 } from 'lucide-react';
 import api from '../../api/client';
-import { Link } from 'react-router-dom';
-
+import { Link } from 'react-router-dom';
 export const TenantLease = () => {
-    const [lease, setLease] = React.useState(null);
+const [lease, setLease] = React.useState(null);
 
     React.useEffect(() => {
         const fetchLease = async () => {
@@ -21,15 +20,15 @@ export const TenantLease = () => {
 
     if (!lease) {
         return (
-            <TenantLayout title="My Lease">
+            <>
                 <div className="p-8 text-center text-slate-500 font-medium">Loading lease details...</div>
-            </TenantLayout>
+            </>
         );
     }
 
     return (
-        <TenantLayout title="My Lease">
-            <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <>
+            <div className="w-full space-y-8 anim-slide-up">
                 {/* LEASE SUMMARY CARD */}
                 <section className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden shadow-slate-100/50">
                     <div className="bg-indigo-600 p-8 text-white flex justify-between items-center">
@@ -135,6 +134,6 @@ export const TenantLease = () => {
                     </section>
                 </div>
             </div>
-        </TenantLayout>
+        </>
     );
 };

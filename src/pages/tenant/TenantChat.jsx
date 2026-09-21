@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TenantLayout } from '../../layouts/TenantLayout';
-import { communicationService } from '../../services/communicationService';
-import { Send, RefreshCw, User, MessageSquare } from 'lucide-react';
 
+import { communicationService } from '../../services/communicationService';
+import { Send, RefreshCw, User, MessageSquare } from 'lucide-react';
 export const TenantChat = () => {
-    const [messages, setMessages] = useState([]);
+const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [adminUser, setAdminUser] = useState(null);
     const [currentTenantId, setCurrentTenantId] = useState(null);
@@ -80,7 +79,7 @@ export const TenantChat = () => {
     };
 
     return (
-        <TenantLayout title="Messages">
+        <>
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden h-[calc(100vh-140px)] flex flex-col w-full max-w-full">
 
                 {/* Header */}
@@ -143,6 +142,6 @@ export const TenantChat = () => {
                     </form>
                 </div>
             </div>
-        </TenantLayout>
+        </>
     );
 };

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import {
@@ -25,10 +25,9 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 export const InsuranceAlerts = () => {
-    const { t } = useTranslation();
+const { t } = useTranslation();
     const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
@@ -199,7 +198,7 @@ export const InsuranceAlerts = () => {
     };
 
     return (
-        <MainLayout title={t('sidebar.insurance')}>
+        <>
             <div className="flex flex-col gap-8 pb-10">
 
                 {/* HEADER SECTION */}
@@ -391,8 +390,8 @@ export const InsuranceAlerts = () => {
 
                 {/* MODAL FOR ADD / EDIT INSURANCE */}
                 {showModal && (
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in">
-                        <div className="bg-white rounded-[22px] w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[90vh]">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 anim-fade-in">
+                        <div className="bg-white rounded-[22px] w-full max-w-xl shadow-2xl overflow-hidden anim-zoom-inflex flex-col max-h-[90vh]">
                             <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
                                 <div>
                                     <h3 className="text-xl font-black text-slate-800 tracking-tight">
@@ -550,8 +549,8 @@ export const InsuranceAlerts = () => {
 
                 {/* MODAL FOR VIEW INSURANCE DETAILS */}
                 {selectedInsurance && (
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in">
-                        <div className="bg-white rounded-[22px] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4 anim-fade-in">
+                        <div className="bg-white rounded-[22px] w-full max-w-lg shadow-2xl overflow-hidden anim-zoom-in">
                             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -654,6 +653,6 @@ export const InsuranceAlerts = () => {
                 )}
 
             </div>
-        </MainLayout>
+        </>
     );
 };

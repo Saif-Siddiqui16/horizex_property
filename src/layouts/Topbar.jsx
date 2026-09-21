@@ -6,12 +6,19 @@ import api from '../api/client';
 import clsx from 'clsx';
 import { CompanySelector } from '../components/CompanySelector';
 
-export const Topbar = ({ title = 'Overview', onMenuClick }) => {
+export const Topbar = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const { i18n } = useTranslation();
+    const [title, setTitle] = useState('Overview');
     const [unreadCount, setUnreadCount] = useState(0);
     const [notifCount, setNotifCount] = useState(0);
     const [currentLang, setCurrentLang] = React.useState(i18n.language?.split('-')[0] || 'en');
+
+    useEffect(() => {
+        const handleTitleChange = (e) => setTitle(e.detail);
+        window.addEventListener('pageTitleChange', handleTitleChange);
+        return () => window.removeEventListener('pageTitleChange', handleTitleChange);
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('isLoggedIn');
@@ -71,48 +78,46 @@ export const Topbar = ({ title = 'Overview', onMenuClick }) => {
     };
 
     return (
-        <header className="h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-slate-100/80 flex items-center justify-between px-2 sm:px-4 lg:px-8 sticky top-0 z-40">
+        <header className="h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40 transition-all">
             {/* LEFT */}
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 <button
-                    className="block lg:hidden text-slate-600 p-1.5 sm:p-2 hover:bg-slate-50 rounded-xl transition shrink-0"
+                    className="block lg:hidden text-zinc-500 p-2 hover:bg-zinc-100 hover:text-zinc-900 rounded-[var(--radius-md)] transition-colors shrink-0"
                     onClick={onMenuClick}
                 >
-                    <Menu size={22} />
+                    <Menu size={20} />
                 </button>
-                <h1 className="text-xs sm:text-base md:text-lg font-black text-slate-800 tracking-tight overflow-hidden text-ellipsis whitespace-nowrap max-w-[80px] xs:max-w-[110px] sm:max-w-none">{title}</h1>
+                <h1 className="text-base sm:text-lg font-bold text-zinc-900 tracking-tight truncate">{title}</h1>
             </div>
 
             {/* RIGHT */}
-            <div className="flex items-center gap-1 sm:gap-2 md:gap-4 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                 {/* COMPANY SELECTOR */}
                 <CompanySelector />
+
+                <div className="h-6 w-px bg-zinc-200 hidden sm:block mx-1"></div>
 
                 {/* SMS NOTIFICATION */}
                 <Link
                     to="/admin/sms/inbox"
-                    className="relative p-1.5 sm:p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
+                    className="relative p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-full transition-colors flex items-center justify-center w-9 h-9"
                     title="SMS Inbox"
                 >
-                    <MessageSquare size={17} className="sm:w-[19px] sm:h-[19px]" />
+                    <MessageSquare size={18} />
                     {unreadCount > 0 && (
-                        <span className="absolute top-1 right-1 w-2 h-2 bg-danger text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                            {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
+                        <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white shadow-sm"></span>
                     )}
                 </Link>
 
-
-
                 {/* LANGUAGE SWITCHER */}
-                <div className="flex items-center bg-slate-100/80 rounded-xl p-0.5 h-7 sm:h-9 notranslate">
+                <div className="flex items-center bg-zinc-100/80 p-0.5 rounded-[var(--radius-md)] h-9 border border-zinc-200/50 notranslate">
                     <button
                         onClick={() => handleLanguageChange('en')}
                         className={clsx(
-                            "px-1.5 sm:px-3 h-full text-[9px] sm:text-[11px] font-black rounded-lg transition-all uppercase tracking-wider",
+                            "px-2.5 h-full text-xs font-semibold rounded-[var(--radius-sm)] transition-all",
                             currentLang === 'en'
-                                ? "bg-white text-primary shadow-sm"
-                                : "text-slate-400 hover:text-slate-600"
+                                ? "bg-white text-zinc-900 shadow-sm"
+                                : "text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50"
                         )}
                     >
                         EN
@@ -120,10 +125,10 @@ export const Topbar = ({ title = 'Overview', onMenuClick }) => {
                     <button
                         onClick={() => handleLanguageChange('fr')}
                         className={clsx(
-                            "px-1.5 sm:px-3 h-full text-[9px] sm:text-[11px] font-black rounded-lg transition-all uppercase tracking-wider",
+                            "px-2.5 h-full text-xs font-semibold rounded-[var(--radius-sm)] transition-all",
                             currentLang === 'fr'
-                                ? "bg-white text-primary shadow-sm"
-                                : "text-slate-400 hover:text-slate-600"
+                                ? "bg-white text-zinc-900 shadow-sm"
+                                : "text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50"
                         )}
                     >
                         FR
@@ -132,12 +137,11 @@ export const Topbar = ({ title = 'Overview', onMenuClick }) => {
 
                 {/* LOGOUT */}
                 <button
-                    className="hidden sm:flex items-center gap-1.5 h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-500 text-xs font-bold cursor-pointer transition-all hover:bg-rose-50 hover:text-danger hover:border-rose-100"
+                    className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-red-600 transition-colors cursor-pointer"
                     onClick={handleLogout}
                     title="Logout"
                 >
-                    <LogOut size={15} />
-                    <span className="hidden md:inline">Logout</span>
+                    <LogOut size={16} />
                 </button>
             </div>
         </header>

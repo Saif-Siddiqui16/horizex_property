@@ -16,13 +16,12 @@ import {
     User,
     ArrowRight
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { MainLayout } from '../../layouts/MainLayout';
+import { format } from 'date-fns';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const UnitPrepDashboard = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [prepUnits, setPrepUnits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -194,7 +193,7 @@ const UnitPrepDashboard = () => {
     if (loading) return <div className="p-8 text-center text-gray-500 font-black">PREPARING DASHBOARD...</div>;
 
     return (
-        <MainLayout title="Unit Preparation">
+        <>
             <div className="p-0 bg-transparent min-h-screen">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
@@ -313,7 +312,7 @@ const UnitPrepDashboard = () => {
                     );
                 })()}
             </div>
-        </MainLayout>
+        </>
     );
 };
 

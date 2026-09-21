@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { Button } from '../components/Button';
-import { BedDouble, Calendar, DollarSign, Home, User, Shield, ChevronDown, CheckCircle, Bed } from 'lucide-react';
-
+import { BedDouble, Calendar, DollarSign, Home, User, Shield, ChevronDown, CheckCircle, Bed } from 'lucide-react';
 export const LeaseFormBedroom = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const [buildings, setBuildings] = useState([]);
     const [units, setUnits] = useState([]);
     const [bedrooms, setBedrooms] = useState([]);
@@ -201,9 +200,9 @@ export const LeaseFormBedroom = () => {
     };
 
     return (
-        <MainLayout title="Bedroom Lease">
+        <>
             <div className="max-w-3xl mx-auto py-6">
-                <div className="bg-white p-8 rounded-2xl shadow-xl animate-in slide-in-from-bottom-4 duration-500 fade-in border border-slate-100">
+                <div className="bg-white p-8 rounded-2xl shadow-xl anim-slide-up fade-in border border-slate-100">
                     <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
                         <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
                             <BedDouble size={24} />
@@ -455,6 +454,6 @@ export const LeaseFormBedroom = () => {
                     </div>
                 </div>
             </div>
-        </MainLayout>
+        </>
     );
 };

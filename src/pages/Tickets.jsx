@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, Building, Home, ChevronDown, Trash2, Edit2, Play, Camera, Printer } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 const priorityColors = {
     High: 'bg-red-50 text-red-700 border-red-100',
     Medium: 'bg-amber-50 text-amber-700 border-amber-100',
@@ -19,7 +18,7 @@ const statusIcons = {
 };
 
 export const Tickets = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -264,11 +263,11 @@ export const Tickets = () => {
     };
 
     return (
-        <MainLayout title="Maintenance Tickets">
+        <>
             <div className="flex flex-col gap-6 relative">
 
                 {successMessage && (
-                    <div className="fixed top-24 right-8 z-[100] animate-in slide-in-from-right-full duration-500">
+                    <div className="fixed top-24 right-8 z-[100] anim-slide-up">
                         <div className="bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3">
                             <CheckCircle size={20} />
                             <span className="font-bold">{successMessage}</span>
@@ -411,8 +410,8 @@ export const Tickets = () => {
                 </section>
 
                 {selectedTicket && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
-                        <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in p-4">
+                        <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl anim-zoom-in max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-6">
                                 <div>
                                     <h3 className="text-2xl font-bold text-slate-800">{selectedTicket.id}</h3>
@@ -542,9 +541,9 @@ export const Tickets = () => {
                 )}
 
                 {showAddModal && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-200">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in">
                         <form
-                            className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
+                            className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in max-h-[90vh] overflow-y-auto"
                             onSubmit={handleSaveTicket}
                         >
                             <div className="flex justify-between items-center mb-6">
@@ -693,8 +692,8 @@ export const Tickets = () => {
                 )}
 
                 {viewingTenantDetails && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-200">
-                        <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in">
+                        <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl anim-zoom-in">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold text-slate-800">Tenant Info</h3>
                                 <button onClick={() => setViewingTenantDetails(null)} className="text-slate-400 hover:text-slate-600">
@@ -736,6 +735,6 @@ export const Tickets = () => {
                 )}
 
             </div>
-        </MainLayout>
+        </>
     );
 };

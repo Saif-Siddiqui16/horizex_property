@@ -1,5 +1,5 @@
 import React from 'react';
-import { OwnerLayout } from '../../layouts/owner/OwnerLayout';
+
 import {
     Download,
     CircleDollarSign,
@@ -11,10 +11,9 @@ import {
     FileText
 } from 'lucide-react';
 import { Button } from '../../components/Button';
-import api from '../../api/client';
-
+import api from '../../api/client';
 export const OwnerFinancials = () => {
-    const [financialStats, setFinancialStats] = React.useState([
+const [financialStats, setFinancialStats] = React.useState([
         { label: 'Rent Collected (MTD)', value: '$ 0', icon: CircleDollarSign, color: 'text-emerald-600' },
         { label: 'Outstanding Dues', value: '$ 0', icon: Clock, color: 'text-rose-600' },
         { label: 'Net Earnings (MTD)', value: '$ 0', icon: CheckCircle2, color: 'text-violet-600' },
@@ -54,7 +53,7 @@ export const OwnerFinancials = () => {
     };
 
     return (
-        <OwnerLayout title="Financial Summary">
+        <>
             <div className="space-y-8 pb-12">
                 {/* Header Action */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
@@ -149,6 +148,6 @@ export const OwnerFinancials = () => {
                     </div>
                 </div>
             </div>
-        </OwnerLayout>
+        </>
     );
 };

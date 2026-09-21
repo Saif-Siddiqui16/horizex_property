@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Trash2, Edit } from 'lucide-react';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
-import { AccessControl } from '../components/AccessControl';
-
+import { AccessControl } from '../components/AccessControl';
 export const TaxSettings = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -15,14 +14,14 @@ export const TaxSettings = () => {
 
   if (!hasPermission('Tax Settings', 'view')) {
     return (
-        <MainLayout title="Permission Denied">
+        <>
             <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
                 <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
                 <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
                     You do not have permission to view this section. Please contact your administrator.
                 </p>
             </div>
-        </MainLayout>
+        </>
     );
   }
 
@@ -116,7 +115,7 @@ export const TaxSettings = () => {
 
   /* ---------------- UI ---------------- */
   return (
-    <MainLayout title="Tax Settings">
+    <>
       <div className="flex flex-col gap-6">
 
         {/* SUMMARY CARDS */}
@@ -257,6 +256,6 @@ export const TaxSettings = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };

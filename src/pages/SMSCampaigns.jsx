@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { Send, Users, Building2, CheckCircle, Clock, AlertCircle, Plus, X, Search, ChevronRight, ChevronLeft, Trash2 } from 'lucide-react';
-import { MainLayout } from '../layouts/MainLayout';
-import { hasPermission } from '../utils/permissions';
 
+import { hasPermission } from '../utils/permissions';
 const SMSCampaigns = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -230,7 +229,7 @@ const SMSCampaigns = () => {
     };
 
     return (
-        <MainLayout title="SMS Campaigns">
+        <>
             <div className="space-y-4 text-slate-800 w-full max-w-full overflow-hidden">
                 
                 {/* Page Header Card */}
@@ -362,7 +361,7 @@ const SMSCampaigns = () => {
                                     {/* Report Modal */}
                                     {reportModal.open && (
                                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
-                                            <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl flex flex-col animate-in fade-in zoom-in duration-200 my-auto">
+                                            <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl flex flex-col anim-zoom-in my-auto">
                                                 <div className="px-6 md:px-10 py-6 md:py-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                                                     <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Missing Delivery</h2>
                                                     <button onClick={() => setReportModal({ open: false, data: [] })} className="p-2 hover:bg-white rounded-full transition-colors shadow-sm">
@@ -467,7 +466,7 @@ const SMSCampaigns = () => {
                 {/* Create Campaign Modal */}
                 {isModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-6 bg-gray-900/60 backdrop-blur-sm">
-                        <div className="bg-white w-full h-[100dvh] md:h-[90vh] max-w-full md:max-w-4xl rounded-none md:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="bg-white w-full h-[100dvh] md:h-[90vh] max-w-full md:max-w-4xl rounded-none md:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden anim-zoom-in">
                             
                             {/* Sticky Modal Header */}
                             <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 md:px-10 md:py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 z-20">
@@ -697,7 +696,7 @@ const SMSCampaigns = () => {
                     </div>
                 )}
             </div>
-        </MainLayout>
+        </>
     );
 };
 

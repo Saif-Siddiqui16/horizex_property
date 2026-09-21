@@ -104,7 +104,7 @@ export const TenantInvite = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-8 space-y-8 animate-in fade-in zoom-in duration-300">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-8 space-y-8 anim-zoom-in">
                 <div className="text-center space-y-2">
                     <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto shadow-lg shadow-indigo-200">
                         <User size={30} />
@@ -114,7 +114,7 @@ export const TenantInvite = () => {
                 </div>
 
                 {error && (
-                    <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl flex items-center gap-3 text-sm animate-in slide-in-from-top-2">
+                    <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl flex items-center gap-3 text-sm anim-slide-up">
                         <AlertCircle size={18} />
                         <span className="font-medium">{error}</span>
                     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TenantLayout } from '../../layouts/TenantLayout';
+
 import { 
   Car, 
   Search, 
@@ -10,10 +10,9 @@ import {
   Info
 } from 'lucide-react';
 import api from '../../api/client';
-import clsx from 'clsx';
-
+import clsx from 'clsx';
 export const TenantVehicles = () => {
-  const [vehicles, setVehicles] = useState([]);
+const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,8 +31,8 @@ export const TenantVehicles = () => {
   }, []);
 
   return (
-    <TenantLayout title="My Vehicles">
-      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <>
+      <div className="space-y-8 anim-slide-up">
         
         {/* INFO BOX */}
         <section className="bg-indigo-50 border border-indigo-100 p-4 sm:p-6 rounded-3xl flex items-start gap-3 sm:gap-4">
@@ -131,6 +130,6 @@ export const TenantVehicles = () => {
           )}
 
       </div>
-    </TenantLayout>
+    </>
   );
 };

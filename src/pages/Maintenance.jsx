@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 
 // Services
 import { maintenanceService } from '../services/maintenanceService';
@@ -48,10 +48,9 @@ import {
 } from '../components/maintenance/MaintenanceWidgets';
 
 import { hasPermission } from '../utils/permissions';
-import { Plus, X } from 'lucide-react';
-
+import { Plus, X } from 'lucide-react';
 export const Maintenance = () => {
-  const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -61,14 +60,14 @@ export const Maintenance = () => {
   // RBAC Permission Guard
   if (!hasPermission('Maintenance', 'view')) {
     return (
-      <MainLayout title="Permission Denied">
+      <>
         <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
           <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
           <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
             You do not have permission to view this section. Please contact your administrator.
           </p>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
@@ -271,7 +270,7 @@ export const Maintenance = () => {
   ];
 
   return (
-    <MainLayout title="Maintenance, Repairs & Asset Management">
+    <>
       <div className="flex flex-col gap-6 w-full pb-24">
         
         {/* Operations KPI Strip */}
@@ -759,6 +758,6 @@ export const Maintenance = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };

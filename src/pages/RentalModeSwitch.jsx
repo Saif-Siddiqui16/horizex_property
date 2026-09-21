@@ -1,12 +1,11 @@
 import React from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { AlertTriangle, CheckCircle, ArrowLeft } from 'lucide-react';
-
+import { AlertTriangle, CheckCircle, ArrowLeft } from 'lucide-react';
 export const RentalModeSwitch = () => {
-    return (
-        <MainLayout title="Switch Rental Mode">
+return (
+        <>
             <div className="max-w-[800px] mx-auto flex flex-col gap-6">
 
                 {/* Current State Info */}
@@ -70,6 +69,6 @@ export const RentalModeSwitch = () => {
                 </div>
 
             </div>
-        </MainLayout>
+        </>
     );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { hasPermission } from '../utils/permissions';
@@ -8,8 +8,7 @@ import { notesHubService } from '../services/notesHubService';
 import { EntityBadge } from '../components/notes/EntityBadge';
 import { CommunicationTimeline } from '../components/notes/CommunicationTimeline';
 import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../mock/notes';
-import {
-  ArrowLeft,
+import {  ArrowLeft,
   Pin,
   Lock,
   MessageSquare,
@@ -20,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export const NoteDetail = () => {
-  const { id } = useParams();
+const { id } = useParams();
   const navigate = useNavigate();
   const [note, setNote] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -87,25 +86,25 @@ export const NoteDetail = () => {
 
   if (!canView) {
     return (
-      <MainLayout title="Access Denied">
+      <>
         <div className="text-center py-20 text-slate-500 font-medium">Access restricted.</div>
-      </MainLayout>
+      </>
     );
   }
 
   if (loading) {
     return (
-      <MainLayout title="Note Detail">
+      <>
         <div className="flex items-center justify-center min-h-[300px]">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
         </div>
-      </MainLayout>
+      </>
     );
   }
 
   if (!note) {
     return (
-      <MainLayout title="Note Not Found">
+      <>
         <div className="text-center py-20">
           <ShieldAlert size={40} className="mx-auto text-slate-300 mb-4" />
           <p className="text-slate-500 font-medium mb-4">Note not found or not visible for selected company.</p>
@@ -113,7 +112,7 @@ export const NoteDetail = () => {
             ← Back to Notes Hub
           </Link>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
@@ -121,7 +120,7 @@ export const NoteDetail = () => {
   const pri = NOTE_PRIORITIES[note.priority] || {};
 
   return (
-    <MainLayout title="Note Detail">
+    <>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -253,7 +252,7 @@ export const NoteDetail = () => {
           </Card>
         </div>
       </div>
-    </MainLayout>
+    </>
   );
 };
 

@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Eye, Trash2, CheckCircle, X, CreditCard, Wallet, Banknote, Loader2, Plus, Edit2, Send, Download, ChevronDown } from 'lucide-react';
 import { Button } from '../components/Button';
 import clsx from 'clsx';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
-
+import { hasPermission } from '../utils/permissions';
 export const Invoices = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -319,7 +318,7 @@ export const Invoices = () => {
     ];
 
     return (
-        <MainLayout title="Rent Invoices">
+        <>
             <div className="p-6 flex flex-col gap-6">
                 
                 {/* GLOBAL FILTERS */}
@@ -627,8 +626,8 @@ export const Invoices = () => {
                 )}
 
                 {viewInvoice && (
-                    <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md animate-in fade-in duration-300 px-4">
-                        <div className="bg-white rounded-3xl w-full max-w-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
+                    <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md anim-fade-in px-4">
+                        <div className="bg-white rounded-3xl w-full max-w-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] anim-zoom-in flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
                             <div className="px-8 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
                                 <div className="flex items-center gap-2">
                                     <div className={clsx("w-2 h-2 rounded-full",
@@ -820,8 +819,8 @@ export const Invoices = () => {
                 )}
 
                 {showForm && (
-                    <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-[110] backdrop-blur-sm animate-in fade-in">
-                        <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl animate-in zoom-in-95 overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-[110] backdrop-blur-sm anim-fade-in">
+                        <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl anim-zoom-inoverflow-hidden flex flex-col max-h-[90vh]">
                             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
@@ -973,7 +972,7 @@ export const Invoices = () => {
                                         
                                         <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
                                             {lineItems.map((item, index) => (
-                                                <div key={index} className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-200 animate-in fade-in duration-200">
+                                                <div key={index} className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-200 anim-fade-in">
                                                     <div className="flex-1 relative">
                                                         <select
                                                             value={item.description}
@@ -1126,8 +1125,8 @@ export const Invoices = () => {
                 )}
 
                 {isPaying && (
-                    <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[120] backdrop-blur-md animate-in fade-in">
-                        <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95">
+                    <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[120] backdrop-blur-md anim-fade-in">
+                        <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden anim-zoom-in">
                             {paymentStatus === 'idle' && (
                                 <div className="p-8">
                                     <div className="flex justify-between items-center mb-6">
@@ -1210,7 +1209,7 @@ export const Invoices = () => {
                             )}
 
                             {paymentStatus === 'success' && (
-                                <div className="p-16 flex flex-col items-center justify-center text-center space-y-8 animate-in zoom-in-50 duration-500">
+                                <div className="p-16 flex flex-col items-center justify-center text-center space-y-8 anim-zoom-in">
                                     <div className="w-24 h-24 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border-4 border-emerald-100 shadow-xl shadow-emerald-50">
                                         <CheckCircle size={48} className="animate-bounce" />
                                     </div>
@@ -1231,8 +1230,8 @@ export const Invoices = () => {
                 )}
 
                 {showPresetsModal && (
-                    <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] backdrop-blur-md animate-in fade-in duration-300 px-4">
-                        <div className="bg-white rounded-3xl w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.2)] animate-in zoom-in-95 duration-300 flex flex-col p-6 max-h-[80vh] overflow-hidden border border-slate-200">
+                    <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] backdrop-blur-md anim-fade-in px-4">
+                        <div className="bg-white rounded-3xl w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.2)] anim-zoom-in flex flex-col p-6 max-h-[80vh] overflow-hidden border border-slate-200">
                             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                                 <h3 className="text-lg font-bold text-slate-800">Manage Service Fee Rates</h3>
                                 <button onClick={() => setShowPresetsModal(false)} className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors text-slate-400 border border-transparent"><X size={20} /></button>
@@ -1280,6 +1279,6 @@ export const Invoices = () => {
                     </div>
                 )}
             </div>
-        </MainLayout>
+        </>
     );
 };

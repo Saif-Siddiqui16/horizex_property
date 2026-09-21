@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Card } from '../components/Card';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
@@ -40,8 +40,7 @@ import {
   ResponsiveContainer,
   LabelList,
 } from 'recharts';
-import { 
-  Building2, 
+import {   Building2, 
   Home, 
   Users, 
   TrendingUp, 
@@ -66,7 +65,7 @@ import {
 
 
 export const Dashboard = () => {
-    const [__forceUpdate, __setForceUpdate] = useState(0);
+const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -294,7 +293,7 @@ export const Dashboard = () => {
 
   if (!canViewAnyDashboard) {
     return (
-      <MainLayout title="Access Denied">
+      <>
         <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-[32px] border border-slate-100 shadow-2xl p-16 text-center">
           <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center text-rose-500 mb-6 shadow-xl shadow-rose-100/50">
             <ShieldAlert size={40} />
@@ -304,12 +303,12 @@ export const Dashboard = () => {
             You do not have the necessary permissions to view the unified Dashboard. Please contact your property administrator.
           </p>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout title="Dashboard Overview">
+    <>
       <div className="flex flex-col gap-4">
 
         {/* TOP BAR / FILTERS */}
@@ -410,7 +409,7 @@ export const Dashboard = () => {
                           </td>
                           <td className="py-5 text-right pr-2">
                             <button
-                              onClick={() => window.location.href = `/leases`}
+                              onClick={() => navigate(`/leases`)}
                               className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline uppercase tracking-widest transition-colors"
                             >
                               Manage
@@ -627,7 +626,7 @@ export const Dashboard = () => {
                           <td className="py-5 text-right pr-2">
                             {item.isNewConstruction ? (
                               <button
-                                onClick={() => window.location.href = `/unit-readiness`}
+                                onClick={() => navigate(`/unit-readiness`)}
                                 className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200"
                               >
                                 View Readiness
@@ -776,6 +775,6 @@ export const Dashboard = () => {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 };

@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../../layouts/MainLayout';
+
 import { Plus, X, Calendar, Settings } from 'lucide-react';
 import shiftService from '../../services/shiftService';
 import employeeService from '../../services/employeeService';
 import permissionService from '../../services/permissionService';
-import ShiftCalendar from '../../components/payroll/ShiftCalendar';
-
+import ShiftCalendar from '../../components/payroll/ShiftCalendar';
 export const ShiftManagement = () => {
-  const [shifts, setShifts] = useState([]);
+const [shifts, setShifts] = useState([]);
   const [employees, setEmployees] = useState([]);
   
   // Modal States
@@ -112,7 +111,7 @@ export const ShiftManagement = () => {
   ];
 
   return (
-    <MainLayout title="Shifts & Schedules">
+    <>
       <div className="flex flex-col gap-6">
         
         {/* Header Bar */}
@@ -379,7 +378,7 @@ export const ShiftManagement = () => {
         </div>
       )}
 
-    </MainLayout>
+    </>
   );
 };
 

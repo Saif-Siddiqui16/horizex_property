@@ -13,7 +13,7 @@ import {
     ChevronUp,
     Copy
 } from 'lucide-react';
-import { MainLayout } from '../../layouts/MainLayout';
+
 import api from '../../api/client';
 import {
   DndContext, 
@@ -30,10 +30,9 @@ import {
   verticalListSortingStrategy,
   useSortable
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-
+import { CSS } from '@dnd-kit/utilities';
 const CreateInspectionTemplate = () => {
-    const navigate = useNavigate();
+const navigate = useNavigate();
     const { id } = useParams();
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -233,7 +232,7 @@ const CreateInspectionTemplate = () => {
     };
 
     return (
-        <MainLayout title="Create Template">
+        <>
             <div className="max-w-4xl mx-auto py-8">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
@@ -386,7 +385,7 @@ const CreateInspectionTemplate = () => {
                     </button>
                 </div>
             </div>
-        </MainLayout>
+        </>
     );
 };
 

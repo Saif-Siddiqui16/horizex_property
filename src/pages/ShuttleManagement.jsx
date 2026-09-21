@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { useTranslation } from 'react-i18next';
 import { Card } from '../components/Card';
 import api from '../api/client';
 import { format } from 'date-fns';
-import { Mail, Plus, Trash2, Edit2, Send, CheckCircle, Clock, Search } from 'lucide-react';
-
+import { Mail, Plus, Trash2, Edit2, Send, CheckCircle, Clock, Search } from 'lucide-react';
 export const ShuttleManagement = () => {
-  const { t } = useTranslation();
+const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('requests'); // Access, Schedule, Requests, Drivers, History
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -410,7 +409,7 @@ export const ShuttleManagement = () => {
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
 
   return (
-    <MainLayout title={t('shuttle.title')}>
+    <>
       <div className="flex flex-col gap-6 relative">
         
         {/* Navigation Tabs */}
@@ -904,7 +903,7 @@ export const ShuttleManagement = () => {
         {/* Add Trip Modal */}
         {showTripModal && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden anim-zoom-in">
               <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
                 <h3 className="font-bold text-slate-800 text-lg">{isEditing ? 'Edit Trip' : 'Add New Trip'}</h3>
                 <button onClick={() => setShowTripModal(false)} className="text-gray-400 hover:text-gray-600 font-bold">×</button>
@@ -1020,7 +1019,7 @@ export const ShuttleManagement = () => {
         {/* Passenger Modal */}
         {showPassengerModal && selectedTrip && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden anim-zoom-in">
               <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
                 <div className="flex flex-col">
                    <h3 className="font-bold text-slate-800 text-lg">Passenger List</h3>
@@ -1065,7 +1064,7 @@ export const ShuttleManagement = () => {
         {/* Ride Request Modal */}
         {showRequestModal && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6 overflow-y-auto">
-            <form id="new-ride-form" className="bg-white w-full max-w-md rounded-none md:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={handleCreateRequest}>
+            <form id="new-ride-form" className="bg-white w-full max-w-md rounded-none md:rounded-2xl shadow-xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={handleCreateRequest}>
               
               {/* Sticky Header */}
               <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50 shrink-0 z-10">
@@ -1126,7 +1125,7 @@ export const ShuttleManagement = () => {
         {/* Driver Modal */}
         {showDriverModal && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-0 md:p-6 overflow-y-auto">
-            <form id="driver-form" className="bg-white w-full max-w-md rounded-none md:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={handleCreateDriver}>
+            <form id="driver-form" className="bg-white w-full max-w-md rounded-none md:rounded-2xl shadow-xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={handleCreateDriver}>
               
               {/* Sticky Header */}
               <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50 shrink-0 z-10">
@@ -1179,7 +1178,7 @@ export const ShuttleManagement = () => {
         {/* Location Manager Modal */}
         {showLocationModal && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden anim-zoom-in">
               <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
                 <div className="flex flex-col">
                   <h3 className="font-bold text-slate-800 text-lg">Manage Shuttle Stops</h3>
@@ -1280,14 +1279,14 @@ export const ShuttleManagement = () => {
           loading={loading}
         />
       )}
-    </MainLayout>
+    </>
   );
 };
 
 const InvitePMSModal = ({ onClose, tenants, templates, selectedTenants, setSelectedTenants, selectedTemplate, setSelectedTemplate, onSend, loading }) => {
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden anim-zoom-in">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
           <div>
             <h3 className="font-bold text-slate-800 text-lg">Invite Property Tenants</h3>
@@ -1366,7 +1365,7 @@ const DuplicateModal = ({ onClose, onDuplicate, targetDate }) => {
   
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden anim-zoom-in">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
           <h3 className="font-bold text-slate-800">Duplicate Schedule</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold">×</button>
@@ -1416,7 +1415,7 @@ const BulkDisableModal = ({ onClose, users, selectedIds, setSelectedIds, onConfi
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden anim-zoom-in">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
           <div>
             <h3 className="font-bold text-slate-800">Bulk Disable App Access</h3>

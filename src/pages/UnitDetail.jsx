@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MainLayout } from '../layouts/MainLayout';
+
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { ArrowLeft, Edit2, Loader2, FileText, Download, AlertCircle, ArrowRight } from 'lucide-react';
 import api from '../api/client';
-import { EntityNotesPanel } from '../components/notes/EntityNotesPanel';
-
+import { EntityNotesPanel } from '../components/notes/EntityNotesPanel';
 export const UnitDetail = () => {
-    const { id } = useParams();
+const { id } = useParams();
     const navigate = useNavigate();
     const [unit, setUnit] = useState(null);
     const [documents, setDocuments] = useState([]);
@@ -59,18 +58,18 @@ export const UnitDetail = () => {
 
     if (loading) {
         return (
-            <MainLayout title="Unit Details">
+            <>
                 <div className="flex items-center justify-center py-20">
                     <Loader2 size={32} className="animate-spin text-indigo-500" />
                     <span className="ml-3 text-slate-500">Loading unit details...</span>
                 </div>
-            </MainLayout>
+            </>
         );
     }
 
     if (error || !unit) {
         return (
-            <MainLayout title="Unit Details">
+            <>
                 <div className="flex flex-col items-center justify-center py-20">
                     <p className="text-red-500 mb-4">{error || 'Unit not found'}</p>
                     <Button variant="secondary" onClick={() => navigate('/units')}>
@@ -78,12 +77,12 @@ export const UnitDetail = () => {
                         Back to Units
                     </Button>
                 </div>
-            </MainLayout>
+            </>
         );
     }
 
     return (
-        <MainLayout title={`Unit ${unit.unitNumber}`}>
+        <>
             <div className="flex flex-col gap-6">
                 {/* Breadcrumbs */}
                 <nav className="text-xs text-slate-500 font-medium flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200/60 w-fit">
@@ -487,6 +486,6 @@ export const UnitDetail = () => {
                 </section>
 
             </div>
-        </MainLayout>
+        </>
     );
 };
