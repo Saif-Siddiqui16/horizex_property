@@ -99,7 +99,7 @@ export const ShiftCalendar = ({ shifts = [], employees = [], onEdit, onRotate })
         </div>
         <button 
           onClick={() => onRotate && onRotate()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transition-all border-none"
+          className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg transition-all border-none cursor-pointer"
         >
           Configure Rotation
         </button>
