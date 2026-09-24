@@ -4,7 +4,7 @@ import { Card } from '../components/Card';
 
 import { useState, useEffect } from 'react';
 import api from '../api/client';
-import { Calendar, Home, Building2 } from 'lucide-react';
+import { Calendar, Home, Building2, AlertCircle, Car, CheckCircle2 } from 'lucide-react';
 
 
 export const VacancyDashboard = () => {
@@ -103,6 +103,115 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 <h2 className="text-3xl font-black mt-2 text-emerald-600 leading-tight">{stats.occupied}</h2>
                 <p className="mt-2 text-slate-500 text-xs">Generating active revenue</p>
               </Card>
+            </section>
+
+            {/* CURRENT VACANCIES TABLE (FRONTEND MOCK) */}
+            <section className="mt-8">
+              <div className="saas-table-container p-5 md:p-8">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="text-xl font-black text-gray-800 tracking-tight flex items-center gap-2">
+                      <Home size={20} className="text-rose-500" /> Currently Vacant Units
+                    </h3>
+                    <p className="text-sm text-gray-400 font-medium mt-1">Detailed status of units that are empty right now</p>
+                  </div>
+                  <div className="px-4 py-2 bg-rose-50 rounded-full border border-rose-100">
+                    <span className="text-xs font-bold text-rose-600 uppercase tracking-widest">
+                      3 Units
+                    </span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="saas-table">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest pl-2">Unit</th>
+                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Rental Status</th>
+                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Listing Status</th>
+                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Parking</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                        {/* Fake Row 1 */}
+                        <tr className="group transition-colors hover:bg-gray-50/50">
+                          <td className="py-4 pl-2">
+                            <div className="flex flex-col">
+                                <span className="text-sm font-bold text-gray-800">Apt 101</span>
+                                <span className="text-xs text-gray-500">Main Building</span>
+                            </div>
+                          </td>
+                          <td className="py-4">
+                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 inline-flex items-center gap-1.5">
+                                <CheckCircle2 size={12} /> Ready to rent out
+                             </span>
+                          </td>
+                          <td className="py-4">
+                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
+                                Already listed
+                             </span>
+                          </td>
+                          <td className="py-4 text-center">
+                             <div className="flex items-center justify-center gap-1.5 text-slate-700">
+                                <Car size={16} className="text-slate-400" /> Yes
+                             </div>
+                          </td>
+                        </tr>
+                        {/* Fake Row 2 */}
+                        <tr className="group transition-colors hover:bg-gray-50/50">
+                          <td className="py-4 pl-2">
+                            <div className="flex flex-col">
+                                <span className="text-sm font-bold text-gray-800">Apt 205</span>
+                                <span className="text-xs text-gray-500">North Tower</span>
+                            </div>
+                          </td>
+                          <td className="py-4">
+                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-50 text-orange-600 border border-orange-100">
+                                Under renovations
+                             </span>
+                          </td>
+                          <td className="py-4">
+                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                                Ready to list
+                             </span>
+                          </td>
+                          <td className="py-4 text-center">
+                             <span className="text-sm font-medium text-gray-400">No</span>
+                          </td>
+                        </tr>
+                        {/* Fake Row 3 */}
+                        <tr className="group transition-colors hover:bg-gray-50/50">
+                          <td className="py-4 pl-2">
+                            <div className="flex flex-col">
+                                <span className="text-sm font-bold text-gray-800">Apt 302</span>
+                                <span className="text-xs text-gray-500">West Wing</span>
+                            </div>
+                          </td>
+                          <td className="py-4">
+                             <div className="flex flex-col items-start gap-1.5">
+                                 <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                                    Other
+                                 </span>
+                                 <span className="text-[10px] text-gray-500 italic flex items-center gap-1">
+                                    <AlertCircle size={10} className="text-amber-500" /> Waiting for deep clean
+                                 </span>
+                             </div>
+                          </td>
+                          <td className="py-4">
+                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                                Unlisted
+                             </span>
+                          </td>
+                          <td className="py-4 text-center">
+                             <div className="flex items-center justify-center gap-1.5 text-slate-700">
+                                <Car size={16} className="text-slate-400" /> Yes
+                             </div>
+                          </td>
+                        </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </section>
 
             {/* UPCOMING VACANCIES TABLE */}

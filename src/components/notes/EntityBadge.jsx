@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 
-export const EntityBadge = ({ entity, compact = false }) => {
+export const EntityBadge = ({ entity, compact = false, disableLink = false }) => {
   if (!entity) return null;
 
   const content = (
@@ -19,7 +19,7 @@ export const EntityBadge = ({ entity, compact = false }) => {
     </span>
   );
 
-  if (entity.route && entity.exists) {
+  if (entity.route && entity.exists && !disableLink) {
     return (
       <Link to={entity.route} className="no-underline hover:opacity-80 transition-opacity">
         {content}

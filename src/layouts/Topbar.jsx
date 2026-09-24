@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, LogOut, MessageSquare, Bell } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Menu, LogOut, MessageSquare, Bell, ArrowLeft } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../api/client';
 import clsx from 'clsx';
@@ -8,6 +8,7 @@ import { CompanySelector } from '../components/CompanySelector';
 
 export const Topbar = ({ onMenuClick }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { i18n } = useTranslation();
     const [title, setTitle] = useState('Overview');
     const [unreadCount, setUnreadCount] = useState(0);
@@ -87,6 +88,15 @@ export const Topbar = ({ onMenuClick }) => {
                 >
                     <Menu size={20} />
                 </button>
+                {location.pathname !== '/dashboard' && (
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="text-zinc-500 p-1.5 sm:p-2 hover:bg-zinc-100 hover:text-zinc-900 rounded-[var(--radius-md)] transition-colors shrink-0"
+                        title="Go Back"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                )}
                 <h1 className="text-base sm:text-lg font-bold text-zinc-900 tracking-tight truncate">{title}</h1>
             </div>
 

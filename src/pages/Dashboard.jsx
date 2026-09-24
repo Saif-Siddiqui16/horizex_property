@@ -4,7 +4,7 @@ import { Card } from '../components/Card';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
-import { UpcomingRenewalsWidget } from '../components/renewals/UpcomingRenewalsWidget';
+
 import { RecentRenewalsWidget } from '../components/renewals/RecentRenewalsWidget';
 import { mockRenewalService, collectionAnalyticsService, invoiceService, legalAnalyticsService, taskService } from '../mock/mockServices';
 import { notesHubService } from '../services/notesHubService';
@@ -17,7 +17,7 @@ import employeeService from '../services/employeeService';
 import payrollSettingsService from '../services/payrollSettingsService';
 import { PendingLeaveWidget } from '../components/payroll/PendingLeaveWidget';
 import { UpcomingPayrollWidget } from '../components/payroll/UpcomingPayrollWidget';
-import { RecentPaymentsWidget } from '../components/collection/RecentPaymentsWidget';
+// import { RecentPaymentsWidget } from '../components/collection/RecentPaymentsWidget';
 import { UpcomingHearingsWidget } from '../components/tal/UpcomingHearingsWidget';
 import { DashboardTasksWidget } from '../components/tal/DashboardTasksWidget';
 import { UrgentCasesWidget } from '../components/tal/UrgentCasesWidget';
@@ -455,17 +455,18 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             </section>
 
             {/* LEASE RENEWALS WIDGETS */}
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
-              <UpcomingRenewalsWidget renewals={renewals} />
-              <RecentRenewalsWidget renewals={renewals} />
+            <section className="hidden">
+
+              {/* <RecentRenewalsWidget renewals={renewals} /> moved */}
             </section>
 
             {/* RENT COLLECTION WIDGETS */}
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
-              <RecentPaymentsWidget
+              <RecentRenewalsWidget renewals={renewals} />
+              {/* <RecentPaymentsWidget
                 payments={dashboardInvoices.flatMap(inv => inv.paymentsList || [])}
                 invoices={dashboardInvoices}
-              />
+              /> */}
               
               {/* Quick Actions Card */}
               <div className="p-6 bg-slate-900 text-white rounded-[22px] shadow-[0_10px_30px_rgba(15,23,42,0.15)] hover:shadow-[0_15px_40px_rgba(15,23,42,0.25)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">

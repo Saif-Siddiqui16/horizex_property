@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Globe, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Menu, Globe, LogOut, ArrowLeft } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/client';
 
 export const TenantTopbar = ({ onMenuClick }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [title, setTitle] = useState('Dashboard');
     const [tenantName, setTenantName] = useState('Tenant');
     const [buildingInfo, setBuildingInfo] = useState('');
@@ -77,6 +78,15 @@ export const TenantTopbar = ({ onMenuClick }) => {
                 >
                     <Menu size={24} />
                 </button>
+                {location.pathname !== '/tenant/dashboard' && (
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="text-slate-600 p-1.5 sm:p-2 hover:bg-slate-50 rounded-xl transition shrink-0"
+                        title="Go Back"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                )}
                 <h1 className="text-sm sm:text-base md:text-lg font-black text-slate-800 tracking-tight truncate max-w-[130px] sm:max-w-[220px] md:max-w-none">{title}</h1>
             </div>
 

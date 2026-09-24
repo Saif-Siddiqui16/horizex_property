@@ -22,7 +22,7 @@ export const RecentNotesWidget = ({ notes = [], title = 'Recent Notes' }) => (
               {note.isPinned && <Pin size={11} className="text-orange-500 shrink-0" />}
             </div>
             <div className="mt-2">
-              <EntityBadge entity={note.entity} compact />
+              <EntityBadge entity={note.entity} compact disableLink />
             </div>
             <p className="text-[9px] text-slate-400 font-bold mt-2 uppercase tracking-wider">
               {note.createdBy} · {new Date(note.createdAt).toLocaleDateString()}
