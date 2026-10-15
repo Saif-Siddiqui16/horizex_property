@@ -571,15 +571,18 @@ export const mockPropertyService = {
 };
 
 export const mockTenantService = {
-  getAll: (search = '') => withDelay(() => {
+  getAll: (search = '', propertyId = '') => withDelay(() => {
     let list = getStore('mock_tenants');
     const allowedPropertyIds = getAllowedPropertyIds();
     list = list.filter(t => allowedPropertyIds.includes(t.propertyId));
+    if (propertyId && propertyId !== 'all') {
+      list = list.filter(t => t.propertyId === parseInt(propertyId));
+    }
     if (search) {
       list = list.filter(t => 
-        t.firstName.toLowerCase().includes(search.toLowerCase()) || 
-        t.lastName.toLowerCase().includes(search.toLowerCase()) ||
-        t.email.toLowerCase().includes(search.toLowerCase())
+        (t.firstName || '').toLowerCase().includes(search.toLowerCase()) || 
+        (t.lastName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (t.email || '').toLowerCase().includes(search.toLowerCase())
       );
     }
     const properties = getStore('mock_properties');
@@ -588,7 +591,8 @@ export const mockTenantService = {
       return {
         ...t,
         companyName: prop ? prop.companyName : '-',
-        name: t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Unknown Tenant'
+        name: t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Unknown Tenant',
+        unit: t.unitNumber || t.unit || 'Apt 101'
       };
     });
   }),
@@ -1894,39 +1898,105 @@ export const mockTicketsService = {
     let list = getStore('mock_maintenance_tickets');
     const allowedPropertyIds = getAllowedPropertyIds();
     const properties = getStore('mock_properties');
+    const tenants = getStore('mock_tenants');
     const allowedPropertyNames = properties.filter(p => allowedPropertyIds.includes(p.id)).map(p => p.name);
     list = list.filter(t => allowedPropertyNames.includes(t.propertyName || t.building));
-    return list.map(t => ({
-      ...t,
-      dbId: t.id,
-      id: `TKT-${t.id}`,
-      subject: t.title || t.name || 'Maintenance Request',
-      tenant: t.tenantName || 'Alice Cooper',
-      unit: t.unitNumber || 'Apt 101',
-      desc: t.description || t.notes || '',
-      status: t.status || 'Open',
-      priority: t.priority || 'Medium',
-      attachments: t.attachments || []
-    }));
+    return list.map(t => {
+      // Find matching tenant for enrichment if email or rent not set
+      const matchingTenant = tenants.find(ten => 
+        (t.tenantId && ten.id === parseInt(t.tenantId)) ||
+        (t.tenantName && (ten.name === t.tenantName || `${ten.firstName} ${ten.lastName}`.trim().toLowerCase() === t.tenantName.toLowerCase()))
+      );
+
+      const title = t.subject || t.title || t.name || 'Maintenance Request';
+      const building = t.propertyName || t.building || matchingTenant?.propertyName || 'Sunset Towers';
+      const unit = t.unitNumber || t.unit || matchingTenant?.unitNumber || matchingTenant?.unit || 'Apt 101';
+      const tenant = t.tenantName || t.tenant || (matchingTenant ? (matchingTenant.name || `${matchingTenant.firstName} ${matchingTenant.lastName}`) : 'Alice Cooper');
+      const rent = t.rent || (matchingTenant?.rent ? `$${matchingTenant.rent}` : '');
+      const email = t.email || matchingTenant?.email || '';
+      const requestDate = t.requestDate || (t.createdAt ? t.createdAt.split('T')[0] : '');
+
+      return {
+        ...t,
+        dbId: t.id,
+        id: t.ticketNumber || `TKT-${t.id}`,
+        subject: title,
+        title: title,
+        tenant: tenant,
+        tenantName: tenant,
+        unit: unit,
+        unitNumber: unit,
+        building: building,
+        propertyName: building,
+        propertyId: t.propertyId || matchingTenant?.propertyId || null,
+        tenantId: t.tenantId || matchingTenant?.id || null,
+        desc: t.description || t.notes || '',
+        status: t.status || 'Open',
+        priority: t.priority || 'Medium',
+        rent: rent,
+        email: email,
+        requestDate: requestDate,
+        completionDate: t.completionDate || null,
+        repairmanVisitDate: t.repairmanVisitDate || null,
+        attachments: t.attachments || []
+      };
+    });
   }),
   create: (data) => withDelay(() => {
     const list = getStore('mock_maintenance_tickets');
     const id = list.length ? Math.max(...list.map(t => t.id)) + 1 : 301;
+    const properties = getStore('mock_properties');
+    const tenants = getStore('mock_tenants');
+
+    let buildingName = data.building || data.propertyName;
+    if (!buildingName && data.propertyId) {
+      const prop = properties.find(p => p.id === parseInt(data.propertyId));
+      if (prop) buildingName = prop.name;
+    }
+
+    let tenantName = data.tenant || data.tenantName;
+    let unitNum = data.unit || data.unitNumber || data.aptNumber;
+    let email = data.email;
+    let rent = data.rent;
+
+    if (data.tenantId) {
+      const ten = tenants.find(t => t.id === parseInt(data.tenantId));
+      if (ten) {
+        if (!tenantName) tenantName = ten.name || `${ten.firstName || ''} ${ten.lastName || ''}`.trim();
+        if (!unitNum) unitNum = ten.unitNumber || ten.unit;
+        if (!email) email = ten.email;
+        if (!rent) rent = ten.rent ? `$${ten.rent}` : '';
+      }
+    }
+
+    const title = data.subject || data.title || data.name || 'Maintenance Request';
+
     const newTkt = {
       id,
       dbId: id,
       ticketNumber: `TKT-${id}`,
-      tenantName: data.tenant || data.tenantName || 'Alice Cooper',
-      propertyName: data.building || data.propertyName || 'Sunset Towers',
-      unitNumber: data.unit || data.unitNumber || 'Apt 101',
-      title: data.subject || data.name || 'Maintenance Request',
+      tenantName: tenantName || 'Tenant User',
+      tenant: tenantName || 'Tenant User',
+      propertyName: buildingName || 'Sunset Towers',
+      building: buildingName || 'Sunset Towers',
+      propertyId: data.propertyId ? parseInt(data.propertyId) : null,
+      tenantId: data.tenantId ? parseInt(data.tenantId) : null,
+      unitNumber: unitNum || 'Apt 101',
+      unit: unitNum || 'Apt 101',
+      title: title,
+      subject: title,
       description: data.desc || data.description || '',
       category: data.category || 'General',
       priority: data.priority || 'Medium',
       status: data.status || 'Open',
       assignedTo: data.vendor || 'Mike Johnson',
+      rent: rent || '',
+      email: email || '',
+      requestDate: data.requestDate || new Date().toISOString().split('T')[0],
+      completionDate: data.completionDate || null,
+      repairmanVisitDate: data.repairmanVisitDate || null,
       notes: [],
-      createdAt: new Date().toISOString(),
+      createdAt: data.requestDate ? `${data.requestDate}T10:00:00Z` : new Date().toISOString(),
       attachments: data.attachments || []
     };
     list.push(newTkt);
@@ -1941,11 +2011,20 @@ export const mockTicketsService = {
         updated = {
           ...t,
           ...data,
-          tenantName: data.tenant || t.tenantName,
-          propertyName: data.building || t.propertyName,
-          unitNumber: data.unit || t.unitNumber,
-          title: data.subject || t.title,
-          description: data.desc || t.description
+          title: data.subject || data.title || t.title,
+          subject: data.subject || data.title || t.subject || t.title,
+          tenantName: data.tenant || data.tenantName || t.tenantName,
+          tenant: data.tenant || data.tenantName || t.tenant || t.tenantName,
+          propertyName: data.building || data.propertyName || t.propertyName,
+          building: data.building || data.propertyName || t.building || t.propertyName,
+          unitNumber: data.unit || data.aptNumber || data.unitNumber || t.unitNumber,
+          unit: data.unit || data.aptNumber || data.unitNumber || t.unit,
+          description: data.desc || data.description || t.description,
+          rent: data.rent !== undefined ? data.rent : t.rent,
+          email: data.email !== undefined ? data.email : t.email,
+          requestDate: data.requestDate !== undefined ? data.requestDate : t.requestDate,
+          completionDate: data.completionDate !== undefined ? data.completionDate : t.completionDate,
+          repairmanVisitDate: data.repairmanVisitDate !== undefined ? data.repairmanVisitDate : t.repairmanVisitDate
         };
         return updated;
       }

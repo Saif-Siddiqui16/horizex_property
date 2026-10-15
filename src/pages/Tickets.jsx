@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-
 import { Button } from '../components/Button';
-import { Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, Building, Home, ChevronDown, Trash2, Edit2, Play, Camera, Printer } from 'lucide-react';
+import { 
+    Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, 
+    Building, ChevronDown, Trash2, Edit2, Play, Camera, Printer, 
+    Calendar, Mail, Send, DollarSign, AtSign 
+} from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
+import { hasPermission } from '../utils/permissions';
+
 const priorityColors = {
     High: 'bg-red-50 text-red-700 border-red-100',
     Medium: 'bg-amber-50 text-amber-700 border-amber-100',
@@ -18,7 +22,7 @@ const statusIcons = {
 };
 
 export const Tickets = () => {
-const [__forceUpdate, __setForceUpdate] = useState(0);
+    const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -36,8 +40,35 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     const [editingTicket, setEditingTicket] = useState(null);
     const [viewingTenantDetails, setViewingTenantDetails] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');
-    const [attachments, setAttachments] = useState({});
-    
+
+    // Form State for New/Edit Ticket
+    const [selectedTenantId, setSelectedTenantId] = useState('');
+    const [formApt, setFormApt] = useState('');
+    const [formRent, setFormRent] = useState('');
+    const [formEmail, setFormEmail] = useState('');
+    const [formRequestDate, setFormRequestDate] = useState(new Date().toISOString().split('T')[0]);
+    const [formCompletionDate, setFormCompletionDate] = useState('');
+    const [formSubject, setFormSubject] = useState('');
+    const [formDescription, setFormDescription] = useState('');
+    const [formPriority, setFormPriority] = useState('Low');
+
+    // Quick completion date in Ticket Details Modal
+    const [quickCompletionDate, setQuickCompletionDate] = useState('');
+
+    // Tenant email notification modal
+    const [showNotifyModal, setShowNotifyModal] = useState(false);
+    const [notifyData, setNotifyData] = useState({
+        ticket: null,
+        email: '',
+        tenantName: '',
+        unit: '',
+        subject: '',
+        visitDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        repairmanName: 'Mike Johnson (Contractor)',
+        message: ''
+    });
+    const [sendingNotice, setSendingNotice] = useState(false);
+
     // Print State
     const [selectedForPrint, setSelectedForPrint] = useState(new Set());
 
@@ -53,12 +84,47 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     }, []);
 
     useEffect(() => {
-        if (selectedBuildingId) {
+        if (selectedBuildingId && selectedBuildingId !== 'all') {
             fetchTenants(selectedBuildingId);
+        } else if (selectedBuildingId === 'all') {
+            fetchAllTenants();
         } else {
             setTenants([]);
         }
     }, [selectedBuildingId]);
+
+    // Populate form fields when editing or opening modal
+    useEffect(() => {
+        if (editingTicket) {
+            setSelectedBuildingId(editingTicket.propertyId ? editingTicket.propertyId.toString() : '');
+            setSelectedTenantId(editingTicket.tenantId ? editingTicket.tenantId.toString() : '');
+            setFormApt(editingTicket.unit || editingTicket.unitNumber || '');
+            setFormRent(editingTicket.rent || '');
+            setFormEmail(editingTicket.email || '');
+            setFormRequestDate(editingTicket.requestDate || (editingTicket.createdAt ? editingTicket.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]));
+            setFormCompletionDate(editingTicket.completionDate || '');
+            setFormSubject(editingTicket.subject || editingTicket.title || '');
+            setFormDescription(editingTicket.desc || editingTicket.description || '');
+            setFormPriority(editingTicket.priority || 'Low');
+        } else if (showAddModal) {
+            setSelectedTenantId('');
+            setFormApt('');
+            setFormRent('');
+            setFormEmail('');
+            setFormRequestDate(new Date().toISOString().split('T')[0]);
+            setFormCompletionDate('');
+            setFormSubject('');
+            setFormDescription('');
+            setFormPriority('Low');
+        }
+    }, [editingTicket, showAddModal]);
+
+    // Sync quick completion date when viewing a ticket
+    useEffect(() => {
+        if (selectedTicket) {
+            setQuickCompletionDate(selectedTicket.completionDate || '');
+        }
+    }, [selectedTicket]);
 
     const fetchTickets = async () => {
         try {
@@ -85,10 +151,47 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         finally { setLoadingTenants(false); }
     };
 
-    const filteredTickets = tickets.filter(t =>
+    const fetchAllTenants = async () => {
+        setLoadingTenants(true);
+        try {
+            const res = await api.get(`/api/admin/tenants?limit=1000`);
+            setTenants(res.data?.data || res.data || []);
+        } catch (e) { console.error(e); }
+        finally { setLoadingTenants(false); }
+    };
+
+    // Auto-populate Apt Number, Rent Amount, Email Address, and Request Date when tenant is selected
+    const handleTenantChange = (tenantIdVal) => {
+        setSelectedTenantId(tenantIdVal);
+        const ten = tenants.find(t => t.id === parseInt(tenantIdVal));
+        if (ten) {
+            setFormApt(ten.unitNumber || ten.unit || '');
+            setFormRent(ten.rent ? (ten.rent.toString().startsWith('$') ? ten.rent : `$${ten.rent}`) : '');
+            setFormEmail(ten.email || '');
+            setFormRequestDate(new Date().toISOString().split('T')[0]);
+        } else {
+            setFormApt('');
+            setFormRent('');
+            setFormEmail('');
+        }
+    };
+
+    // Automatically sort all tickets by building alphabetically
+    const sortedTickets = [...tickets].sort((a, b) => {
+        const buildingA = (a.building || a.propertyName || '').toLowerCase();
+        const buildingB = (b.building || b.propertyName || '').toLowerCase();
+        if (buildingA !== buildingB) {
+            return buildingA.localeCompare(buildingB);
+        }
+        return (b.dbId || 0) - (a.dbId || 0);
+    });
+
+    const filteredTickets = sortedTickets.filter(t =>
         (t.tenant || '').toLowerCase().includes(search.toLowerCase()) ||
         (t.id || '').toLowerCase().includes(search.toLowerCase()) ||
-        (t.subject || '').toLowerCase().includes(search.toLowerCase())
+        (t.subject || '').toLowerCase().includes(search.toLowerCase()) ||
+        (t.building || t.propertyName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (t.unit || '').toLowerCase().includes(search.toLowerCase())
     );
 
     const updateStatus = async (id, newStatus) => {
@@ -118,42 +221,63 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
     const handleSaveTicket = async (e) => {
         e.preventDefault();
-        const form = e.target;
-        const tenantId = form.tenantId.value;
-        const tenantObj = tenants.find(t => t.id === parseInt(tenantId));
+        const tenantObj = tenants.find(t => t.id === parseInt(selectedTenantId));
+        const buildingObj = buildings.find(b => b.id.toString() === selectedBuildingId);
+
+        const buildingName = buildingObj ? buildingObj.name : (editingTicket?.building || 'General Building');
+        const tenantName = tenantObj ? (tenantObj.name || `${tenantObj.firstName} ${tenantObj.lastName}`) : (editingTicket?.tenant || 'General Tenant');
+        const unitVal = formApt || tenantObj?.unitNumber || tenantObj?.unit || editingTicket?.unit || 'N/A';
 
         try {
             const formData = new FormData();
             formData.append('propertyId', selectedBuildingId);
-            formData.append('unitId', tenantObj?.unitId || editingTicket?.unitId);
-            formData.append('tenantId', tenantId);
-            formData.append('subject', form.subject.value);
-            formData.append('description', form.description.value);
-            formData.append('priority', form.priority.value);
+            formData.append('building', buildingName);
+            formData.append('propertyName', buildingName);
+            formData.append('tenantId', selectedTenantId);
+            formData.append('tenant', tenantName);
+            formData.append('tenantName', tenantName);
+            formData.append('unitId', tenantObj?.unitId || editingTicket?.unitId || '');
+            formData.append('unit', unitVal);
+            formData.append('unitNumber', unitVal);
+            formData.append('aptNumber', unitVal);
+            formData.append('rent', formRent || tenantObj?.rent || '');
+            formData.append('email', formEmail || tenantObj?.email || '');
+            formData.append('requestDate', formRequestDate || new Date().toISOString().split('T')[0]);
+            formData.append('completionDate', formCompletionDate || '');
+            formData.append('subject', formSubject);
+            formData.append('title', formSubject);
+            formData.append('description', formDescription);
+            formData.append('priority', formPriority);
 
             if (editingTicket) {
-                // For editing, we use a regular JSON put if no new files, but controller might expect form-data
-                // Simpler to stay consistent with form-data if we want file support, but for text only JSON is easier.
-                // However, the current createTicket uses multer.
-
                 await api.put(`/api/admin/tickets/${editingTicket.dbId}`, {
-                    tenantId: parseInt(tenantId),
-                    propertyId: parseInt(selectedBuildingId),
-                    unitId: tenantObj?.unitId,
-                    subject: form.subject.value,
-                    description: form.description.value,
-                    priority: form.priority.value,
+                    propertyId: selectedBuildingId ? parseInt(selectedBuildingId) : null,
+                    building: buildingName,
+                    propertyName: buildingName,
+                    tenantId: selectedTenantId ? parseInt(selectedTenantId) : null,
+                    tenant: tenantName,
+                    tenantName: tenantName,
+                    unitId: tenantObj?.unitId || editingTicket.unitId,
+                    unit: unitVal,
+                    unitNumber: unitVal,
+                    rent: formRent,
+                    email: formEmail,
+                    requestDate: formRequestDate,
+                    completionDate: formCompletionDate || null,
+                    subject: formSubject,
+                    title: formSubject,
+                    description: formDescription,
+                    priority: formPriority,
                 });
             } else {
-                // Handle Attachments only for new tickets for now (simple)
-                if (form.images.files.length > 0) {
-                    Array.from(form.images.files).forEach(file => {
+                if (e.target.images && e.target.images.files.length > 0) {
+                    Array.from(e.target.images.files).forEach(file => {
                         formData.append('images', file);
                     });
                 }
 
-                if (form.video.files.length > 0) {
-                    formData.append('video', form.video.files[0]);
+                if (e.target.video && e.target.video.files.length > 0) {
+                    formData.append('video', e.target.video.files[0]);
                 }
 
                 await api.post('/api/admin/tickets', formData, {
@@ -170,6 +294,59 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         } catch (e) {
             console.error('Error saving ticket:', e);
             alert('Failed to save ticket');
+        }
+    };
+
+    // Quick assign/update date work will be completed
+    const handleUpdateCompletionDate = async () => {
+        if (!selectedTicket) return;
+        try {
+            await api.put(`/api/admin/tickets/${selectedTicket.dbId}`, {
+                completionDate: quickCompletionDate || null
+            });
+            const updated = { ...selectedTicket, completionDate: quickCompletionDate || null };
+            setSelectedTicket(updated);
+            setTickets(tickets.map(t => t.id === selectedTicket.id ? updated : t));
+            setSuccessMessage('Work Completion Date Updated Successfully!');
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (e) {
+            alert('Failed to update completion date');
+        }
+    };
+
+    // Notify tenant by email with scheduled repairman visit date
+    const handleSendRepairmanNotice = async (e) => {
+        e.preventDefault();
+        if (!notifyData.ticket) return;
+        setSendingNotice(true);
+        try {
+            const emailBody = notifyData.message || `Hello ${notifyData.tenantName || 'Tenant'},\n\nA repairman (${notifyData.repairmanName || 'Technician'}) has been scheduled to visit your unit (${notifyData.unit || ''}) on ${notifyData.visitDate} regarding your maintenance ticket #${notifyData.ticket.id} ("${notifyData.subject}").\n\nPlease ensure someone is available or unit access is granted.\n\nThank you,\nProperty Management Team`;
+
+            await api.post('/api/admin/communication/send-email', {
+                tenantId: notifyData.ticket.tenantId || 101,
+                email: notifyData.email,
+                subject: `Repairman Visit Scheduled for Ticket #${notifyData.ticket.id}`,
+                body: emailBody
+            });
+
+            await api.put(`/api/admin/tickets/${notifyData.ticket.dbId}`, {
+                repairmanVisitDate: notifyData.visitDate
+            });
+
+            const updated = { ...notifyData.ticket, repairmanVisitDate: notifyData.visitDate };
+            if (selectedTicket && selectedTicket.id === notifyData.ticket.id) {
+                setSelectedTicket(updated);
+            }
+            setTickets(tickets.map(t => t.id === notifyData.ticket.id ? updated : t));
+
+            setShowNotifyModal(false);
+            setSuccessMessage(`Email notice sent to ${notifyData.email} for visit on ${notifyData.visitDate}!`);
+            setTimeout(() => setSuccessMessage(''), 3500);
+        } catch (e) {
+            console.error('Error sending email notification:', e);
+            alert('Failed to send email notification');
+        } finally {
+            setSendingNotice(false);
         }
     };
 
@@ -214,8 +391,6 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         .detail { font-size: 12px; margin-bottom: 4px; color: #334155; }
                         .desc-box { background: #f8fafc; padding: 10px; border-radius: 8px; font-size: 12px; margin-top: 8px; white-space: pre-wrap; border: 1px solid #f1f5f9; }
                         .date { font-size: 10px; color: #64748b; margin-top: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-                        .images-container { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-                        .images-container img { max-width: 100%; max-height: 120px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover; }
                         @media print {
                             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                         }
@@ -223,7 +398,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 </head>
                 <body>
                     <div class="print-container">
-                        <h1>Maintenance Tickets</h1>
+                        <h1>Maintenance Tickets (Sorted by Building)</h1>
                         ${tickets.filter(t => selectedForPrint.has(t.id)).map(ticket => `
                             <div class="page">
                                 <div class="ticket-card">
@@ -232,18 +407,16 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         <span class="badge priority-${ticket.priority}">${ticket.priority}</span>
                                     </div>
                                     <div class="subject">${ticket.subject}</div>
+                                    <div class="detail"><strong>Building:</strong> ${ticket.building || ticket.propertyName}</div>
                                     <div class="detail"><strong>Tenant:</strong> ${ticket.tenant}</div>
                                     <div class="detail"><strong>Unit:</strong> ${ticket.unit}</div>
+                                    <div class="detail"><strong>Rent:</strong> ${ticket.rent || 'N/A'}</div>
+                                    <div class="detail"><strong>Email:</strong> ${ticket.email || 'N/A'}</div>
                                     <div class="detail"><strong>Status:</strong> ${ticket.status}</div>
+                                    ${ticket.completionDate ? `<div class="detail"><strong>Completion Date:</strong> ${ticket.completionDate}</div>` : ''}
+                                    ${ticket.repairmanVisitDate ? `<div class="detail"><strong>Repairman Visit:</strong> ${ticket.repairmanVisitDate}</div>` : ''}
                                     <div class="desc-box"><strong>Description:</strong><br/>${ticket.desc || 'No description'}</div>
-                                    ${ticket.attachments && ticket.attachments.length > 0 ? `
-                                        <div class="images-container">
-                                            ${ticket.attachments.filter(a => a.type === 'image' || (a.url && a.url.match(/\\.(jpg|jpeg|png|webp|gif)/i))).map(att => `
-                                                <img src="${att.url}" alt="Attachment" />
-                                            `).join('')}
-                                        </div>
-                                    ` : ''}
-                                    <div class="date"><strong>Reported:</strong> ${ticket.createdAt}</div>
+                                    <div class="date"><strong>Requested:</strong> ${ticket.requestDate || ticket.createdAt}</div>
                                 </div>
                             </div>
                         `).join('')}
@@ -280,7 +453,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         <Search size={18} className="text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Search by ID, tenant, or subject"
+                            placeholder="Search by building, ID, tenant, or subject"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="bg-transparent border-none outline-none text-slate-700 placeholder:text-slate-400 w-full text-sm font-medium"
@@ -309,10 +482,15 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
                 <section className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] overflow-hidden w-full">
                     <div className="overflow-x-auto w-full">
-                        <div className="min-w-[850px]">
-                            <div className="grid grid-cols-[auto_1fr_1.5fr_1.2fr_1.2fr_1fr_1fr_0.5fr] gap-4 bg-slate-50 border-b border-slate-200 px-6 py-4 items-center">
+                        <div className="min-w-[950px]">
+                            {/* Table Header: Automatically sorted by building */}
+                            <div className="grid grid-cols-[auto_0.8fr_1.3fr_1.5fr_1.2fr_0.8fr_0.8fr_1fr_0.9fr] gap-4 bg-slate-50 border-b border-slate-200 px-6 py-4 items-center">
                                 <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} className="w-4 h-4 text-indigo-600 rounded border-slate-300 cursor-pointer" />
                                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ticket ID</span>
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Building size={14} className="text-indigo-500" />
+                                    Building
+                                </span>
                                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Subject</span>
                                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tenant</span>
                                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Unit</span>
@@ -322,100 +500,159 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             </div>
 
                             <div className="divide-y divide-slate-100">
-                                {filteredTickets.map((ticket, index) => (
-                                    <div
-                                        key={ticket.id}
-                                        className="grid grid-cols-[auto_1fr_1.5fr_1.2fr_1.2fr_1fr_1fr_0.5fr] gap-4 px-6 py-4 items-center hover:bg-slate-50/80 transition-all duration-200"
-                                    >
-                                        <input type="checkbox" checked={selectedForPrint.has(ticket.id)} onChange={() => toggleSelect(ticket.id)} className="w-4 h-4 text-indigo-600 rounded border-slate-300 cursor-pointer" />
-                                        <span className="text-sm font-medium text-indigo-600">{ticket.id}</span>
-                                        <div className="flex flex-col pr-4 overflow-hidden">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-slate-700 font-medium truncate">{ticket.subject}</span>
-                                                {ticket.isRequired && (
-                                                    <span className="px-1.5 py-0.5 rounded bg-red-50 text-[8px] font-black text-red-600 uppercase border border-red-100">Required</span>
-                                                )}
-                                                {ticket.attachments && ticket.attachments.length > 0 && (
-                                                    <div className="flex items-center gap-1 text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100" title={`${ticket.attachments.length} attachments`}>
-                                                        <Camera size={10} />
-                                                        <span className="text-[10px] font-bold">{ticket.attachments.length}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col items-start gap-1">
-                                            <button
-                                                onClick={() => {
-                                                    setViewingTenantDetails(ticket.tenantDetails || { name: ticket.tenant });
-                                                }}
-                                                className="text-sm text-indigo-600 font-semibold hover:underline text-left w-fit"
-                                            >
-                                                {ticket.tenant}
-                                            </button>
-                                            {ticket.userRole !== 'TENANT' && (
-                                                <span className="text-[9px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 uppercase tracking-tighter">
-                                                    Staff / Inspector
+                                {filteredTickets.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-400 font-medium text-sm">
+                                        No tickets found.
+                                    </div>
+                                ) : (
+                                    filteredTickets.map((ticket) => (
+                                        <div
+                                            key={ticket.id}
+                                            className="grid grid-cols-[auto_0.8fr_1.3fr_1.5fr_1.2fr_0.8fr_0.8fr_1fr_0.9fr] gap-4 px-6 py-4 items-center hover:bg-slate-50/80 transition-all duration-200"
+                                        >
+                                            <input type="checkbox" checked={selectedForPrint.has(ticket.id)} onChange={() => toggleSelect(ticket.id)} className="w-4 h-4 text-indigo-600 rounded border-slate-300 cursor-pointer" />
+                                            <span className="text-sm font-semibold text-indigo-600">{ticket.id}</span>
+                                            
+                                            {/* Building Column */}
+                                            <div className="flex items-center gap-1.5 overflow-hidden">
+                                                <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-100/80 text-xs font-bold truncate">
+                                                    {ticket.building || ticket.propertyName || 'Sunset Towers'}
                                                 </span>
-                                            )}
-                                        </div>
-                                        <span className="text-sm text-slate-500">{ticket.unit}</span>
+                                            </div>
 
-                                        <span>
-                                            <span className={clsx("px-2 py-1 rounded-full text-[10px] font-bold border uppercase tracking-tight", priorityColors[ticket.priority])}>
-                                                {ticket.priority}
-                                            </span>
-                                        </span>
+                                            <div className="flex flex-col pr-3 overflow-hidden">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-slate-800 font-bold truncate">{ticket.subject}</span>
+                                                    {ticket.isRequired && (
+                                                        <span className="px-1.5 py-0.5 rounded bg-red-50 text-[8px] font-black text-red-600 uppercase border border-red-100">Required</span>
+                                                    )}
+                                                    {ticket.attachments && ticket.attachments.length > 0 && (
+                                                        <div className="flex items-center gap-1 text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100" title={`${ticket.attachments.length} attachments`}>
+                                                            <Camera size={10} />
+                                                            <span className="text-[10px] font-bold">{ticket.attachments.length}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    {ticket.completionDate && (
+                                                        <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                                                            <Calendar size={11} /> Comp: {ticket.completionDate}
+                                                        </span>
+                                                    )}
+                                                    {ticket.repairmanVisitDate && (
+                                                        <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
+                                                            <Clock size={11} /> Visit: {ticket.repairmanVisitDate}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
 
-                                        <span className="flex items-center gap-2 text-sm text-slate-700">
-                                            {statusIcons[ticket.status]}
-                                            {ticket.status}
-                                        </span>
-
-                                         <span className="flex justify-center gap-1">
-                                            <button
-                                                onClick={() => setSelectedTicket(ticket)}
-                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
-                                                title="View Details"
-                                            >
-                                                <Eye size={16} />
-                                            </button>
-                                            {hasPermission('Tickets', 'edit') && (
+                                            <div className="flex flex-col items-start gap-0.5">
                                                 <button
                                                     onClick={() => {
-                                                        setEditingTicket(ticket);
-                                                        setSelectedBuildingId(ticket.propertyId?.toString() || '');
-                                                        setShowAddModal(true);
+                                                        setViewingTenantDetails(ticket.tenantDetails || { name: ticket.tenant, unit: ticket.unit, rent: ticket.rent, email: ticket.email, property: ticket.building || ticket.propertyName });
                                                     }}
-                                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
-                                                    title="Edit Ticket"
+                                                    className="text-sm text-indigo-600 font-semibold hover:underline text-left w-fit"
                                                 >
-                                                    <Edit2 size={16} />
+                                                    {ticket.tenant}
                                                 </button>
-                                            )}
-                                            {hasPermission('Tickets', 'delete') && (
+                                                {ticket.email && (
+                                                    <span className="text-[11px] text-slate-400 font-medium truncate max-w-[130px]" title={ticket.email}>
+                                                        {ticket.email}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-semibold text-slate-700">{ticket.unit}</span>
+                                                {ticket.rent && (
+                                                    <span className="text-[11px] text-emerald-600 font-bold">
+                                                        {ticket.rent.toString().startsWith('$') ? ticket.rent : `$${ticket.rent}`}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <span>
+                                                <span className={clsx("px-2 py-1 rounded-full text-[10px] font-bold border uppercase tracking-tight", priorityColors[ticket.priority])}>
+                                                    {ticket.priority}
+                                                </span>
+                                            </span>
+
+                                            <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                                {statusIcons[ticket.status]}
+                                                {ticket.status}
+                                            </span>
+
+                                            <span className="flex justify-center gap-1">
                                                 <button
-                                                    onClick={() => handleDeleteTicket(ticket.dbId)}
-                                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
-                                                    title="Delete Ticket"
+                                                    onClick={() => setSelectedTicket(ticket)}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                                                    title="View Details & Completion Date"
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Eye size={16} />
                                                 </button>
-                                            )}
-                                        </span>
-                                    </div>
-                                ))}
+                                                <button
+                                                    onClick={() => {
+                                                        setNotifyData({
+                                                            ticket,
+                                                            email: ticket.email || '',
+                                                            tenantName: ticket.tenant || '',
+                                                            unit: ticket.unit || '',
+                                                            subject: ticket.subject || '',
+                                                            visitDate: ticket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0],
+                                                            repairmanName: 'Mike Johnson (Contractor)',
+                                                            message: `Hello ${ticket.tenant || 'Tenant'},\n\nA repairman (Mike Johnson) is scheduled to visit your unit (${ticket.unit}) on ${ticket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0]} regarding ticket #${ticket.id} (${ticket.subject}).\n\nPlease ensure unit access is available. Thank you, Property Management.`
+                                                        });
+                                                        setShowNotifyModal(true);
+                                                    }}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                                                    title="Notify Tenant by Email with Repair Date"
+                                                >
+                                                    <Mail size={16} />
+                                                </button>
+                                                {hasPermission('Tickets', 'edit') && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingTicket(ticket);
+                                                            setShowAddModal(true);
+                                                        }}
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                                                        title="Edit Ticket"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                )}
+                                                {hasPermission('Tickets', 'delete') && (
+                                                    <button
+                                                        onClick={() => handleDeleteTicket(ticket.dbId)}
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                                                        title="Delete Ticket"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </span>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>
                 </section>
 
+                {/* View Ticket Details Modal */}
                 {selectedTicket && (
                     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in p-4">
-                        <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl anim-zoom-in max-h-[90vh] overflow-y-auto">
-                            <div className="flex justify-between items-center mb-6">
+                        <div className="bg-white rounded-2xl p-8 w-full max-w-xl shadow-2xl anim-zoom-in max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                                 <div>
-                                    <h3 className="text-2xl font-bold text-slate-800">{selectedTicket.id}</h3>
-                                    <p className="text-sm text-slate-500">Created: {selectedTicket.createdAt}</p>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-2xl font-bold text-slate-800">{selectedTicket.id}</h3>
+                                        <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
+                                            {selectedTicket.building || selectedTicket.propertyName}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">Requested Date: {selectedTicket.requestDate || selectedTicket.createdAt?.split('T')[0]}</p>
                                 </div>
                                 <button onClick={() => setSelectedTicket(null)} className="text-slate-400 hover:text-slate-600">
                                     <X size={24} />
@@ -423,33 +660,32 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             </div>
 
                             <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
+                                {/* Auto-populated Tenant Details Card */}
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                            {selectedTicket.userRole === 'TENANT' ? 'Tenant' : 'Assigned Person'}
-                                        </label>
-                                        <p className="font-medium text-slate-700">{selectedTicket.tenant}</p>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tenant Name</label>
+                                        <p className="font-bold text-slate-800 text-sm mt-0.5">{selectedTicket.tenant}</p>
                                     </div>
                                     <div>
-                                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Unit</label>
-                                        <p className="font-medium text-slate-700">{selectedTicket.unit}</p>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Apt / Unit Number</label>
+                                        <p className="font-bold text-slate-800 text-sm mt-0.5">{selectedTicket.unit}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
+                                        <p className="font-medium text-slate-700 text-sm mt-0.5">{selectedTicket.email || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rent Amount</label>
+                                        <p className="font-bold text-emerald-600 text-sm mt-0.5">
+                                            {selectedTicket.rent ? (selectedTicket.rent.toString().startsWith('$') ? selectedTicket.rent : `$${selectedTicket.rent}`) : 'N/A'}
+                                        </p>
                                     </div>
                                 </div>
-
-                                {selectedTicket.inspectorName !== 'N/A' && (
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                        <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Reported By</label>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <User size={14} className="text-slate-400" />
-                                            <p className="text-sm font-bold text-slate-700">{selectedTicket.inspectorName} (Inspector)</p>
-                                        </div>
-                                    </div>
-                                )}
 
                                 <div>
                                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Subject</label>
                                     <div className="flex items-center gap-3 mt-1">
-                                        <p className="text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 flex-1 font-medium">
+                                        <p className="text-slate-800 bg-slate-50 p-3 rounded-lg border border-slate-100 flex-1 font-bold text-base">
                                             {selectedTicket.subject}
                                         </p>
                                         {selectedTicket.isRequired && (
@@ -463,44 +699,93 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
                                 <div>
                                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</label>
-                                    <p className="text-slate-600 text-sm mt-1">
-                                        {selectedTicket.desc || 'No description provided'}
+                                    <p className="text-slate-600 text-sm mt-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                        {selectedTicket.desc || selectedTicket.description || 'No description provided'}
                                     </p>
                                 </div>
+
+                                {/* Option to Assign Date Work Will Be Completed */}
+                                <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                                            <Calendar size={15} className="text-emerald-600" />
+                                            Date Work Will Be Completed
+                                        </label>
+                                        {selectedTicket.completionDate && (
+                                            <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full">
+                                                Assigned: {selectedTicket.completionDate}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <input
+                                            type="date"
+                                            value={quickCompletionDate}
+                                            onChange={(e) => setQuickCompletionDate(e.target.value)}
+                                            className="px-3.5 py-2 rounded-xl border border-emerald-200 text-sm font-semibold bg-white text-slate-800 flex-1 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                        />
+                                        <Button
+                                            size="sm"
+                                            variant="primary"
+                                            onClick={handleUpdateCompletionDate}
+                                            className="!bg-emerald-600 hover:!bg-emerald-700 !text-white text-xs font-bold"
+                                        >
+                                            Save Completion Date
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Option to Notify Tenant by Email with Date Repairman Will Pass By */}
+                                <div className="bg-indigo-50/60 p-4 rounded-xl border border-indigo-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+                                            <Mail size={15} className="text-indigo-600" />
+                                            Notify Tenant of Repair Visit
+                                        </p>
+                                        <p className="text-xs text-indigo-700 mt-1">
+                                            {selectedTicket.repairmanVisitDate 
+                                                ? `Visit scheduled on ${selectedTicket.repairmanVisitDate} (Tenant notified)`
+                                                : `Send an email notice to ${selectedTicket.tenant} with the scheduled repair date`}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        variant="primary"
+                                        className="!bg-indigo-600 hover:!bg-indigo-700 !text-white text-xs font-bold flex items-center gap-1.5 whitespace-nowrap"
+                                        onClick={() => {
+                                            setNotifyData({
+                                                ticket: selectedTicket,
+                                                email: selectedTicket.email || '',
+                                                tenantName: selectedTicket.tenant || '',
+                                                unit: selectedTicket.unit || '',
+                                                subject: selectedTicket.subject || '',
+                                                visitDate: selectedTicket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0],
+                                                repairmanName: 'Mike Johnson (Contractor)',
+                                                message: `Hello ${selectedTicket.tenant || 'Tenant'},\n\nA repairman (Mike Johnson) is scheduled to visit your unit (${selectedTicket.unit}) on ${selectedTicket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0]} regarding maintenance ticket #${selectedTicket.id}: "${selectedTicket.subject}".\n\nPlease ensure access is available.\n\nThank you,\nProperty Management Team`
+                                            });
+                                            setShowNotifyModal(true);
+                                        }}
+                                    >
+                                        <Mail size={14} />
+                                        {selectedTicket.repairmanVisitDate ? 'Resend Notice' : 'Notify Tenant by Email'}
+                                    </Button>
+                                </div>
+
                                 {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
                                     <div>
                                         <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                                             Attachments
                                         </label>
-
                                         <div className="mt-3 grid grid-cols-2 gap-3">
                                             {selectedTicket.attachments.map((att, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="border border-slate-200 rounded-lg p-2 bg-slate-50"
-                                                >
+                                                <div key={idx} className="border border-slate-200 rounded-lg p-2 bg-slate-50">
                                                     {att.type === 'image' && (
-                                                        <img
-                                                            src={att.url}
-                                                            alt="attachment"
-                                                            className="w-full h-32 object-cover rounded-md"
-                                                        />
+                                                        <img src={att.url} alt="attachment" className="w-full h-32 object-cover rounded-md" />
                                                     )}
-
                                                     {att.type === 'video' && (
-                                                        <video
-                                                            src={att.url}
-                                                            controls
-                                                            className="w-full h-32 rounded-md"
-                                                        />
+                                                        <video src={att.url} controls className="w-full h-32 rounded-md" />
                                                     )}
-
-                                                    <a
-                                                        href={att.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="block text-xs text-indigo-600 font-semibold mt-2 text-center hover:underline"
-                                                    >
+                                                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="block text-xs text-indigo-600 font-semibold mt-2 text-center hover:underline">
                                                         Open in new tab
                                                     </a>
                                                 </div>
@@ -508,7 +793,6 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         </div>
                                     </div>
                                 )}
-
 
                                 <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
                                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Update Status</label>
@@ -540,13 +824,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     </div>
                 )}
 
+                {/* New / Edit Maintenance Ticket Modal */}
                 {showAddModal && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in p-4">
                         <form
-                            className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in max-h-[90vh] overflow-y-auto"
+                            className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl anim-zoom-in max-h-[90vh] overflow-y-auto"
                             onSubmit={handleSaveTicket}
                         >
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                                 <h3 className="text-2xl font-bold text-slate-800">
                                     {editingTicket ? 'Edit Ticket' : 'New Maintenance Ticket'}
                                 </h3>
@@ -556,6 +841,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             </div>
 
                             <div className="space-y-4">
+                                {/* Building Dropdown */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Building</label>
                                     <div className="relative">
@@ -576,20 +862,20 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     </div>
                                 </div>
 
+                                {/* Tenant Dropdown */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Tenant</label>
                                     <div className="relative">
                                         <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                         <select
-                                            key={`${editingTicket?.dbId || 'new'}-${selectedBuildingId}-${tenants.length}`}
-                                            name="tenantId"
+                                            value={selectedTenantId}
+                                            onChange={(e) => handleTenantChange(e.target.value)}
                                             required={selectedBuildingId !== 'all'}
-                                            defaultValue={editingTicket?.tenantId}
-                                            disabled={loadingTenants || !selectedBuildingId || selectedBuildingId === 'all'}
+                                            disabled={loadingTenants || !selectedBuildingId}
                                             className="w-full pl-12 pr-10 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-white appearance-none text-slate-800 font-medium disabled:opacity-50"
                                         >
-                                            <option value="">{loadingTenants ? 'Fetching tenants...' : (selectedBuildingId === 'all' ? 'Not Applicable' : 'Select Tenant')}</option>
-                                            {selectedBuildingId !== 'all' && tenants.map(t => (
+                                            <option value="">{loadingTenants ? 'Fetching tenants...' : 'Select Tenant'}</option>
+                                            {tenants.map(t => (
                                                 <option key={t.id} value={t.id}>{t.name} ({t.unit})</option>
                                             ))}
                                         </select>
@@ -597,13 +883,63 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     </div>
                                 </div>
 
+                                {/* Auto-populated Fields from Tenant List */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Apt Number</label>
+                                        <input
+                                            name="aptNumber"
+                                            value={formApt}
+                                            onChange={(e) => setFormApt(e.target.value)}
+                                            placeholder="e.g. Apt 101"
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-slate-50 font-semibold text-slate-800"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Rent Amount (Auto)</label>
+                                        <input
+                                            name="rent"
+                                            value={formRent}
+                                            onChange={(e) => setFormRent(e.target.value)}
+                                            placeholder="e.g. $1,100"
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-slate-50 font-semibold text-slate-800"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Email Address (Auto)</label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formEmail}
+                                            onChange={(e) => setFormEmail(e.target.value)}
+                                            placeholder="tenant@example.com"
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-slate-50 font-medium text-slate-800"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Request Date (Auto)</label>
+                                        <input
+                                            type="date"
+                                            name="requestDate"
+                                            value={formRequestDate}
+                                            onChange={(e) => setFormRequestDate(e.target.value)}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-slate-50 font-semibold text-slate-800"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Subject Input */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Subject</label>
                                     <input
                                         name="subject"
                                         required
-                                        defaultValue={editingTicket?.subject}
-                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500"
+                                        value={formSubject}
+                                        onChange={(e) => setFormSubject(e.target.value)}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-semibold text-slate-800"
                                         placeholder="e.g. Toilet leaking"
                                     />
                                 </div>
@@ -612,26 +948,42 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Description</label>
                                     <textarea
                                         name="description"
-                                        defaultValue={editingTicket?.desc}
-                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 h-24 resize-none"
+                                        value={formDescription}
+                                        onChange={(e) => setFormDescription(e.target.value)}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 h-20 resize-none font-medium text-slate-800"
                                         placeholder="Describe the issue in detail..."
                                     ></textarea>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Priority</label>
-                                    <select
-                                        name="priority"
-                                        defaultValue={editingTicket?.priority || 'Low'}
-                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-white"
-                                    >
-                                        <option value="Low">Low</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="High">High</option>
-                                    </select>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Priority</label>
+                                        <select
+                                            name="priority"
+                                            value={formPriority}
+                                            onChange={(e) => setFormPriority(e.target.value)}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-white font-medium"
+                                        >
+                                            <option value="Low">Low</option>
+                                            <option value="Medium">Medium</option>
+                                            <option value="High">High</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Option to assign date work will be completed */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Date Work Completed</label>
+                                        <input
+                                            type="date"
+                                            name="completionDate"
+                                            value={formCompletionDate}
+                                            onChange={(e) => setFormCompletionDate(e.target.value)}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-white font-medium text-slate-800"
+                                        />
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 pt-2">
+                                <div className="grid grid-cols-2 gap-4 pt-1">
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Images</label>
                                         <input
@@ -652,35 +1004,6 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         />
                                     </div>
                                 </div>
-
-                                {editingTicket?.attachments && editingTicket.attachments.length > 0 && (
-                                    <div className="space-y-1.5 pt-2">
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Existing Attachments</label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {editingTicket.attachments.map((att, idx) => (
-                                                <a 
-                                                    key={idx} 
-                                                    href={att.url} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer" 
-                                                    className="relative group rounded-xl overflow-hidden border border-slate-200 h-20 bg-slate-50 flex items-center justify-center"
-                                                >
-                                                    {att.type === 'image' || att.url.match(/\.(jpg|jpeg|png|webp|gif)/i) ? (
-                                                        <img src={att.url} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                    ) : (
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <Play size={20} className="text-indigo-500" />
-                                                            <span className="text-[8px] font-bold text-slate-400 uppercase">Video</span>
-                                                        </div>
-                                                    )}
-                                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                        <Eye size={16} className="text-white" />
-                                                    </div>
-                                                </a>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="flex gap-3 mt-8">
@@ -691,8 +1014,90 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     </div>
                 )}
 
+                {/* Modal to Notify Tenant by Email with Repairman Visit Date */}
+                {showNotifyModal && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] anim-fade-in p-4">
+                        <form
+                            className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl anim-zoom-in"
+                            onSubmit={handleSendRepairmanNotice}
+                        >
+                            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                        <Mail size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800">Notify Tenant of Repair</h3>
+                                        <p className="text-xs text-slate-500">Send scheduled visit date to tenant</p>
+                                    </div>
+                                </div>
+                                <button type="button" onClick={() => setShowNotifyModal(false)} className="text-slate-400 hover:text-slate-600">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Tenant Email</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={notifyData.email}
+                                        onChange={(e) => setNotifyData({ ...notifyData, email: e.target.value })}
+                                        placeholder="tenant@example.com"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-800"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Repairman Visit Date</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={notifyData.visitDate}
+                                            onChange={(e) => setNotifyData({ ...notifyData, visitDate: e.target.value })}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-bold text-slate-800"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Repairman / Tech</label>
+                                        <input
+                                            type="text"
+                                            value={notifyData.repairmanName}
+                                            onChange={(e) => setNotifyData({ ...notifyData, repairmanName: e.target.value })}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-800"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Message Preview</label>
+                                    <textarea
+                                        rows={4}
+                                        value={notifyData.message}
+                                        onChange={(e) => setNotifyData({ ...notifyData, message: e.target.value })}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-xs font-medium text-slate-700 resize-none bg-slate-50"
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <Button type="button" variant="secondary" className="flex-1" onClick={() => setShowNotifyModal(false)}>
+                                    Cancel
+                                </Button>
+                                <Button type="submit" variant="primary" disabled={sendingNotice} className="flex-1 flex items-center justify-center gap-1.5">
+                                    <Send size={15} />
+                                    {sendingNotice ? 'Sending...' : 'Send Notification'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                {/* Tenant Details Modal */}
                 {viewingTenantDetails && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] anim-fade-in p-4">
                         <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl anim-zoom-in">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold text-slate-800">Tenant Info</h3>
@@ -707,28 +1112,35 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 </div>
                                 <div>
                                     <h4 className="text-lg font-bold text-slate-900">{viewingTenantDetails.name}</h4>
-                                    <div className="flex items-center justify-center gap-1.5 mt-1">
-                                        <span className={clsx("w-2 h-2 rounded-full", viewingTenantDetails.leaseStatus === 'Active' ? 'bg-emerald-500' : 'bg-red-500')}></span>
-                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{viewingTenantDetails.leaseStatus} Lease</span>
-                                    </div>
+                                    <p className="text-xs text-slate-500 mt-0.5">{viewingTenantDetails.email || 'No email'}</p>
                                 </div>
                             </div>
 
-                            <div className="mt-8 space-y-3">
+                            <div className="mt-6 space-y-3">
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3">
                                     <div className="p-2 rounded-lg bg-white text-slate-400 shadow-sm">
                                         <Building size={18} />
                                     </div>
                                     <div className="text-left">
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Assigned Unit</p>
-                                        <p className="font-semibold text-slate-700">{viewingTenantDetails.property} • {viewingTenantDetails.unit}</p>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Property & Unit</p>
+                                        <p className="font-semibold text-slate-700">{viewingTenantDetails.property || 'General'} • {viewingTenantDetails.unit || 'Apt'}</p>
                                     </div>
                                 </div>
+                                {viewingTenantDetails.rent && (
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-white text-emerald-600 shadow-sm">
+                                            <DollarSign size={18} />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Monthly Rent</p>
+                                            <p className="font-bold text-emerald-600">{viewingTenantDetails.rent.toString().startsWith('$') ? viewingTenantDetails.rent : `$${viewingTenantDetails.rent}`}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="mt-8 flex gap-3">
+                            <div className="mt-6 flex gap-3">
                                 <Button variant="secondary" className="flex-1" onClick={() => setViewingTenantDetails(null)}>Close</Button>
-                                <Button variant="primary" className="flex-1">View Full Profile</Button>
                             </div>
                         </div>
                     </div>

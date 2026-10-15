@@ -26,7 +26,21 @@ api.defaults.adapter = async (config) => {
 
   let body = {};
   if (config.data) {
-    if (typeof config.data === 'string') {
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      body = {};
+      for (const [key, value] of config.data.entries()) {
+        if (typeof File !== 'undefined' && value instanceof File) {
+          if (!body.attachments) body.attachments = [];
+          body.attachments.push({
+            name: value.name,
+            type: value.type && value.type.startsWith('video') ? 'video' : 'image',
+            url: URL.createObjectURL(value)
+          });
+        } else {
+          body[key] = value;
+        }
+      }
+    } else if (typeof config.data === 'string') {
       try {
         body = JSON.parse(config.data);
       } catch (e) {
@@ -187,7 +201,8 @@ api.defaults.adapter = async (config) => {
   if (cleanPath === '/api/admin/tenants') {
     if (method === 'get') {
       const search = query.get('search') || '';
-      const res = await mockDb.mockTenantService.getAll(search);
+      const propertyId = query.get('propertyId');
+      const res = await mockDb.mockTenantService.getAll(search, propertyId);
       return response200(res.data);
     } else {
       const res = await mockDb.mockTenantService.create(body);
