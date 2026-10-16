@@ -74,6 +74,7 @@ import SMSCampaigns from "./pages/SMSCampaigns";
 import SMSTemplates from "./pages/SMSTemplates";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { Support } from "./pages/Support";
+import { TenantRepairRequest } from "./pages/TenantRepairRequest";
 
 /* TIME & PAYROLL */
 import { PayrollDashboard } from "./pages/payroll/PayrollDashboard";
@@ -228,6 +229,9 @@ function App() {
         {/* 📄 PUBLIC PAGES */}
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/support" element={<Support />} />
+        <Route path="/repair-request" element={<TenantRepairRequest />} />
+        <Route path="/repairs" element={<TenantRepairRequest />} />
+        <Route path="/request-repair" element={<TenantRepairRequest />} />
 
         {/* 🏢 TENANT PORTAL */}
         <Route path="/tenant/login" element={<Navigate to="/login" replace />} />

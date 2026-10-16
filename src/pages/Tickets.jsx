@@ -3,7 +3,7 @@ import { Button } from '../components/Button';
 import { 
     Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, 
     Building, ChevronDown, Trash2, Edit2, Play, Camera, Printer, 
-    Calendar, Mail, Send, DollarSign, AtSign 
+    Calendar, Mail, Send, DollarSign, AtSign, Link2, ExternalLink 
 } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
@@ -205,6 +205,30 @@ export const Tickets = () => {
         } catch (e) {
             alert('Failed to update status');
         }
+    };
+
+    const updatePriority = async (id, newPriority) => {
+        const ticket = tickets.find(t => t.id === id);
+        if (!ticket) return;
+
+        try {
+            await api.put(`/api/admin/tickets/${ticket.dbId}`, { priority: newPriority });
+            setTickets(tickets.map(t => t.id === id ? { ...t, priority: newPriority } : t));
+            setSelectedTicket(prev => prev ? { ...prev, priority: newPriority } : null);
+            setSuccessMessage(`Importance level updated to ${newPriority}`);
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (e) {
+            alert('Failed to update importance level');
+        }
+    };
+
+    const handleCopyRepairLink = () => {
+        const url = `${window.location.origin}/repair-request`;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url);
+        }
+        setSuccessMessage(`Tenant Repair Link copied: ${url}`);
+        setTimeout(() => setSuccessMessage(''), 4000);
     };
 
     const handleDeleteTicket = async (dbId) => {
@@ -460,7 +484,26 @@ export const Tickets = () => {
                         />
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleCopyRepairLink}
+                            className="!border-indigo-200 !text-indigo-700 hover:!bg-indigo-50 font-bold flex items-center gap-1.5 shadow-sm"
+                            title="Copy link to send to tenants when they request repairs"
+                        >
+                            <Link2 size={16} className="text-indigo-600" />
+                            Copy Tenant Repair Link
+                        </Button>
+                        <a
+                            href="/repair-request"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:bg-slate-50 transition-colors"
+                            title="Open Tenant Repair Request Form in new tab"
+                        >
+                            <ExternalLink size={16} />
+                        </a>
                         {selectedForPrint.size > 0 && (
                             <Button variant="secondary" size="sm" onClick={handlePrint} className="!border-indigo-200 !text-indigo-600 hover:!bg-indigo-50">
                                 <Printer size={16} />
@@ -813,6 +856,35 @@ export const Tickets = () => {
                                         ))}
                                     </div>
                                 </div>
+
+                                <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                            Importance Level (Priority)
+                                        </label>
+                                        <span className={clsx("px-2.5 py-0.5 rounded-full text-xs font-bold border", priorityColors[selectedTicket.priority] || 'bg-slate-100 text-slate-700')}>
+                                            Current: {selectedTicket.priority || 'Low'}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['Low', 'Medium', 'High'].map(p => (
+                                            <button
+                                                key={p}
+                                                onClick={() => updatePriority(selectedTicket.id, p)}
+                                                className={clsx(
+                                                    "px-4 py-2 rounded-lg text-sm font-bold transition-all border",
+                                                    selectedTicket.priority === p
+                                                        ? p === 'High' ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-200"
+                                                          : p === 'Medium' ? "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-200"
+                                                          : "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200"
+                                                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                                                )}
+                                            >
+                                                {p === 'High' ? '🔴 High Priority' : p === 'Medium' ? '🟡 Medium Priority' : '🔵 Low Priority'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="mt-8 flex justify-end">
@@ -933,15 +1005,23 @@ export const Tickets = () => {
 
                                 {/* Subject Input */}
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Subject</label>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Subject / Category</label>
                                     <input
                                         name="subject"
                                         required
+                                        list="ticket-subject-options"
                                         value={formSubject}
                                         onChange={(e) => setFormSubject(e.target.value)}
                                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-semibold text-slate-800"
-                                        placeholder="e.g. Toilet leaking"
+                                        placeholder="Select or enter subject (e.g. Plumbing, Electrical work...)"
                                     />
+                                    <datalist id="ticket-subject-options">
+                                        <option value="General repairs" />
+                                        <option value="Electrical work" />
+                                        <option value="Plumbing" />
+                                        <option value="Extermination" />
+                                        <option value="Other" />
+                                    </datalist>
                                 </div>
 
                                 <div className="space-y-1.5">
@@ -985,7 +1065,7 @@ export const Tickets = () => {
 
                                 <div className="grid grid-cols-2 gap-4 pt-1">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Images</label>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Images (Optional for Portal)</label>
                                         <input
                                             type="file"
                                             name="images"
