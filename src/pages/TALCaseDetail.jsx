@@ -12,6 +12,7 @@ import { CaseDocuments } from '../components/tal/CaseDocuments';
 import { CaseNotes } from '../components/tal/CaseNotes';
 import { CaseTasks } from '../components/tal/CaseTasks';
 import { CaseHearingList } from '../components/tal/CaseHearingList';
+import { CaseOverviewSteps } from '../components/tal/CaseOverviewSteps';
 import api from '../api/client';
 export const TALCaseDetail = () => {
 const { id } = useParams();
@@ -271,6 +272,13 @@ const { id } = useParams();
                 })}
               </div>
             </Card>
+            
+            {/* TAL Case Overview Steps to Follow with Checkboxes */}
+            <CaseOverviewSteps 
+              selectedCaseId={id} 
+              availableCases={[caseData]} 
+              title="TAL Case Steps to Follow"
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               

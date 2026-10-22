@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { Search, Plus, Filter, ClipboardList, TrendingUp, CreditCard, ChevronRight, FileText, X } from 'lucide-react';
+import { Search, Plus, Filter, ClipboardList, TrendingUp, CreditCard, ChevronRight, FileText, X, Building2 } from 'lucide-react';
 import {
   invoiceService,
   paymentService,
@@ -18,9 +18,10 @@ import { CollectionStatusChart } from '../components/collection/CollectionStatus
 import { TenantLedgerCard } from '../components/collection/TenantLedgerCard';
 import { InvoiceTable } from '../components/collection/InvoiceTable';
 import { RecentPaymentsWidget } from '../components/collection/RecentPaymentsWidget';
+import { CompanyRentCollection } from '../components/collection/CompanyRentCollection';
 import api from '../api/client';
 export const RentCollection = () => {
-const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'invoices', 'ledger', 'aging'
+const [activeTab, setActiveTab] = useState('collection'); // 'collection', 'dashboard', 'invoices', 'ledger', 'aging'
   const [loading, setLoading] = useState(true);
 
   // Data States
@@ -215,6 +216,7 @@ const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'invoic
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center bg-white p-4 rounded-[22px] border border-slate-200 shadow-sm gap-3">
           <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2">
             {[
+              { id: 'collection', label: 'Company Rent Collection', icon: Building2 },
               { id: 'dashboard', label: 'Overview Dashboard', icon: TrendingUp },
               { id: 'invoices', label: 'Rent Invoices Grid', icon: ClipboardList },
               { id: 'ledger', label: 'Tenant Ledgers', icon: FileText },
@@ -248,6 +250,11 @@ const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'invoic
           </div>
         ) : (
           <>
+            {/* Company Rent Collection Tab */}
+            {activeTab === 'collection' && (
+              <CompanyRentCollection onPaymentRecorded={loadData} />
+            )}
+
             {/* Overview Dashboard Tab */}
             {activeTab === 'dashboard' && (
               <div className="flex flex-col gap-6">

@@ -41,14 +41,14 @@ export const mockTenants = [
     phone: '+1 (514) 555-0101',
     type: 'Individual',
     status: 'Active',
-    propertyName: 'Greenfield Commons',
-    propertyId: 3,
+    propertyName: 'Sunset Towers',
+    propertyId: 2,
     unitNumber: 'Apt 301',
-    unitId: 6,
-    leaseStart: '2024-07-01',
-    leaseEnd: '2025-06-30',
-    rent: 1200,
-    deposit: 1200
+    unitId: 5,
+    leaseStart: '2025-07-01',
+    leaseEnd: '2026-06-30',
+    rent: 600,
+    deposit: 600
   },
   {
     id: 104,

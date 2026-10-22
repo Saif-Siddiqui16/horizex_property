@@ -15,6 +15,7 @@ import { UpcomingHearingsWidget } from '../components/tal/UpcomingHearingsWidget
 import { UrgentCasesWidget } from '../components/tal/UrgentCasesWidget';
 import { HearingCalendarWidget } from '../components/tal/HearingCalendarWidget';
 import { DashboardTasksWidget } from '../components/tal/DashboardTasksWidget';
+import { CaseOverviewSteps } from '../components/tal/CaseOverviewSteps';
 import api from '../api/client';
 export const TALCases = ({ defaultTab = 'overview' }) => {
 const [activeTab, setActiveTab] = useState(defaultTab);
@@ -305,6 +306,12 @@ const [activeTab, setActiveTab] = useState(defaultTab);
             {activeTab === 'overview' && (
               <div className="flex flex-col gap-4">
                 <TALKPICards metrics={metrics} onFilterClick={handleKPIFilterClick} />
+                
+                {/* TAL Case Overview Steps to Follow */}
+                <CaseOverviewSteps 
+                  availableCases={cases}
+                  selectedCaseId={cases[0]?.id}
+                />
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <CaseStatusChart statusBreakdown={statusBreakdown} />
                   <UpcomingHearingsWidget hearings={upcomingHearings.slice(0, 3)} />
