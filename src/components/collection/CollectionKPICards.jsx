@@ -1,6 +1,7 @@
 import React from 'react';
 import { DollarSign, Percent, AlertCircle, Calendar } from 'lucide-react';
 
+
 export const CollectionKPICards = ({ metrics = {} }) => {
   const cards = [
     { title: 'Total Rent Due', value: `$${(metrics.totalDue || 0).toLocaleString('en-CA')}`, color: 'bg-blue-500 text-white', icon: DollarSign },
