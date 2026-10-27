@@ -1,18 +1,19 @@
 import axios from 'axios';
 import * as mockDb from '../mock/mockServices';
 
+
 const api = axios.create({
-    baseURL: 'https://saif-property-client-railway-production.up.railway.app',
-    headers: {
-        'Content-Type': 'application/json',
-    },
+  baseURL: 'https://saif-property-client-railway-production.up.railway.app',
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // Custom adapter to run offline using mockServices.js
 api.defaults.adapter = async (config) => {
   const urlStr = config.url || '';
   let path = urlStr.replace(config.baseURL || '', '');
-  
+
   if (path.startsWith('http://') || path.startsWith('https://')) {
     const parts = path.split('/api');
     if (parts.length > 1) {
@@ -81,7 +82,7 @@ api.defaults.adapter = async (config) => {
     let role = 'ADMIN';
     let id = 1;
     let name = 'Admin User';
-    
+
     if (email.includes('tenant')) {
       role = 'TENANT';
       id = 101;
@@ -144,7 +145,7 @@ api.defaults.adapter = async (config) => {
       return response200(res.data);
     }
   }
-  
+
   const propertyIdMatch = cleanPath.match(/\/api\/admin\/properties\/(\d+)$/);
   if (propertyIdMatch) {
     const id = propertyIdMatch[1];
@@ -689,7 +690,7 @@ api.defaults.adapter = async (config) => {
     const showLeased = query.get('showLeased') === 'true';
     const page = query.get('page') || 1;
     const limit = query.get('limit') || 15;
-    
+
     const res = await mockDb.mockReadinessService.getDashboard({ search, status, propertyId, showLeased, page, limit });
     return response200(res.data);
   }
@@ -1101,12 +1102,12 @@ api.defaults.adapter = async (config) => {
     });
   }
   if (cleanPath === '/api/admin/shuttle/trips') {
-    return response200({ 
+    return response200({
       trips: [
         { id: 1, time: "08:00", date: "2026-07-06", origin: "Parkview Heights", destination: "Downtown", seats_total: 7, is_recurring: true, actual_passengers: 5, status: "completed" },
         { id: 2, time: "17:30", date: "2026-07-06", origin: "Downtown", destination: "Parkview Heights", seats_total: 7, is_recurring: true, actual_passengers: 7, status: "completed" },
         { id: 3, time: "09:00", date: "2026-07-08", origin: "Parkview Heights", destination: "Airport", seats_total: 4, is_recurring: false, actual_passengers: 0, status: "scheduled" }
-      ] 
+      ]
     });
   }
   if (cleanPath === '/api/admin/shuttle/users') {
@@ -1127,29 +1128,29 @@ api.defaults.adapter = async (config) => {
 
 // Add a request interceptor to attach the token
 api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
+  (config) => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
 );
 
 // Add a response interceptor to handle 401 (optional for now)
 api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response && error.response.status === 401) {
-            // Optional: Only redirect if NOT already on login or invite page
-            if (!window.location.pathname.match(/\/(login|invite)/)) {
-                localStorage.clear();
-                window.location.href = '/login';
-            }
-        }
-        return Promise.reject(error);
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Optional: Only redirect if NOT already on login or invite page
+      if (!window.location.pathname.match(/\/(login|invite)/)) {
+        localStorage.clear();
+        window.location.href = '/login';
+      }
     }
+    return Promise.reject(error);
+  }
 );
 
 export default api;
