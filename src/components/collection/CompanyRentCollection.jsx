@@ -128,18 +128,29 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
         ? `${prop.address || prop.name}, ${t.unitNumber || 'Unit'}`
         : `${t.propertyName || 'Building'}, ${t.unitNumber || 'Unit'}`;
 
-      const monthlyRent = parseFloat(t.rent || 600);
+      // Find matching invoice for this tenant (prefer unpaid/generated invoice for active cycle)
+      const matchingInvoices = invoices.filter(i => i.tenantId === t.id);
+      const activeUnpaidInv = matchingInvoices.find(i => i.status !== 'Paid');
+      const latestInvoice = matchingInvoices[matchingInvoices.length - 1];
+
+      // Monthly rent defaults to active invoice amount (or lease/renewal rent)
+      let monthlyRent = parseFloat(t.rent || 600);
+      if (activeUnpaidInv && (activeUnpaidInv.amountDue || activeUnpaidInv.amount)) {
+        monthlyRent = parseFloat(activeUnpaidInv.amountDue || activeUnpaidInv.amount);
+      } else if (latestInvoice && (latestInvoice.amountDue || latestInvoice.amount)) {
+        monthlyRent = parseFloat(latestInvoice.amountDue || latestInvoice.amount);
+      }
       
       // Check if custom balance exists in storage for this tenant
       let currentBalance = monthlyRent;
       if (storedBalances[t.id] !== undefined) {
         currentBalance = parseFloat(storedBalances[t.id]);
-      } else {
-        // Check invoice outstanding balance if available
-        const inv = invoices.find(i => i.tenantId === t.id && i.status !== 'Paid');
-        if (inv && inv.outstandingBalance !== undefined) {
-          currentBalance = parseFloat(inv.outstandingBalance);
-        }
+      } else if (activeUnpaidInv) {
+        currentBalance = activeUnpaidInv.outstandingBalance !== undefined
+          ? parseFloat(activeUnpaidInv.outstandingBalance)
+          : parseFloat(activeUnpaidInv.amountDue || activeUnpaidInv.amount || monthlyRent);
+      } else if (matchingInvoices.length > 0 && matchingInvoices.every(i => i.status === 'Paid')) {
+        currentBalance = 0;
       }
 
       return {
@@ -300,6 +311,7 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
     if (onPaymentRecorded) {
       onPaymentRecorded();
     }
+    loadAllData();
   };
 
   // Reset all balances back to defaults for testing/fresh cycle

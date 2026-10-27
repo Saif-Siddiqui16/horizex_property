@@ -279,8 +279,8 @@ const withDelay = (resultFn) => {
   });
 };
 
-const getStore = (key) => JSON.parse(localStorage.getItem(key) || '[]');
-const setStore = (key, val) => localStorage.setItem(key, JSON.stringify(val));
+export const getStore = (key) => JSON.parse(localStorage.getItem(key) || '[]');
+export const setStore = (key, val) => localStorage.setItem(key, JSON.stringify(val));
 
 export const mockDashboardService = {
   getStats: () => withDelay(() => {
@@ -808,13 +808,67 @@ export const mockLeaseService = {
       propertyName: unit ? unit.propertyName : 'Main Property',
       startDate: data.startDate,
       endDate: data.endDate,
-      rentAmount: parseFloat(data.rentAmount),
+      rentAmount: parseFloat(data.rentAmount !== undefined ? data.rentAmount : (data.monthlyRent || 0)),
+      monthlyRent: parseFloat(data.rentAmount !== undefined ? data.rentAmount : (data.monthlyRent || 0)),
       securityDeposit: parseFloat(data.securityDeposit || 0),
       status: 'Active',
       documentUrl: '#'
     };
     list.push(newLease);
     setStore('mock_leases', list);
+
+    // Automatically generate monthly invoices according to lease
+    const rentAmountVal = newLease.rentAmount;
+    if (rentAmountVal > 0 && data.startDate && data.endDate) {
+      let invoices = getStore('mock_invoices') || [];
+      let currentId = invoices.length ? Math.max(...invoices.map(i => i.id || 0)) : 0;
+
+      const [startYear, startMonth] = data.startDate.split('-').map(Number);
+      const [endYear, endMonth] = data.endDate.split('-').map(Number);
+
+      let currY = startYear;
+      let currM = startMonth;
+      const todayStr = new Date().toLocaleDateString('en-CA');
+
+      while (currY < endYear || (currY === endYear && currM <= endMonth)) {
+        currentId += 1;
+        const monthStr = String(currM).padStart(2, '0');
+        const dueDate = `${currY}-${monthStr}-01`;
+        const invoiceNo = `INV-${currY}-${String(currentId).padStart(6, '0')}`;
+        const isPast = dueDate < todayStr;
+
+        invoices.push({
+          id: currentId,
+          invoiceNo,
+          invoiceNumber: invoiceNo,
+          leaseId: newLease.id,
+          tenantId: newLease.tenantId,
+          tenantName: newLease.tenantName,
+          propertyName: newLease.propertyName,
+          propertyId: newLease.propertyId,
+          unitNumber: newLease.unitNumber,
+          unitId: newLease.unitId,
+          amountDue: rentAmountVal,
+          amount: rentAmountVal,
+          dueDate,
+          invoiceDate: dueDate,
+          status: isPast ? 'Overdue' : 'Generated',
+          category: 'Rent',
+          history: [
+            { date: todayStr, activity: `Auto-generated monthly rent invoice: ${invoiceNo} for $${rentAmountVal}` }
+          ],
+          notes: []
+        });
+
+        currM += 1;
+        if (currM > 12) {
+          currM = 1;
+          currY += 1;
+        }
+      }
+
+      setStore('mock_invoices', invoices);
+    }
 
     // Update Tenant lease info
     if (tenant) {
@@ -1177,6 +1231,9 @@ export const mockInvoiceService = {
     });
     setStore('mock_invoices', list);
     return updated;
+  }),
+  update: (id, data) => withDelay(() => {
+    return invoiceService.update(id, data);
   })
 };
 
@@ -2376,6 +2433,95 @@ export const mockRenewalService = {
       activity: `Status changed from ${prevStatus} to ${status}`
     });
 
+    // Update lease, tenant, and future invoices according to renewal when accepted
+    if (status === 'Accepted' && list[index].proposedRent) {
+      const renewalRent = parseFloat(list[index].proposedRent);
+      const renewalDate = list[index].renewalDueDate || new Date().toLocaleDateString('en-CA');
+      const leaseId = list[index].leaseId;
+
+      // 1. Update lease rent
+      let leases = getStore('mock_leases') || [];
+      const leaseIdx = leases.findIndex(l => l.id === leaseId);
+      if (leaseIdx !== -1) {
+        leases[leaseIdx].rentAmount = renewalRent;
+        leases[leaseIdx].monthlyRent = renewalRent;
+        setStore('mock_leases', leases);
+
+        // 2. Update tenant rent
+        let tenants = getStore('mock_tenants') || [];
+        const tenantIdx = tenants.findIndex(t => t.id === leases[leaseIdx].tenantId);
+        if (tenantIdx !== -1) {
+          tenants[tenantIdx].rent = renewalRent;
+          setStore('mock_tenants', tenants);
+        }
+      }
+
+      // 3. Update existing future / unpaid invoices for this lease from renewal date onwards
+      let invoices = getStore('mock_invoices') || [];
+      invoices = invoices.map(inv => {
+        if (inv.leaseId === leaseId && inv.dueDate >= renewalDate && inv.status !== 'Paid') {
+          const oldAmount = inv.amountDue || inv.amount;
+          if (!inv.history) inv.history = [];
+          inv.history.push({
+            date: new Date().toLocaleDateString('en-CA'),
+            activity: `Rent updated from $${oldAmount} to $${renewalRent} according to lease renewal`
+          });
+          return {
+            ...inv,
+            amountDue: renewalRent,
+            amount: renewalRent
+          };
+        }
+        return inv;
+      });
+
+      // 4. If no future invoices exist past renewal date, auto-generate renewal cycle invoices
+      const futureInvoices = invoices.filter(inv => inv.leaseId === leaseId && inv.dueDate >= renewalDate);
+      if (futureInvoices.length === 0 && leaseIdx !== -1) {
+        const lease = leases[leaseIdx];
+        let currentId = invoices.length ? Math.max(...invoices.map(i => i.id || 0)) : 0;
+        const [rYear, rMonth] = renewalDate.split('-').map(Number);
+        let currY = rYear || new Date().getFullYear();
+        let currM = rMonth || (new Date().getMonth() + 1);
+
+        for (let m = 0; m < 12; m++) {
+          currentId += 1;
+          const monthStr = String(currM).padStart(2, '0');
+          const dueDate = `${currY}-${monthStr}-01`;
+          const invoiceNo = `INV-${currY}-${String(currentId).padStart(6, '0')}`;
+          invoices.push({
+            id: currentId,
+            invoiceNo,
+            invoiceNumber: invoiceNo,
+            leaseId: lease.id,
+            tenantId: lease.tenantId,
+            tenantName: lease.tenantName,
+            propertyName: lease.propertyName,
+            propertyId: lease.propertyId,
+            unitNumber: lease.unitNumber,
+            unitId: lease.unitId,
+            amountDue: renewalRent,
+            amount: renewalRent,
+            dueDate,
+            invoiceDate: dueDate,
+            status: 'Generated',
+            category: 'Rent',
+            history: [
+              { date: new Date().toLocaleDateString('en-CA'), activity: `Auto-generated monthly renewal invoice: ${invoiceNo} for $${renewalRent}` }
+            ],
+            notes: []
+          });
+          currM += 1;
+          if (currM > 12) {
+            currM = 1;
+            currY += 1;
+          }
+        }
+      }
+
+      setStore('mock_invoices', invoices);
+    }
+
     setStore('mock_renewals', list);
     return list[index];
   }),
@@ -2558,6 +2704,32 @@ export const invoiceService = {
     invoices.push(newInvoice);
     setStore('mock_invoices', invoices);
     return newInvoice;
+  },
+
+  update: (id, data) => {
+    const invoices = getStore('mock_invoices') || [];
+    const idx = invoices.findIndex(i => i.id === parseInt(id));
+    if (idx === -1) throw new Error('Invoice not found');
+
+    const prevAmount = invoices[idx].amountDue || invoices[idx].amount;
+    if (data.amountDue !== undefined) {
+      invoices[idx].amountDue = parseFloat(data.amountDue);
+      invoices[idx].amount = parseFloat(data.amountDue);
+    }
+    if (data.dueDate) {
+      invoices[idx].dueDate = data.dueDate;
+    }
+    if (data.status) {
+      invoices[idx].status = data.status;
+    }
+    if (!invoices[idx].history) invoices[idx].history = [];
+    invoices[idx].history.push({
+      date: new Date().toLocaleDateString('en-CA'),
+      activity: `Invoice manually edited: rent set to $${invoices[idx].amountDue} (due ${invoices[idx].dueDate || '-'})`
+    });
+
+    setStore('mock_invoices', invoices);
+    return invoices[idx];
   },
 
   regenerate: (id) => {

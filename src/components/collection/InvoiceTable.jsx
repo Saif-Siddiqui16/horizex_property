@@ -5,6 +5,7 @@ import { Eye, Edit, Send, Copy, Mail, Download, Plus, ChevronDown, ChevronUp } f
 export const InvoiceTable = ({
   invoices = [],
   onView = () => {},
+  onEdit = () => {},
   onDuplicate = () => {},
   onMarkSent = () => {},
   onEmail = () => {},
@@ -82,6 +83,14 @@ export const InvoiceTable = ({
                             title="View Details / Ledger"
                           >
                             <Eye size={13} />
+                          </button>
+                          <button
+                            onClick={() => onEdit(inv)}
+                            className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl transition-all font-black text-[9px] uppercase tracking-wider px-2"
+                            title="Edit Invoice (Amount / Due Date)"
+                          >
+                            <Edit size={12} className="inline mr-1" />
+                            Edit
                           </button>
                           
                           {inv.outstandingBalance > 0 && (

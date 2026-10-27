@@ -20,8 +20,14 @@ import { InvoiceTable } from '../components/collection/InvoiceTable';
 import { RecentPaymentsWidget } from '../components/collection/RecentPaymentsWidget';
 import { CompanyRentCollection } from '../components/collection/CompanyRentCollection';
 import api from '../api/client';
-export const RentCollection = () => {
-const [activeTab, setActiveTab] = useState('collection'); // 'collection', 'dashboard', 'invoices', 'ledger', 'aging'
+export const RentCollection = ({ defaultTab = 'collection' }) => {
+  const [activeTab, setActiveTab] = useState(defaultTab || 'collection'); // 'collection', 'dashboard', 'invoices', 'ledger', 'aging'
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab]);
   const [loading, setLoading] = useState(true);
 
   // Data States
@@ -57,6 +63,9 @@ const [activeTab, setActiveTab] = useState('collection'); // 'collection', 'dash
   const [genLeaseId, setGenLeaseId] = useState('');
   const [genAmount, setGenAmount] = useState('');
   const [genDueDate, setGenDueDate] = useState('');
+  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
 
   const loadData = () => {
     try {
@@ -146,6 +155,26 @@ const [activeTab, setActiveTab] = useState('collection'); // 'collection', 'dash
   const closeModal = () => {
     setActiveModal(null);
     setTargetInvoiceId(null);
+    setEditingInvoice(null);
+  };
+
+  const handleOpenEdit = (inv) => {
+    setEditingInvoice(inv);
+    setEditAmount((inv.amountDue !== undefined ? inv.amountDue : (inv.amount || '')).toString());
+    setEditDueDate(inv.dueDate || '');
+    setActiveModal('edit');
+  };
+
+  const handleEditInvoiceSubmit = (e) => {
+    e.preventDefault();
+    if (!editingInvoice || !editAmount) return;
+    invoiceService.update(editingInvoice.id, {
+      amountDue: parseFloat(editAmount),
+      dueDate: editDueDate
+    });
+    closeModal();
+    loadData();
+
   };
 
   // Actions trigger
@@ -342,6 +371,7 @@ const [activeTab, setActiveTab] = useState('collection'); // 'collection', 'dash
                       setActiveTab('ledger');
                     }
                   }}
+                  onEdit={handleOpenEdit}
                   onDuplicate={handleDuplicate}
                   onMarkSent={handleMarkSent}
                   onEmail={handleEmail}
@@ -550,7 +580,14 @@ const [activeTab, setActiveTab] = useState('collection'); // 'collection', 'dash
                 <select
                   required
                   value={genLeaseId}
-                  onChange={(e) => setGenLeaseId(e.target.value)}
+                  onChange={(e) => {
+                    const lId = e.target.value;
+                    setGenLeaseId(lId);
+                    if (lId) {
+                      const l = leases.find(item => item.id === parseInt(lId));
+                      if (l) setGenAmount((l.rentAmount || l.monthlyRent || '').toString());
+                    }
+                  }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none"
                 >
                   <option value="">-- Choose Lease --</option>
@@ -583,6 +620,63 @@ const [activeTab, setActiveTab] = useState('collection'); // 'collection', 'dash
               <div className="pt-2 flex gap-3">
                 <Button onClick={closeModal} variant="secondary" className="flex-1 text-xs font-bold">Cancel</Button>
                 <Button type="submit" variant="primary" className="flex-1 text-xs font-bold">Generate Invoice</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'edit' && editingInvoice && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-[26px] p-6 max-w-md w-full border border-slate-100 shadow-2xl relative">
+            <button onClick={closeModal} className="absolute right-6 top-6 p-1.5 hover:bg-slate-100 rounded-full text-slate-400">
+              <X size={18} />
+            </button>
+            <h3 className="text-base font-black text-slate-800 tracking-tight mb-1">Edit Rent Invoice</h3>
+            <p className="text-xs text-slate-500 mb-4">Default amount set from lease. Edit amount or due date if an exception is needed.</p>
+            <form onSubmit={handleEditInvoiceSubmit} className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Invoice Number</label>
+                <input
+                  type="text"
+                  disabled
+                  value={editingInvoice.invoiceNo || editingInvoice.invoiceNumber || ''}
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tenant & Unit</label>
+                <input
+                  type="text"
+                  disabled
+                  value={`${editingInvoice.tenantName || 'Tenant'} - ${editingInvoice.unitNumber || 'Unit'}`}
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Monthly Rent Due Amount ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-indigo-500 transition-all text-slate-800"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Due Date</label>
+                <input
+                  type="date"
+                  required
+                  value={editDueDate}
+                  onChange={(e) => setEditDueDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-indigo-500 transition-all text-slate-800"
+                />
+              </div>
+              <div className="pt-2 flex gap-3">
+                <Button onClick={closeModal} variant="secondary" className="flex-1 text-xs font-bold">Cancel</Button>
+                <Button type="submit" variant="primary" className="flex-1 text-xs font-bold">Save Changes</Button>
               </div>
             </form>
           </div>

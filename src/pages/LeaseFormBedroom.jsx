@@ -126,7 +126,10 @@ const navigate = useNavigate();
             try {
                 // Fetch vacant bedrooms for this specific unit
                 const res = await api.get(`/api/admin/units/bedrooms/vacant?unitId=${unitId}`);
-                setBedrooms(res.data);
+                const bList = Array.isArray(res.data)
+                    ? res.data
+                    : (res.data?.data && Array.isArray(res.data.data) ? res.data.data : []);
+                setBedrooms(bList);
             } catch (error) {
                 error;
                 console.error('Failed to fetch bedrooms', error);
@@ -169,6 +172,7 @@ const navigate = useNavigate();
                 tenantId: parseInt(form.tenantId),
                 coTenantIds: form.coTenantIds.map(id => parseInt(id)),
                 monthlyRent: parseFloat(form.monthlyRent) || 0,
+                rentAmount: parseFloat(form.monthlyRent) || 0,
                 securityDeposit: parseFloat(form.securityDeposit) || 0,
                 isFullUnitLease: false,
                 sendCredentials: form.sendCredentials // Explicitly send flag
@@ -273,7 +277,7 @@ const navigate = useNavigate();
                                     className="w-full pl-12 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-slate-800 appearance-none disabled:opacity-50"
                                 >
                                     <option value="">Select Bedroom</option>
-                                    {bedrooms.map(b => (
+                                    {Array.isArray(bedrooms) && bedrooms.map(b => (
                                         <option key={b.id} value={b.id}>
                                             {b.bedroomNumber || b.displayName}
                                         </option>

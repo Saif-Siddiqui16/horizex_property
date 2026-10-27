@@ -178,6 +178,24 @@ api.defaults.adapter = async (config) => {
     }
   }
 
+  if (cleanPath === '/api/admin/units/bedrooms/vacant') {
+    const unitId = query.get('unitId');
+    if (!unitId) return response200([]);
+    const apartments = mockDb.getStore('mock_apartments');
+    const unit = apartments.find(u => u.id === parseInt(unitId));
+    if (!unit || !unit.bedroomsList || !Array.isArray(unit.bedroomsList)) {
+      return response200([]);
+    }
+    const vacant = unit.bedroomsList
+      .filter(b => b.status === 'Vacant' || !b.status)
+      .map(b => ({
+        ...b,
+        bedroomNumber: b.bedroomNumber || b.name,
+        displayName: b.displayName || b.name
+      }));
+    return response200(vacant);
+  }
+
   const unitIdMatch = cleanPath.match(/\/api\/admin\/units\/(\d+)$/);
   if (unitIdMatch) {
     const id = unitIdMatch[1];
@@ -244,6 +262,14 @@ api.defaults.adapter = async (config) => {
       const res = await mockDb.mockLeaseService.delete(id);
       return response200(res.data);
     }
+  }
+
+  const leaseActiveMatch = cleanPath.match(/\/api\/admin\/leases\/active\/(\d+)$/);
+  if (leaseActiveMatch) {
+    const unitId = parseInt(leaseActiveMatch[1]);
+    const leases = mockDb.getStore('mock_leases');
+    const active = leases.find(l => (parseInt(l.unitId) === unitId || parseInt(l.apartmentId) === unitId) && (l.status === 'Active' || l.status === 'Draft'));
+    return response200(active || null);
   }
 
   // Maintenance Tickets
@@ -378,6 +404,15 @@ api.defaults.adapter = async (config) => {
       return response200(res.data);
     } else {
       const res = await mockDb.mockInvoiceService.create(body);
+      return response200(res.data);
+    }
+  }
+
+  const invoiceIdMatch = cleanPath.match(/\/api\/admin\/invoices\/(\d+)$/);
+  if (invoiceIdMatch) {
+    const id = invoiceIdMatch[1];
+    if (method === 'put') {
+      const res = await mockDb.mockInvoiceService.update(id, body);
       return response200(res.data);
     }
   }

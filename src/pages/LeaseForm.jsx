@@ -88,7 +88,10 @@ const navigate = useNavigate();
       try {
         // Fetch vacant bedrooms for this specific unit
         const bedroomRes = await api.get(`/api/admin/units/bedrooms/vacant?unitId=${unitId}`);
-        setBedrooms(bedroomRes.data);
+        const bedroomList = Array.isArray(bedroomRes.data)
+          ? bedroomRes.data
+          : (bedroomRes.data?.data && Array.isArray(bedroomRes.data.data) ? bedroomRes.data.data : []);
+        setBedrooms(bedroomList);
 
         // Check if there's a DRAFT lease with tenant for this unit
         const leaseRes = await api.get(`/api/admin/leases/active/${unitId}`);
@@ -119,6 +122,7 @@ const navigate = useNavigate();
         startDate: form.startDate,
         endDate: form.endDate,
         monthlyRent: parseFloat(form.monthlyRent) || 0,
+        rentAmount: parseFloat(form.monthlyRent) || 0,
         securityDeposit: parseFloat(form.securityDeposit) || 0,
         sendCredentials: form.sendCredentials === true
       };
@@ -206,7 +210,7 @@ const navigate = useNavigate();
                 className="w-full pl-12 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-slate-800 appearance-none disabled:opacity-50"
               >
                 <option value="">Full Unit (No specific room)</option>
-                {bedrooms.map(b => (
+                {Array.isArray(bedrooms) && bedrooms.map(b => (
                   <option key={b.id} value={b.id}>
                     {b.bedroomNumber || b.displayName}
                   </option>
