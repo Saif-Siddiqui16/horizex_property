@@ -323,12 +323,22 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
                 {(() => {
                     const upcomingVacancies = sortedLeaseAlertList.filter(a => a.daysLeft > 0);
+                    const overdueAmount = (collectionMetrics.overdueAmount ?? collectionMetrics.totalOutstanding) || 0;
                     return [
                         { title: 'Upcoming Renewals', value: renewals.length || 0, subValue: 'Requires Action', icon: FileText, color: 'bg-orange-500', path: '/leases/renewals' },
                         { title: 'Upcoming Vacancies', value: upcomingVacancies.length || 0, subValue: upcomingVacancies.length > 0 ? `Next: ${formatTableDate(upcomingVacancies[0].expiryDate)}` : 'None upcoming', icon: Calendar, color: 'bg-teal-500', path: '/vacancy' },
                         { title: 'Outstanding Rent', value: `$${(collectionMetrics.totalOutstanding || 0).toLocaleString('en-CA')}`, subValue: 'AR Receivables', icon: Wallet, color: 'bg-rose-500', path: '/payments/outstanding' },
-                        { title: 'Collection Rate', value: `${collectionMetrics.collectionRate || 0}%`, subValue: 'Overall Performance', icon: TrendingUp, color: 'bg-indigo-500', path: '/payments/collection' },
-                        { title: 'Overdue Invoices', value: collectionMetrics.overdueCount || 0, subValue: 'Requires Collection', icon: Clock, color: 'bg-amber-500', path: '/payments/invoices' },
+                        {
+                            isCombined: true,
+                            title: 'Overdue Invoices',
+                            value: `$${overdueAmount.toLocaleString('en-CA')}`,
+                            countText: `${collectionMetrics.overdueCount || 0} overdue`,
+                            collectionRate: `${collectionMetrics.collectionRate || 0}%`,
+                            subValue: 'Requires Collection',
+                            icon: Clock,
+                            color: 'bg-amber-500',
+                            path: '/payments/collection'
+                        },
                         { title: 'This Month Collected', value: `$${(collectionMetrics.thisMonthCollection || 0).toLocaleString('en-CA')}`, subValue: 'Cash Inflow', icon: TrendingUp, color: 'bg-emerald-500', path: '/payments/received' },
                         { title: 'Active TAL Cases', value: legalSummary.activeCasesCount || 0, subValue: 'In Litigation', icon: Gavel, color: 'bg-violet-500', path: '/tal-cases' },
                         { title: 'Notes Hub', value: notesStats.totalNotes || 0, subValue: `${notesStats.recentCount || 0} This Week`, icon: StickyNote, color: 'bg-indigo-500', path: '/notes-hub' },
@@ -345,12 +355,32 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 <div className={`w-10 h-10 ${card.color} rounded-xl flex items-center justify-center text-white shadow-lg`}>
                                     <card.icon size={20} />
                                 </div>
+                                {card.isCombined && (
+                                    <div className="text-right">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Collection Rate</span>
+                                        <span className="text-lg font-black text-indigo-600 tracking-tight">{card.collectionRate}</span>
+                                    </div>
+                                )}
                             </div>
                             <h4 className="text-slate-500 font-bold text-[11px] uppercase tracking-wider">{card.title}</h4>
-                            <p className="text-xl font-black text-slate-800 tracking-tight mt-0.5">{card.value}</p>
+                            {card.isCombined ? (
+                                <div className="flex items-baseline gap-2 mt-0.5">
+                                    <p className="text-xl font-black text-slate-800 tracking-tight">{card.value}</p>
+                                    {card.countText && (
+                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                            {card.countText}
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-xl font-black text-slate-800 tracking-tight mt-0.5">{card.value}</p>
+                            )}
                         </div>
                         <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{card.subValue}</span>
+                            {card.isCombined && (
+                                <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest">Perf: {card.collectionRate}</span>
+                            )}
                         </div>
                     </Link>
                 ))}

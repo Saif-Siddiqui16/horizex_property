@@ -3049,7 +3049,9 @@ export const collectionAnalyticsService = {
     const totalDue = invoices.reduce((sum, i) => sum + i.amountDue, 0);
     const totalCollected = payments.reduce((sum, p) => sum + p.amountPaid, 0);
     const totalOutstanding = invoices.reduce((sum, i) => sum + i.outstandingBalance, 0);
-    const overdueCount = invoices.filter(i => i.status === 'Overdue').length;
+    const overdueInvoices = invoices.filter(i => i.status === 'Overdue');
+    const overdueCount = overdueInvoices.length;
+    const overdueAmount = overdueInvoices.reduce((sum, i) => sum + (i.outstandingBalance || i.amountDue || 0), 0);
 
     const rate = totalDue ? Math.round((totalCollected / totalDue) * 100) : 100;
 
@@ -3092,6 +3094,7 @@ export const collectionAnalyticsService = {
       totalCollected,
       totalOutstanding,
       overdueCount,
+      overdueAmount,
       collectionRate: rate,
       thisMonthCollection,
       lastMonthCollection,
