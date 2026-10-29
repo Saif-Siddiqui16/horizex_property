@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, Pencil, Trash2, X, FileText, Calendar, User, Home, Bed, AlertTriangle, CheckCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
+import { hasPermission } from '../utils/permissions';
 // DUMMY_LEASES removed
 export const LeaseHistory = () => {
 const navigate = useNavigate();

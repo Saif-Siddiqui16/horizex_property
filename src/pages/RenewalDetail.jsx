@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ArrowLeft, Clock, FileText, Send, Calendar, CheckCircle2, AlertCircle, Plus, Trash2, Download } from 'lucide-react';
 import { mockRenewalService } from '../mock/mockServices';
-import { RENEWAL_STATUSES } from '../mock/renewals';
+import { RENEWAL_STATUSES } from '../mock/renewals';
 export const RenewalDetail = () => {
 const { id } = useParams();
   const navigate = useNavigate();
@@ -171,6 +171,13 @@ const { id } = useParams();
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Notice Status</p>
                 <p className="text-sm font-bold mt-0.5 text-slate-800">
                   {renewal.noticeSent ? `Sent on ${renewal.noticeDate}` : 'Pending Notice'}
+                </p>
+              </div>
+              <div className="col-span-2 pt-2 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Proposed New Lease Term</p>
+                <p className="text-sm font-bold text-emerald-600 font-mono mt-0.5 flex items-center gap-1.5">
+                  <Calendar size={14} className="shrink-0" />
+                  {renewal.proposedNewTerm || 'Extended +1 Year'}
                 </p>
               </div>
               <div className="col-span-2 pt-2 border-t border-slate-100 flex items-center justify-between">

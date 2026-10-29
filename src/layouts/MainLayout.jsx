@@ -3,10 +3,44 @@ import { useLocation, Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import api from '../api/client';
+import { WorkspaceProvider, useWorkspace } from '../context/WorkspaceContext';
+import { WorkspaceTabBar } from '../components/workspace/WorkspaceTabBar';
+import { SplitWorkspaceView } from '../components/workspace/SplitWorkspaceView';
+
+const MainLayoutInner = ({ isSidebarOpen, toggleSidebar, closeSidebar }) => {
+    const { splitMode } = useWorkspace();
+
+    return (
+        <div className="flex w-full min-h-screen overflow-x-hidden">
+            {/* Fixed Sidebar */}
+            <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+
+            <div className="flex flex-col flex-1 min-w-0 transition-all duration-200 ml-0 lg:ml-[280px]">
+                {/* Sticky Top Header */}
+                <Topbar onMenuClick={toggleSidebar} />
+
+                {/* Multi-Window Workspace Tab Bar */}
+                <WorkspaceTabBar />
+
+                {/* Page Content: Split View or Standard Outlet */}
+                {splitMode ? (
+                    <SplitWorkspaceView primaryOutlet={<Outlet />} />
+                ) : (
+                    <main className="page-container flex-1 pt-4 md:pt-6">
+                        <Outlet />
+                    </main>
+                )}
+            </div>
+        </div>
+    );
+};
 
 export const MainLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
+
+    // Check if running in embedded mode (e.g. secondary pane in Split View)
+    const isEmbedded = new URLSearchParams(location.search).get('viewMode') === 'embedded';
 
     // Re-sync permissions in background on navigation & focus to keep UI up-to-date
     useEffect(() => {
@@ -46,24 +80,27 @@ export const MainLayout = () => {
         };
     }, [location.pathname]);
 
+    // If embedded inside a dual-window pane, render clean page without outer sidebar/topbar
+    if (isEmbedded) {
+        return (
+            <div className="w-full min-h-screen bg-bg p-4 overflow-y-auto">
+                <Outlet />
+            </div>
+        );
+    }
+
     // Toggle Sidebar for mobile view
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
     const closeSidebar = () => setIsSidebarOpen(false);
 
     return (
-        <div className="flex w-full min-h-screen overflow-x-hidden">
-            {/* Fixed Sidebar */}
-            <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
-
-            <div className="flex flex-col flex-1 min-w-0 transition-all duration-200 ml-0 lg:ml-[280px]">
-                {/* Sticky Top Header */}
-                <Topbar onMenuClick={toggleSidebar} />
-
-                {/* Scrollable Page Content */}
-                <main className="page-container flex-1 pt-4 md:pt-6">
-                    <Outlet />
-                </main>
-            </div>
-        </div>
+        <WorkspaceProvider>
+            <MainLayoutInner
+                isSidebarOpen={isSidebarOpen}
+                toggleSidebar={toggleSidebar}
+                closeSidebar={closeSidebar}
+            />
+        </WorkspaceProvider>
     );
 };
+
