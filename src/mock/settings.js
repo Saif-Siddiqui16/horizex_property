@@ -11,9 +11,11 @@ export const mockQuickBooksSettings = {
 };
 
 export const mockChartOfAccounts = [
-  { id: 1, code: '4000', name: 'Residential Rent Income', type: 'Revenue', balance: 154800 },
-  { id: 2, code: '4100', name: 'Commercial Rent Income', type: 'Revenue', balance: 89000 },
-  { id: 3, code: '5000', name: 'Repairs & Maintenance Expense', type: 'Expense', balance: 14500 },
-  { id: 4, code: '5100', name: 'Property Management Fees', type: 'Expense', balance: 12000 },
-  { id: 5, code: '1200', name: 'Accounts Receivable', type: 'Asset', balance: 4200 }
+  { id: 1, code: '1010', name: 'Operating Checking Account (TD Bank)', type: 'Bank', assetType: 'Bank', balance: 125400, accountNumber: '****4821' },
+  { id: 2, code: '1020', name: 'Security Deposit Escrow Account (RBC)', type: 'Bank', assetType: 'Bank', balance: 45000, accountNumber: '****9104' },
+  { id: 3, code: '4000', name: 'Residential Rent Income', type: 'Revenue', assetType: 'Income', balance: 154800 },
+  { id: 4, code: '4100', name: 'Commercial Rent Income', type: 'Revenue', assetType: 'Income', balance: 89000 },
+  { id: 5, code: '5000', name: 'Repairs & Maintenance Expense', type: 'Expense', assetType: 'Expense', balance: 14500 },
+  { id: 6, code: '5100', name: 'Property Management Fees', type: 'Expense', assetType: 'Expense', balance: 12000 },
+  { id: 7, code: '1200', name: 'Accounts Receivable', type: 'Asset', assetType: 'Asset', balance: 4200 }
 ];

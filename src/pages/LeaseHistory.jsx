@@ -235,7 +235,7 @@ const navigate = useNavigate();
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200">
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Lease Type</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Company</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Owner</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Building</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Unit</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Bedroom</th>
@@ -259,7 +259,7 @@ const navigate = useNavigate();
                                                 {lease.leaseType}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-bold">{lease.companyName || '-'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-bold">{lease.ownerName || lease.owner || '-'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">{lease.buildingName}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="font-semibold text-slate-800">{lease.unit}</div>

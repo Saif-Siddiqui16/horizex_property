@@ -28,7 +28,7 @@ export { mockNotes, mockNoteComments, mockNoteAttachments, mockCommTimeline };
 
 // Initialize localStorage databases with mock seed data if empty
 export const initMockDatabase = () => {
-  if (localStorage.getItem('mock_db_version') !== '2.6') {
+  if (localStorage.getItem('mock_db_version') !== '2.8') {
     localStorage.removeItem('mock_dashboard_stats');
     localStorage.removeItem('mock_revenue_analytics');
     localStorage.removeItem('mock_properties');
@@ -78,7 +78,7 @@ export const initMockDatabase = () => {
     localStorage.removeItem('mock_ledger');
     localStorage.removeItem('mock_reports_analytics');
     localStorage.removeItem('mock_companies');
-    localStorage.setItem('mock_db_version', '2.6');
+    localStorage.setItem('mock_db_version', '2.8');
   }
 
   const checkAndSeed = (key, initialData) => {
@@ -591,6 +591,7 @@ export const mockTenantService = {
       return {
         ...t,
         companyName: prop ? prop.companyName : '-',
+        ownerName: (prop ? (prop.ownerNames || prop.ownerName || 'David Miller') : '-').replace(/Owner User/g, 'David Miller'),
         name: t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Unknown Tenant',
         unit: t.unitNumber || t.unit || 'Apt 101'
       };
@@ -679,6 +680,7 @@ export const mockApartmentService = {
       return {
         ...u,
         companyName: prop ? prop.companyName : '-',
+        ownerName: (prop ? (prop.ownerNames || prop.ownerName || 'David Miller') : '-').replace(/Owner User/g, 'David Miller'),
         buildingName: prop ? prop.name : u.propertyName
       };
     });
@@ -781,6 +783,7 @@ export const mockLeaseService = {
         id: l.id,
         leaseType: unit && unit.rentalMode === 'BEDROOM' ? 'Bedroom Lease' : 'Full Unit Lease',
         companyName: prop ? prop.companyName : '-',
+        ownerName: (prop ? (prop.ownerNames || prop.ownerName || 'David Miller') : '-').replace(/Owner User/g, 'David Miller'),
         buildingName: prop ? prop.name : l.propertyName || 'Parkview Heights',
         unit: unit ? unit.unitNumber : l.unitNumber || 'Apt 101',
         bedroom: l.bedroomNumber || l.bedroom || '-',
@@ -1161,6 +1164,7 @@ export const mockInvoiceService = {
         id: inv.id,
         invoiceNo: inv.invoiceNo || inv.invoiceNumber,
         companyName: prop ? prop.companyName : '-',
+        ownerName: (prop ? (prop.ownerNames || prop.ownerName || 'David Miller') : '-').replace(/Owner User/g, 'David Miller'),
         tenant: inv.tenant || inv.tenantName,
         unit: inv.unit || inv.unitNumber
       };
@@ -1612,21 +1616,40 @@ export const mockSettingsService = {
     localStorage.setItem('mock_quickbooks_settings', JSON.stringify(qb));
     return qb;
   }),
-  getChartOfAccounts: () => withDelay(() => getStore('mock_chart_of_accounts')),
+  getChartOfAccounts: () => withDelay(() => {
+    let list = getStore('mock_chart_of_accounts');
+    if (!list || list.length === 0 || !list.some(a => a.type === 'Bank' || a.assetType === 'Bank')) {
+      const bankDefaults = [
+        { id: 101, code: '1010', name: 'Operating Checking Account (TD Bank)', accountName: 'Operating Checking Account (TD Bank)', type: 'Bank', assetType: 'Bank', balance: 125400, accountNumber: '****4821' },
+        { id: 102, code: '1020', name: 'Security Deposit Escrow Account (RBC)', accountName: 'Security Deposit Escrow Account (RBC)', type: 'Bank', assetType: 'Bank', balance: 45000, accountNumber: '****9104' }
+      ];
+      list = [...bankDefaults, ...(list || [])];
+      setStore('mock_chart_of_accounts', list);
+    }
+    return list;
+  }),
   createChartOfAccount: (data) => withDelay(() => {
     const list = getStore('mock_chart_of_accounts');
+    if (!data.name && data.accountName) data.name = data.accountName;
     const newAcc = {
       id: list.length ? Math.max(...list.map(c => c.id)) + 1 : 1,
-      code: data.code,
+      code: data.code || (data.assetType === 'Bank' || data.type === 'Bank' ? '10' + Math.floor(10 + Math.random() * 89) : '1200'),
+      accountName: data.accountName || data.name,
+      name: data.accountName || data.name,
+      assetType: data.assetType || data.type || 'Bank',
+      accountNumber: data.accountNumber || '',
       name: data.name,
-      type: data.type,
-      balance: parseFloat(data.balance || 0)
+      type: data.assetType || data.type || 'Bank',
+      balance: parseFloat(data.openingBalance !== undefined ? data.openingBalance : (data.balance || 0))
     };
     list.push(newAcc);
     setStore('mock_chart_of_accounts', list);
     return newAcc;
   }),
   updateChartOfAccount: (id, data) => withDelay(() => {
+    if (!data.name && data.accountName) data.name = data.accountName;
+    if (!data.type && data.assetType) data.type = data.assetType;
+    if (data.openingBalance !== undefined) data.balance = parseFloat(data.openingBalance);
     let list = getStore('mock_chart_of_accounts');
     let updated = null;
     list = list.map(item => {
@@ -2379,6 +2402,7 @@ export const mockRenewalService = {
         lease,
         companyId: prop ? prop.companyId : 1,
         companyName: prop ? prop.companyName : '-',
+        ownerName: (prop ? (prop.ownerNames || prop.ownerName || 'David Miller') : '-').replace(/Owner User/g, 'David Miller'),
         propertyId: lease.propertyId,
         propertyName: prop ? prop.name : lease.propertyName,
         unitId: lease.unitId,

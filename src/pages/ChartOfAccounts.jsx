@@ -31,7 +31,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
   const [form, setForm] = useState({
     name: '',
-    type: 'Asset',
+    type: 'Bank',
+    accountNumber: '',
     balance: '',
   });
 
@@ -52,13 +53,18 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
   const openAddModal = () => {
     setEditIndex(null);
-    setForm({ name: '', type: 'Asset', balance: '' });
+    setForm({ name: '', type: 'Bank', balance: '', accountNumber: '' });
     setShowModal(true);
   };
 
   const openEditModal = (acc, index) => {
     setEditIndex(index);
-    setForm(acc);
+    setForm({
+      name: acc.accountName || acc.name || '',
+      type: acc.assetType || acc.type || 'Bank',
+      balance: acc.openingBalance ?? acc.balance ?? '',
+      accountNumber: acc.accountNumber || '',
+    });
     setShowModal(true);
   };
 
@@ -72,7 +78,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
       const payload = {
         accountName: form.name,
         assetType: form.type,
-        openingBalance: form.balance
+        openingBalance: form.balance,
+        accountNumber: form.accountNumber || ''
       };
 
       if (editIndex !== null) {
@@ -105,7 +112,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
       : accounts.filter((a) => {
           let type = a.assetType || a.type || 'Asset';
           if (type.toLowerCase() === 'revenue') type = 'Income';
-          return type === filter;
+          if (type.toLowerCase() === 'bank') type = 'Bank';
+          return type.toLowerCase() === filter.toLowerCase();
         });
 
   return (
@@ -116,7 +124,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-6">
           {/* Filter Tabs */}
           <div className="flex flex-wrap gap-2">
-            {['All', 'Asset', 'Income', 'Expense'].map((t) => (
+            {['All', 'Bank', 'Asset', 'Income', 'Expense'].map((t) => (
               <button
                 key={t}
                 className={`py-2 px-4 rounded-lg border text-sm font-medium cursor-pointer transition-all duration-200 ${filter === t
@@ -160,7 +168,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             return (
               <div
                 key={index}
-                className={`rounded-xl p-4 sm:p-5 bg-white shadow-[0_6px_20px_rgba(0,0,0,0.06)] relative transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(0,0,0,0.08)] border-l-[5px] ${accType === 'Asset' ? 'border-l-blue-600' :
+                className={`rounded-xl p-4 sm:p-5 bg-white shadow-[0_6px_20px_rgba(0,0,0,0.06)] relative transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(0,0,0,0.08)] border-l-[5px] ${accType.toLowerCase() === 'bank' ? 'border-l-emerald-600' : accType === 'Asset' ? 'border-l-blue-600' :
                   accType === 'Income' ? 'border-l-green-600' : 'border-l-red-600'
                   } h-fit`}
               >
@@ -173,6 +181,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         onClick={() => openEditModal({
                           name: acc.accountName,
                           type: accType,
+                          accountNumber: acc.accountNumber,
                           balance: rawBalance
                         }, index)}
                         title="Edit"
@@ -192,7 +201,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   </div>
                 </div>
 
-                <p className="text-[12px] text-slate-500 mt-1 font-medium uppercase tracking-wider">{accType}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className={`text-[12px] font-bold uppercase tracking-wider ${accType.toLowerCase() === 'bank' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                    {accType.toLowerCase() === 'bank' ? '🏦 Bank Account' : accType}
+                  </p>
+                  {acc.accountNumber && (
+                    <span className="text-[11px] font-mono text-slate-400 font-medium">({acc.accountNumber})</span>
+                  )}
+                </div>
                 <h2 className="text-xl sm:text-[22px] font-bold my-2.5 text-slate-900">
                   $ {numBalance.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </h2>
@@ -222,7 +238,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
               <div className="p-5 flex flex-col gap-3.5">
                 <input
-                  placeholder="Account Name"
+                  placeholder="Account Name (e.g. Operating Checking - TD Bank)"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
@@ -233,14 +249,24 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   onChange={(e) => setForm({ ...form, type: e.target.value })}
                   className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
                 >
-                  <option>Asset</option>
+                  <option value="Bank">Bank Account</option>
+                  <option value="Asset">Asset</option>
                   <option>Income</option>
                   <option>Expense</option>
                 </select>
 
+                {form.type === 'Bank' && (
+                  <input
+                    placeholder="Account / Transit Number (e.g. ****4821)"
+                    value={form.accountNumber || ''}
+                    onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
+                    className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  />
+                )}
+
                 <input
                   type="number"
-                  placeholder="Opening Balance"
+                  placeholder="Opening Balance ($)"
                   value={form.balance}
                   onChange={(e) => setForm({ ...form, balance: e.target.value })}
                   className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
