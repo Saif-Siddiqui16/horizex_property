@@ -534,13 +534,21 @@ export const mockPropertyService = {
     const list = getStore('mock_properties');
     const newProp = {
       id: list.length ? Math.max(...list.map(p => p.id)) + 1 : 1,
+      companyId: data.companyId || 1,
+      companyName: data.companyName || 'Apex Real Estate Partners',
+      bankAccount: data.bankAccount || 'TD Commercial Operating #0144-8829-10',
       name: data.name,
-      address: data.address,
+      address: data.address || `${data.civicNumber || ''} ${data.street || ''}, ${data.city || ''}, ${data.province || ''}`.trim(),
+      civicNumber: data.civicNumber,
+      street: data.street,
+      city: data.city,
+      province: data.province,
+      postalCode: data.postalCode,
       status: data.status || 'Active',
       ownerNames: data.ownerNames || 'Owner User',
       ownerIds: data.ownerIds || [3],
-      units: 0,
-      totalUnits: 0,
+      units: data.units || 0,
+      totalUnits: data.units || 0,
       occupancy: '0%',
       occupancyRate: 0,
       revenue: 0
@@ -2401,6 +2409,19 @@ export const mockRenewalService = {
 
     const previousRenewals = list.filter(r => r.leaseId === ren.leaseId && r.id !== ren.id);
 
+    // Calculate proposed new renewal term (+1 Year from current lease end)
+    let proposedTermStart = '';
+    let proposedTermEnd = '';
+    if (lease && lease.endDate) {
+      const parts = lease.endDate.split('-').map(Number);
+      if (parts.length === 3) {
+        const nextDay = new Date(parts[0], parts[1] - 1, parts[2] + 1);
+        proposedTermStart = nextDay.toISOString().split('T')[0];
+        const nextEndYear = parts[0] + 1;
+        proposedTermEnd = `${nextEndYear}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`;
+      }
+    }
+
     return {
       ...ren,
       lease,
@@ -2415,6 +2436,9 @@ export const mockRenewalService = {
       leaseStart: lease ? lease.startDate : '-',
       leaseEnd: lease ? lease.endDate : '-',
       currentRent: lease ? lease.rentAmount : 0,
+      proposedTermStart,
+      proposedTermEnd,
+      proposedNewTerm: (proposedTermStart && proposedTermEnd) ? `${proposedTermStart} to ${proposedTermEnd} (+1 Year)` : 'Extended +1 Year',
       previousRenewals
     };
   }),
@@ -2433,26 +2457,56 @@ export const mockRenewalService = {
       activity: `Status changed from ${prevStatus} to ${status}`
     });
 
-    // Update lease, tenant, and future invoices according to renewal when accepted
-    if (status === 'Accepted' && list[index].proposedRent) {
-      const renewalRent = parseFloat(list[index].proposedRent);
+    // Update lease term, rent, tenant, and future invoices according to renewal when accepted
+    if (status === 'Accepted') {
+      const renewalRent = list[index].proposedRent ? parseFloat(list[index].proposedRent) : null;
       const renewalDate = list[index].renewalDueDate || new Date().toLocaleDateString('en-CA');
       const leaseId = list[index].leaseId;
 
-      // 1. Update lease rent
+      // 1. Update lease term & rent
       let leases = getStore('mock_leases') || [];
       const leaseIdx = leases.findIndex(l => l.id === leaseId);
       if (leaseIdx !== -1) {
-        leases[leaseIdx].rentAmount = renewalRent;
-        leases[leaseIdx].monthlyRent = renewalRent;
+        const targetLease = leases[leaseIdx];
+        const oldEndDate = targetLease.endDate;
+
+        // Automatically extend lease term by 1 year (+12 months)
+        let newEndDate = '';
+        if (oldEndDate) {
+          const parts = oldEndDate.split('-').map(Number);
+          if (parts.length === 3) {
+            const nextEndYear = parts[0] + 1;
+            newEndDate = `${nextEndYear}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`;
+          }
+        }
+        if (!newEndDate) {
+          const d = new Date(renewalDate);
+          d.setFullYear(d.getFullYear() + 1);
+          newEndDate = d.toISOString().split('T')[0];
+        }
+
+        leases[leaseIdx].endDate = newEndDate;
+        leases[leaseIdx].term = `${targetLease.startDate} to ${newEndDate}`;
+        if (renewalRent !== null) {
+          leases[leaseIdx].rentAmount = renewalRent;
+          leases[leaseIdx].monthlyRent = renewalRent;
+        }
         setStore('mock_leases', leases);
+        try { window.dispatchEvent(new Event('leaseUpdated')); } catch (e) {}
+
+        list[index].history.push({
+          date: new Date().toLocaleDateString('en-CA'),
+          activity: `Lease term automatically extended from ${oldEndDate} to ${newEndDate} (+1 Year)`
+        });
 
         // 2. Update tenant rent
-        let tenants = getStore('mock_tenants') || [];
-        const tenantIdx = tenants.findIndex(t => t.id === leases[leaseIdx].tenantId);
-        if (tenantIdx !== -1) {
-          tenants[tenantIdx].rent = renewalRent;
-          setStore('mock_tenants', tenants);
+        if (renewalRent !== null) {
+          let tenants = getStore('mock_tenants') || [];
+          const tenantIdx = tenants.findIndex(t => t.id === leases[leaseIdx].tenantId);
+          if (tenantIdx !== -1) {
+            tenants[tenantIdx].rent = renewalRent;
+            setStore('mock_tenants', tenants);
+          }
         }
       }
 

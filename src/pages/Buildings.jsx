@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { Plus, Search, Filter, Eye, Pencil, Trash2, Building2, Home, X } from 'lucide-react';
+import { Plus, Search, Filter, Eye, Pencil, Trash2, Building2, Home, X, Landmark } from 'lucide-react';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
+import { hasPermission } from '../utils/permissions';
+import { mockCompanies } from '../mock/companies';
 export const Buildings = () => {
-const [__forceUpdate, __setForceUpdate] = useState(0);
+  const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -27,13 +28,69 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const [currentBuilding, setCurrentBuilding] = useState(null);
   const [owners, setOwners] = useState([]);
   const [selectedOwnerIds, setSelectedOwnerIds] = useState([]);
+  const [formCompanyId, setFormCompanyId] = useState('');
+  const [formBankAccount, setFormBankAccount] = useState('');
+  const [editCompanyId, setEditCompanyId] = useState('');
+  const [editBankAccount, setEditBankAccount] = useState('');
+
+  const getDynamicCompanies = () => {
+    try {
+      const stored = localStorage.getItem('mock_companies');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return mockCompanies;
+  };
+
+  const getDynamicBankAccounts = () => {
+    try {
+      const stored = localStorage.getItem('horizex_bank_accounts_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.accounts)) return parsed.accounts;
+      }
+    } catch (e) {}
+    return [];
+  };
+
+  const getCompanyBankAccounts = (companyId) => {
+    if (!companyId) return [];
+    const compId = parseInt(companyId);
+    const dynamicAccounts = getDynamicBankAccounts();
+    return dynamicAccounts.filter(a => a.companyId === compId);
+  };
+
+  const getAccountLabel = (acc) => {
+    if (!acc) return '';
+    return acc.bankName
+      ? `${acc.bankName} - ${acc.accountName} (${acc.accountNumber})`
+      : (acc.shortAccount || acc.accountName);
+  };
+
+  const [availableCompanies, setAvailableCompanies] = useState(getDynamicCompanies);
+  const [availableBankAccounts, setAvailableBankAccounts] = useState(getDynamicBankAccounts);
+
+  useEffect(() => {
+    const handleSync = () => {
+      setAvailableCompanies(getDynamicCompanies());
+      setAvailableBankAccounts(getDynamicBankAccounts());
+    };
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('bankAccountsUpdated', handleSync);
+    return () => {
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('bankAccountsUpdated', handleSync);
+    };
+  }, []);
 
   // Fetch buildings and owners from API
   useEffect(() => {
     fetchBuildings(currentPage, search);
     fetchOwners();
   }, [currentPage, itemsPerPage]);
-  
+
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       setCurrentPage(1); // Reset to page 1 on search
@@ -98,9 +155,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const addBuilding = async (e) => {
     e.preventDefault();
     const form = e.target;
+    const currentCompanies = availableCompanies.length > 0 ? availableCompanies : mockCompanies;
+    const selectedComp = currentCompanies.find(c => c.id === parseInt(form.companyId?.value || formCompanyId)) || currentCompanies[0];
     // Note: Backend handles unit generation based on 'units' count
     const newBuilding = {
       name: form.name.value,
+      companyId: selectedComp?.id || null,
+      companyName: selectedComp?.name || '',
+      bankAccount: form.bankAccount?.value || formBankAccount || '',
       units: parseInt(form.units.value),
       status: form.status.value,
       civicNumber: form.civicNumber.value,
@@ -147,6 +209,12 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const editBuilding = (building) => {
     setCurrentBuilding(building);
     setSelectedOwnerIds(building.ownerIds || []);
+    const compId = building.companyId ? String(building.companyId) : '';
+    setEditCompanyId(compId);
+    const autoBank = getCompanyBankAccount(compId);
+    setEditBankAccount(building.bankAccount || autoBank || '');
+    setAvailableCompanies(getDynamicCompanies());
+    setAvailableBankAccounts(getDynamicBankAccounts());
     setShowEditModal(true);
   };
 
@@ -154,8 +222,15 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const updateBuilding = async (e) => {
     e.preventDefault();
     const form = e.target;
+    const currentCompanies = availableCompanies.length > 0 ? availableCompanies : mockCompanies;
+    const compId = parseInt(form.companyId?.value || editCompanyId);
+    const selectedComp = currentCompanies.find(c => c.id === compId);
+
     const updatedData = {
       name: form.name.value,
+      companyId: selectedComp ? selectedComp.id : (currentBuilding.companyId || null),
+      companyName: selectedComp ? selectedComp.name : (currentBuilding.companyName || ''),
+      bankAccount: form.bankAccount?.value || editBankAccount || currentBuilding.bankAccount || '',
       units: parseInt(form.units.value),
       status: form.status.value,
       civicNumber: form.civicNumber.value,
@@ -232,6 +307,10 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
           {hasPermission('Buildings', 'add') && (
             <Button variant="primary" onClick={() => {
               setSelectedOwnerIds([]);
+              setFormCompanyId('');
+              setFormBankAccount('');
+              setAvailableCompanies(getDynamicCompanies());
+              setAvailableBankAccounts(getDynamicBankAccounts());
               setShowModal(true);
             }} className="whitespace-nowrap">
               <Plus size={16} />
@@ -258,107 +337,115 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 </tr>
               </thead>
               <tbody>
-              {filteredBuildings.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="p-8 text-center text-slate-500">No buildings found.</td>
-                </tr>
-              ) : (
-                filteredBuildings.map((building, index) => (
-                  <tr key={building.id} className="group transition-all duration-300 hover:bg-gradient-to-r hover:from-slate-50 hover:to-white hover:scale-[1.002] hover:shadow-md">
-                    <td className="pl-6">
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
-                          <Building2 size={20} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-800 text-sm">{building.name}</span>
-                          <span className="text-[10px] text-[#667eea] font-black uppercase tracking-tighter">B-{building.id}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="font-bold text-slate-700 text-xs truncate max-w-[150px] inline-block">
-                        {building.companyName || '-'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap gap-1">
-                        {building.ownerNames ? (
-                          building.ownerNames.split(', ').slice(0, 1).map((owner, oIdx) => (
-                            <span key={oIdx} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md text-[10px] font-bold border border-indigo-100 whitespace-nowrap">
-                              {owner}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-slate-400 text-xs italic">No Owner</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="text-slate-600 text-sm truncate max-w-[200px] inline-block" title={building.street}>
-                        {building.street || '-'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex flex-col justify-center gap-0.5">
-                        {building.city || building.province ? (
-                          <>
-                            {building.city && <span className="font-bold text-slate-700 text-sm leading-tight">{building.city}</span>}
-                            {building.province && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{building.province}</span>}
-                          </>
-                        ) : (
-                          <span className="text-slate-600 text-sm">-</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="text-slate-600 text-xs font-medium">
-                        {building.postalCode || '-'}
-                      </span>
-                    </td>
-                    <td className="text-center">
-                      <span className="text-[1rem] font-black text-[#667eea]">{building.units}</span>
-                    </td>
-                    <td className="text-center">
-                      <div className="flex justify-center">
-                        <span className={`saas-badge ${building.status === 'Active' ? 'saas-badge-success' : 'saas-badge-danger'}`}>
-                          <span className={`w-1 h-1 rounded-full ${building.status === 'Active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                          {building.status}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="text-right pr-6">
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-sky-50 text-sky-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(2,132,199,0.2)] hover:scale-110"
-                          title="View Details"
-                          onClick={() => viewBuilding(building)}
-                        >
-                          <Eye size={12} />
-                        </button>
-                        {hasPermission('Buildings', 'edit') && (
-                          <button
-                            className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-emerald-50 text-emerald-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(22,163,74,0.2)] hover:scale-110"
-                            title="Edit Building"
-                            onClick={() => editBuilding(building)}
-                          >
-                            <Pencil size={12} />
-                          </button>
-                        )}
-                        {hasPermission('Buildings', 'delete') && (
-                          <button
-                            className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-red-50 text-red-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(220,38,38,0.2)] hover:scale-110"
-                            title="Delete Building"
-                            onClick={() => deleteBuilding(building.id)}
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                {filteredBuildings.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" className="p-8 text-center text-slate-500">No buildings found.</td>
                   </tr>
-                ))
-              )}
+                ) : (
+                  filteredBuildings.map((building, index) => (
+                    <tr key={building.id} className="group transition-all duration-300 hover:bg-gradient-to-r hover:from-slate-50 hover:to-white hover:scale-[1.002] hover:shadow-md">
+                      <td className="pl-6">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
+                            <Building2 size={20} />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-800 text-sm">{building.name}</span>
+                            <span className="text-[10px] text-[#667eea] font-black uppercase tracking-tighter">B-{building.id}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-700 text-xs truncate max-w-[150px] inline-block">
+                            {building.companyName || '-'}
+                          </span>
+                          {building.bankAccount && (
+                            <span className="text-[10px] text-emerald-600 font-mono font-medium truncate max-w-[160px] flex items-center gap-1 mt-0.5" title={building.bankAccount}>
+                              <Landmark size={10} className="shrink-0" />
+                              {building.bankAccount.split('#')[0] || building.bankAccount}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex flex-wrap gap-1">
+                          {building.ownerNames ? (
+                            building.ownerNames.split(', ').slice(0, 1).map((owner, oIdx) => (
+                              <span key={oIdx} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md text-[10px] font-bold border border-indigo-100 whitespace-nowrap">
+                                {owner}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-slate-400 text-xs italic">No Owner</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <span className="text-slate-600 text-sm truncate max-w-[200px] inline-block" title={building.street}>
+                          {building.street || '-'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex flex-col justify-center gap-0.5">
+                          {building.city || building.province ? (
+                            <>
+                              {building.city && <span className="font-bold text-slate-700 text-sm leading-tight">{building.city}</span>}
+                              {building.province && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{building.province}</span>}
+                            </>
+                          ) : (
+                            <span className="text-slate-600 text-sm">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <span className="text-slate-600 text-xs font-medium">
+                          {building.postalCode || '-'}
+                        </span>
+                      </td>
+                      <td className="text-center">
+                        <span className="text-[1rem] font-black text-[#667eea]">{building.units}</span>
+                      </td>
+                      <td className="text-center">
+                        <div className="flex justify-center">
+                          <span className={`saas-badge ${building.status === 'Active' ? 'saas-badge-success' : 'saas-badge-danger'}`}>
+                            <span className={`w-1 h-1 rounded-full ${building.status === 'Active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                            {building.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-right pr-6">
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-sky-50 text-sky-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(2,132,199,0.2)] hover:scale-110"
+                            title="View Details"
+                            onClick={() => viewBuilding(building)}
+                          >
+                            <Eye size={12} />
+                          </button>
+                          {hasPermission('Buildings', 'edit') && (
+                            <button
+                              className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-emerald-50 text-emerald-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(22,163,74,0.2)] hover:scale-110"
+                              title="Edit Building"
+                              onClick={() => editBuilding(building)}
+                            >
+                              <Pencil size={12} />
+                            </button>
+                          )}
+                          {hasPermission('Buildings', 'delete') && (
+                            <button
+                              className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-red-50 text-red-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(220,38,38,0.2)] hover:scale-110"
+                              title="Delete Building"
+                              onClick={() => deleteBuilding(building.id)}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -407,7 +494,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         {showModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in overflow-y-auto p-0 md:p-6">
             <form id="add-building-form" className="bg-white w-full max-w-lg rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={addBuilding}>
-              
+
               {/* Sticky Modal Header */}
               <div className="sticky top-0 bg-white border-b border-slate-100 p-6 md:p-8 flex justify-between items-center shrink-0 z-10">
                 <h3 className="m-0 text-slate-800 text-2xl font-bold">Add New Building</h3>
@@ -423,7 +510,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               {/* Scrollable Form Body */}
               <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4">
                 <div>
-                  <label htmlFor="name" className="block mb-2 font-medium text-slate-600">Building Name</label>
+                  <label htmlFor="name" className="block mb-2 font-medium text-slate-600">Building Name *</label>
                   <input
                     type="text"
                     id="name"
@@ -432,6 +519,65 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     required
                     className="w-full p-3 border-2 border-slate-200 rounded-xl text-base transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 bg-white"
                   />
+                </div>
+
+                {/* Company and Operating Bank Account Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="companyId" className="block mb-2 font-medium text-slate-600">
+                      Company Name <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="companyId"
+                      name="companyId"
+                      value={formCompanyId}
+                      required
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormCompanyId(val);
+                        setFormBankAccount('');
+                      }}
+                      className={`w-full p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 appearance-none bg-white font-medium cursor-pointer ${!formCompanyId ? 'text-slate-400' : 'text-slate-800'}`}
+                    >
+                      <option value="" disabled>Select Company</option>
+                      {availableCompanies.map(c => (
+                        <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="bankAccount" className="block mb-2 font-medium text-slate-600">
+                      Bank Account <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="bankAccount"
+                      name="bankAccount"
+                      value={formBankAccount}
+                      required
+                      disabled={!formCompanyId || getCompanyBankAccounts(formCompanyId).length === 0}
+                      onChange={(e) => setFormBankAccount(e.target.value)}
+                      className={`w-full p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 appearance-none bg-white font-medium cursor-pointer ${!formBankAccount ? 'text-slate-400' : 'text-slate-800'} ${(!formCompanyId || getCompanyBankAccounts(formCompanyId).length === 0) ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                    >
+                      {!formCompanyId ? (
+                        <option value="" disabled>Select company first</option>
+                      ) : getCompanyBankAccounts(formCompanyId).length === 0 ? (
+                        <option value="" disabled>No bank account linked for this company</option>
+                      ) : (
+                        <>
+                          <option value="" disabled>Select Bank Account</option>
+                          {getCompanyBankAccounts(formCompanyId).map(acc => {
+                            const label = getAccountLabel(acc);
+                            return (
+                              <option key={acc.id} value={label} className="text-slate-800">
+                                {label}
+                              </option>
+                            );
+                          })}
+                        </>
+                      )}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Address Fields */}
@@ -567,6 +713,17 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   <span className="flex-1 font-semibold text-slate-800">{currentBuilding.name}</span>
                 </div>
                 <div className="flex items-center pb-3 border-b border-slate-100">
+                  <span className="font-medium w-[140px] text-slate-500">Company:</span>
+                  <span className="flex-1 font-semibold text-slate-800">{currentBuilding.companyName || '-'}</span>
+                </div>
+                <div className="flex items-center pb-3 border-b border-slate-100">
+                  <span className="font-medium w-[140px] text-slate-500">Bank Account:</span>
+                  <span className="flex-1 font-semibold text-emerald-600 font-mono flex items-center gap-1.5">
+                    <Landmark size={14} className="shrink-0" />
+                    {currentBuilding.bankAccount || '-'}
+                  </span>
+                </div>
+                <div className="flex items-center pb-3 border-b border-slate-100">
                   <span className="font-medium w-[140px] text-slate-500">Owner(s):</span>
                   <span className="flex-1 font-semibold text-[#667eea]">{currentBuilding.ownerNames || 'No Owner'}</span>
                 </div>
@@ -635,7 +792,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         {showEditModal && currentBuilding && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 anim-fade-in overflow-y-auto p-0 md:p-6">
             <form id="edit-building-form" className="bg-white w-full max-w-lg rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]" onSubmit={updateBuilding}>
-              
+
               {/* Sticky Modal Header */}
               <div className="sticky top-0 bg-white border-b border-slate-100 p-6 md:p-8 flex justify-between items-center shrink-0 z-10">
                 <h3 className="m-0 text-slate-800 text-2xl font-bold">Edit Building</h3>
@@ -660,6 +817,68 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     required
                     className="w-full p-3 border-2 border-slate-200 rounded-xl text-base transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 bg-white"
                   />
+                </div>
+
+                {/* Company and Operating Bank Account Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="edit-companyId" className="block mb-2 font-medium text-slate-600">
+                      Company Name <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="edit-companyId"
+                      name="companyId"
+                      value={editCompanyId}
+                      required
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditCompanyId(val);
+                        setEditBankAccount('');
+                      }}
+                      className={`w-full p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 appearance-none bg-white font-medium cursor-pointer ${!editCompanyId ? 'text-slate-400' : 'text-slate-800'}`}
+                    >
+                      <option value="" disabled>Select Company</option>
+                      {availableCompanies.map(c => (
+                        <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="edit-bankAccount" className="block mb-2 font-medium text-slate-600">
+                      Bank Account <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="edit-bankAccount"
+                      name="bankAccount"
+                      value={editBankAccount}
+                      required
+                      disabled={!editCompanyId || getCompanyBankAccounts(editCompanyId).length === 0}
+                      onChange={(e) => setEditBankAccount(e.target.value)}
+                      className={`w-full p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 appearance-none bg-white font-medium cursor-pointer ${!editBankAccount ? 'text-slate-400' : 'text-slate-800'} ${(!editCompanyId || getCompanyBankAccounts(editCompanyId).length === 0) ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                    >
+                      {!editCompanyId ? (
+                        <option value="" disabled>Select company first</option>
+                      ) : getCompanyBankAccounts(editCompanyId).length === 0 ? (
+                        <option value="" disabled>No bank account linked for this company</option>
+                      ) : (
+                        <>
+                          <option value="" disabled>Select Bank Account</option>
+                          {getCompanyBankAccounts(editCompanyId).map(acc => {
+                            const label = getAccountLabel(acc);
+                            return (
+                              <option key={acc.id} value={label} className="text-slate-800">
+                                {label}
+                              </option>
+                            );
+                          })}
+                          {editBankAccount && !getCompanyBankAccounts(editCompanyId).some(acc => getAccountLabel(acc) === editBankAccount || acc.shortAccount === editBankAccount) && (
+                            <option value={editBankAccount} className="text-slate-800">{editBankAccount} (Current)</option>
+                          )}
+                        </>
+                      )}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Address Fields */}

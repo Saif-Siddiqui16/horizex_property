@@ -78,6 +78,7 @@ const NAV_ITEMS = [
     tKey: "sidebar.leases",
     path: "/leases",
     children: [
+      { label: "Rental Applications", path: "/rental-applications" },
       { label: "Lease History", tKey: "sidebar.lease_history", path: "/leases" },
       { label: "Lease Renewals", tKey: "sidebar.renewals", path: "/leases/renewals" }
     ]
@@ -112,6 +113,7 @@ const NAV_ITEMS = [
     tKey: "sidebar.accounting",
     path: "/accounting",
     children: [
+      { label: "Bank Accounts", path: "/accounting/bank-accounts" },
       { label: "General Ledger", tKey: "sidebar.ledger", path: "/accounting" },
       { label: "QuickBooks Sync", tKey: "sidebar.quickbooks", path: "/settings/quickbooks" },
       { label: "Chart of Accounts", tKey: "sidebar.chart_of_accounts", path: "/accounting/chart-of-accounts" },
@@ -375,6 +377,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               'Vehicle Management': 'Vehicles',
               'Owners': 'Owners',
               'Leases': 'Leases',
+              'Rental Applications': 'Leases',
               'Rent Roll': 'Rent Roll',
               'Documents': 'Documents',
               'Payments': 'Payments',
@@ -383,6 +386,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               'Outstanding Dues': 'Outstanding Dues',
               'Refunds & Adjustments': 'Refunds',
               'Accounting': 'Accounting',
+              'Bank Accounts': 'Accounting',
               'General Ledger': 'General Ledger',
               'QuickBooks Sync': 'QuickBooks Sync',
               'Chart of Accounts': 'Chart of Accounts',

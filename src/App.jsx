@@ -35,6 +35,7 @@ import { LeaseHistory } from "./pages/LeaseHistory";
 import { RentRoll } from "./pages/RentRoll";
 import { LeaseRenewals } from "./pages/LeaseRenewals";
 import { RenewalDetail } from "./pages/RenewalDetail";
+import RentalApplications from "./pages/RentalApplications";
 
 /* TAL CASES */
 import { TALCases } from "./pages/TALCases";
@@ -56,6 +57,7 @@ import { Accounting } from "./pages/Accounting";
 import { ChartOfAccounts } from "./pages/ChartOfAccounts";
 import { TaxSettings } from "./pages/TaxSettings";
 import { QuickBooksSettings } from "./pages/QuickBooksSettings";
+import BankAccounts from "./pages/BankAccounts";
 
 /* REPORTS & SETTINGS */
 import Reports from "./pages/Reports";
@@ -154,6 +156,7 @@ function App() {
           <Route path="/documents" element={<DocumentLibrary />} />
 
           {/* LEASES */}
+          <Route path="/rental-applications" element={<RentalApplications />} />
           <Route path="/leases" element={<LeaseHistory />} />
           <Route path="/leases/new" element={<LeaseForm />} />
           <Route path="/leases/new-bedroom" element={<LeaseFormBedroom />} />
@@ -179,6 +182,7 @@ function App() {
           <Route path="/payments/new" element={<PaymentForm />} />
 
           {/* ACCOUNTING */}
+          <Route path="/accounting/bank-accounts" element={<BankAccounts />} />
           <Route path="/accounting" element={<Accounting />} />
           <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
           <Route path="/accounting/tax-settings" element={<TaxSettings />} />
