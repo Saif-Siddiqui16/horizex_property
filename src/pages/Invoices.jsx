@@ -209,10 +209,12 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         if (e) e.preventDefault();
 
         try {
+            const totalAmount = (parseFloat(form.rent) || 0) + (parseFloat(form.serviceFees) || 0);
             const payload = {
                 month: form.month,
                 rent: form.category === 'RENT' ? form.rent : 0,
-                serviceFees: (form.category === 'SERVICE' || form.category === 'SECURITY_DEPOSIT') ? form.serviceFees : 0,
+                serviceFees: (form.category === 'SERVICE' || form.category === 'SECURITY_DEPOSIT' || form.category === 'CREDIT_MEMO') ? form.serviceFees : 0,
+                amount: totalAmount,
                 category: form.category,
                 description: form.description,
                 items: form.category === 'SERVICE' ? lineItems.filter(item => item.description && item.amount) : []
@@ -385,6 +387,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             <option value="RENT">Rent</option>
                             <option value="DEPOSIT">Deposit</option>
                             <option value="SERVICE">Service Fees</option>
+                            <option value="CREDIT_MEMO">Credit Memo</option>
                         </select>
                     </div>
 
@@ -496,6 +499,16 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     {hasPermission('Invoices', 'add') && (
                         <Button variant="secondary" onClick={() => {
                             setEditInvoice(null);
+                            setForm({ tenantId: '', unitId: '', tenant: '', unit: '', unitName: '', month: '', rent: '0', serviceFees: '', category: 'CREDIT_MEMO', description: '' });
+                            setShowForm(true);
+                        }} className="bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100">
+                            <Plus size={18} className="mr-1" />
+                            Create Credit Memo
+                        </Button>
+                    )}
+                    {hasPermission('Invoices', 'add') && (
+                        <Button variant="secondary" onClick={() => {
+                            setEditInvoice(null);
                             setForm({ tenantId: '', unitId: '', tenant: '', unit: '', unitName: '', month: '', rent: '0', serviceFees: '', category: 'SECURITY_DEPOSIT', description: 'Security Deposit' });
                             setShowForm(true);
                         }} className="bg-purple-50 border-purple-100 text-purple-700 hover:bg-purple-100">
@@ -553,13 +566,20 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                 "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase whitespace-nowrap shadow-sm border",
                                                 inv.category === 'SERVICE' ? "bg-amber-50 text-amber-700 border-amber-100" : 
                                                 inv.category === 'SECURITY_DEPOSIT' || inv.category === 'DEPOSIT' ? "bg-purple-50 text-purple-700 border-purple-100" :
+                                                inv.category === 'CREDIT_MEMO' ? "bg-rose-50 text-rose-700 border-rose-100" :
                                                 "bg-indigo-50 text-indigo-700 border-indigo-100"
                                             )}>
-                                                {inv.category || 'RENT'}
+                                                {inv.category === 'CREDIT_MEMO' ? 'Credit Memo' : (inv.category || 'RENT')}
                                             </span>
                                         </td>
                                         <td className="p-4 text-sm text-slate-500 font-medium whitespace-nowrap">{inv.month}</td>
-                                        <td className="p-4 text-sm text-slate-900 font-black font-mono whitespace-nowrap italic">$ {inv.amount.toLocaleString('en-CA')}</td>
+                                        <td className="p-4 text-sm text-slate-900 font-black font-mono whitespace-nowrap italic">
+                                            {inv.category === 'CREDIT_MEMO' ? (
+                                                <span className="text-rose-600">-$ {(inv.amount || 0).toLocaleString('en-CA')}</span>
+                                            ) : (
+                                                <span>$ {(inv.amount || 0).toLocaleString('en-CA')}</span>
+                                            )}
+                                        </td>
                                         <td className="p-4 text-sm">
                                             <span className={clsx(
                                                 "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap shadow-sm border",
@@ -960,6 +980,16 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         >
                                             Deposit
                                         </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm({ ...form, category: 'CREDIT_MEMO', rent: '0', description: form.description || 'Credit Memo' })}
+                                            className={clsx(
+                                                "flex-1 py-2 px-3 text-[10px] font-black uppercase rounded-lg transition-all whitespace-nowrap",
+                                                form.category === 'CREDIT_MEMO' ? "bg-white text-rose-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                            )}
+                                        >
+                                            Credit Memo
+                                        </button>
                                     </div>
                                 </div>
 
@@ -1038,59 +1068,103 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     </div>
                                 )}
 
-                                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-50">
-                                    <div className="space-y-1.5">
-                                        <div className="flex justify-between items-center px-1">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base Rent ($)</label>
-                                            {parseFloat(form.serviceFees) > 0 && <span className="text-[9px] text-amber-600 font-bold uppercase">Disabled</span>}
+                                {form.category === 'CREDIT_MEMO' ? (
+                                    <div className="space-y-4 pt-2 border-t border-slate-100">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Credit Memo Amount ($)</label>
+                                                <input
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    placeholder="0.00"
+                                                    value={form.serviceFees}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                            setForm({ ...form, serviceFees: val, rent: '0' });
+                                                        }
+                                                    }}
+                                                    required
+                                                    className="w-full p-3 rounded-xl border border-rose-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-50/50 text-sm font-black text-rose-600 font-mono transition-all outline-none bg-rose-50/30"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Credit Reason / Description</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. Rent concession, repair adjustment"
+                                                    value={form.description}
+                                                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                                    required
+                                                    className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 transition-all font-medium text-slate-800"
+                                                />
+                                            </div>
                                         </div>
-                                        <input
-                                            type="text"
-                                            inputMode="decimal"
-                                            placeholder="0.00"
-                                            value={form.rent}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                                    setForm({ ...form, rent: val, serviceFees: '0', category: form.category === 'SECURITY_DEPOSIT' ? 'SECURITY_DEPOSIT' : 'RENT' });
-                                                }
-                                            }}
-                                            required={parseFloat(form.serviceFees) === 0 && form.category !== 'SECURITY_DEPOSIT'}
-                                            disabled={parseFloat(form.serviceFees) > 0 || form.category === 'SECURITY_DEPOSIT'}
-                                            readOnly={!!form.tenantId && !editInvoice} 
-                                            className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 transition-all font-medium text-slate-900 font-mono disabled:bg-slate-50 disabled:text-slate-400 read-only:bg-slate-50 read-only:text-indigo-600"
-                                        />
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <div className="flex justify-between items-center px-1">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Service Fees ($)</label>
-                                            {parseFloat(form.rent) > 0 && <span className="text-[9px] text-amber-600 font-bold uppercase">Disabled</span>}
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-50">
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between items-center px-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base Rent ($)</label>
+                                                {parseFloat(form.serviceFees) > 0 && <span className="text-[9px] text-amber-600 font-bold uppercase">Disabled</span>}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                placeholder="0.00"
+                                                value={form.rent}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                        setForm({ ...form, rent: val, serviceFees: '0', category: form.category === 'SECURITY_DEPOSIT' ? 'SECURITY_DEPOSIT' : 'RENT' });
+                                                    }
+                                                }}
+                                                required={parseFloat(form.serviceFees) === 0 && form.category !== 'SECURITY_DEPOSIT'}
+                                                disabled={parseFloat(form.serviceFees) > 0 || form.category === 'SECURITY_DEPOSIT'}
+                                                readOnly={!!form.tenantId && !editInvoice} 
+                                                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 transition-all font-medium text-slate-900 font-mono disabled:bg-slate-50 disabled:text-slate-400 read-only:bg-slate-50 read-only:text-indigo-600"
+                                            />
                                         </div>
-                                        <input
-                                            type="text"
-                                            inputMode="decimal"
-                                            placeholder="0.00"
-                                            value={form.serviceFees}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                                    setForm({ ...form, serviceFees: val, rent: '0', category: form.category === 'SECURITY_DEPOSIT' ? 'SECURITY_DEPOSIT' : 'SERVICE' });
-                                                }
-                                            }}
-                                            required={parseFloat(form.rent) === 0 && form.category !== 'RENT'}
-                                            disabled={parseFloat(form.rent) > 0 && form.category !== 'SECURITY_DEPOSIT'}
-                                            className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 transition-all font-medium text-slate-900 font-mono disabled:bg-slate-50 disabled:text-slate-400"
-                                        />
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between items-center px-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Service Fees ($)</label>
+                                                {parseFloat(form.rent) > 0 && <span className="text-[9px] text-amber-600 font-bold uppercase">Disabled</span>}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                placeholder="0.00"
+                                                value={form.serviceFees}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                        setForm({ ...form, serviceFees: val, rent: '0', category: form.category === 'SECURITY_DEPOSIT' ? 'SECURITY_DEPOSIT' : 'SERVICE' });
+                                                    }
+                                                }}
+                                                required={parseFloat(form.rent) === 0 && form.category !== 'RENT'}
+                                                disabled={parseFloat(form.rent) > 0 && form.category !== 'SECURITY_DEPOSIT'}
+                                                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 transition-all font-medium text-slate-900 font-mono disabled:bg-slate-50 disabled:text-slate-400"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
-                                <div className="bg-zinc-900 rounded-2xl p-5 text-white shadow-xl shadow-zinc-200 flex justify-between items-center">
+                                <div className={clsx(
+                                    "rounded-2xl p-5 text-white shadow-xl flex justify-between items-center transition-all",
+                                    form.category === 'CREDIT_MEMO' ? "bg-rose-950 shadow-rose-900/20" : "bg-zinc-900 shadow-zinc-200"
+                                )}>
                                     <div className="space-y-0.5">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">Total Calculation</p>
-                                        <p className="text-xs font-semibold opacity-60">Rent + Service Fees</p>
+                                        <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">
+                                            {form.category === 'CREDIT_MEMO' ? 'Credit Memo Total' : 'Total Calculation'}
+                                        </p>
+                                        <p className="text-xs font-semibold opacity-60">
+                                            {form.category === 'CREDIT_MEMO' ? 'Amount to be credited to tenant' : 'Rent + Service Fees'}
+                                        </p>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-2xl font-black tracking-tighter">$ {((parseFloat(form.rent) || 0) + (parseFloat(form.serviceFees) || 0)).toLocaleString('en-CA')}</span>
+                                        <span className="text-2xl font-black tracking-tighter">
+                                            {form.category === 'CREDIT_MEMO' ? '-' : ''}$ {((parseFloat(form.rent) || 0) + (parseFloat(form.serviceFees) || 0)).toLocaleString('en-CA')}
+                                        </span>
                                     </div>
                                 </div>
 

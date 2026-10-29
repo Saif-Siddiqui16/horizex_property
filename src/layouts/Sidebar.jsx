@@ -103,8 +103,7 @@ const NAV_ITEMS = [
     children: [
       { label: "Rent Collection & Ledger", tKey: "sidebar.collection", path: "/payments/collection" },
       { label: "Payments Received", tKey: "sidebar.received", path: "/payments/received" },
-      { label: "Outstanding Dues", tKey: "sidebar.outstanding", path: "/payments/outstanding" },
-      { label: "Refunds & Adjustments", tKey: "sidebar.refunds", path: "/payments/refunds" }
+      { label: "Outstanding Dues", tKey: "sidebar.outstanding", path: "/payments/outstanding" }
     ]
   },
   {

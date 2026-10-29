@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { Button } from '../components/Button';
-import { Plus, Search, User, Eye, Trash2, FileText, Shield, Download, Upload, ArrowLeft, Calendar, FileCheck, AlertCircle, Pencil, Mail, Smartphone, Send, CheckCircle, Building2, Gavel } from 'lucide-react';
+import { Plus, Search, User, Eye, Trash2, FileText, Shield, Download, Upload, ArrowLeft, Calendar, FileCheck, AlertCircle, Pencil, Mail, Smartphone, Send, CheckCircle, Building2, Gavel, Copy, Check } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
 import { AccessControl } from '../components/AccessControl';
@@ -36,6 +36,67 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const [isSendingInvite, setIsSendingInvite] = useState(false);
   const [tenantBuildingFilter, setTenantBuildingFilter] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 0 });
+  const [activeCopyMenuId, setActiveCopyMenuId] = useState(null);
+  const [copiedState, setCopiedState] = useState({ id: null, type: null });
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.copy-menu-container')) {
+        setActiveCopyMenuId(null);
+      }
+    };
+    if (activeCopyMenuId) {
+      document.addEventListener('click', handleOutsideClick);
+      return () => document.removeEventListener('click', handleOutsideClick);
+    }
+  }, [activeCopyMenuId]);
+
+  const handleCopy = (tenant, type, e) => {
+    if (e) e.stopPropagation();
+    const name = (tenant.firstName && tenant.lastName) ? `${tenant.firstName} ${tenant.lastName}` : (tenant.name || '');
+    const email = tenant.email || (tenant.name ? `${tenant.name.toLowerCase().replace(/\s+/g, '.')}@example.com` : '');
+    const prop = tenant.property || tenant.propertyName || '';
+    const unit = tenant.unit || tenant.unitNumber || '';
+    const address = [prop, unit].filter(Boolean).join(', ') || tenant.address || '';
+
+    let textToCopy = '';
+    if (type === 'name') textToCopy = name;
+    else if (type === 'email') textToCopy = email;
+    else if (type === 'address') textToCopy = address;
+    else if (type === 'all') {
+      textToCopy = `Name: ${name}\nEmail: ${email}\nAddress/Unit: ${address}`;
+    }
+
+    if (textToCopy) {
+      const copyToClip = () => {
+        try {
+          const textArea = document.createElement("textarea");
+          textArea.value = textToCopy;
+          textArea.style.position = "fixed";
+          textArea.style.left = "-999999px";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        } catch (err) {
+          console.error('Fallback copy failed', err);
+        }
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).catch(copyToClip);
+      } else {
+        copyToClip();
+      }
+
+      setCopiedState({ id: tenant.id, type });
+      setTimeout(() => {
+        setCopiedState({ id: null, type: null });
+        setActiveCopyMenuId(null);
+      }, 1500);
+    }
+  };
 
   // Lists for Dropdowns
   const [properties, setProperties] = useState([]);
@@ -514,7 +575,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             {/* TABLE */}
             <section className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] overflow-hidden">
               {/* Desktop Table Header - Hidden on Mobile */}
-              <div className="hidden md:grid grid-cols-[1.5fr_0.6fr_0.9fr_1.2fr_0.8fr_0.8fr] bg-slate-50 border-b border-slate-200 px-6 py-4">
+              <div className="hidden md:grid grid-cols-[1.4fr_0.6fr_0.9fr_1.2fr_0.8fr_1fr] bg-slate-50 border-b border-slate-200 px-6 py-4">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tenant</span>
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</span>
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Company Name</span>
@@ -536,7 +597,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     <div key={tenant.id}>
                       {/* Desktop Table Row - Hidden on Mobile */}
                       <div
-                        className="hidden md:grid grid-cols-[1.5fr_0.6fr_0.9fr_1.2fr_0.8fr_0.8fr] px-6 py-4 items-center hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 hover:z-10 relative transition-all duration-300 rounded-xl border border-transparent hover:border-slate-200"
+                        className="hidden md:grid grid-cols-[1.4fr_0.6fr_0.9fr_1.2fr_0.8fr_1fr] px-6 py-4 items-center hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 hover:z-10 relative transition-all duration-300 rounded-xl border border-transparent hover:border-slate-200"
                         style={{ animationDelay: `${index * 0.05}s` }}
                       >
                         <span className="flex items-center gap-3 font-medium text-slate-700 overflow-hidden">
@@ -545,9 +606,12 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                           </div>
                           <button
                             onClick={() => handleViewDetails(tenant)}
-                            className="hover:text-indigo-600 hover:underline transition-all text-left truncate flex flex-col"
+                            className="hover:text-indigo-600 transition-all text-left truncate flex flex-col"
                           >
-                            <span className="font-semibold">{tenant.firstName && tenant.lastName ? `${tenant.firstName} ${tenant.lastName}` : tenant.name}</span>
+                            <span className="font-semibold hover:underline">{tenant.firstName && tenant.lastName ? `${tenant.firstName} ${tenant.lastName}` : tenant.name}</span>
+                            <span className="text-[11px] text-slate-400 font-normal truncate mt-0.5">
+                              {tenant.email || (tenant.name ? `${tenant.name.toLowerCase().replace(/\s+/g, '.')}@example.com` : '')}
+                            </span>
                           </button>
                           {hasInsuranceIssue && (
                             <div className="text-amber-500 min-w-[14px]" title="Insurance Expired or Expiring Soon">
@@ -600,6 +664,108 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                           >
                             <Eye size={16} />
                           </button>
+
+                          {/* Quick Copy Dropdown */}
+                          <div className="relative copy-menu-container">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveCopyMenuId(activeCopyMenuId === tenant.id ? null : tenant.id);
+                              }}
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 focus:outline-none focus:ring-2 ${
+                                activeCopyMenuId === tenant.id
+                                  ? 'text-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20'
+                                  : copiedState.id === tenant.id
+                                    ? 'text-emerald-600 bg-emerald-50'
+                                    : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
+                              }`}
+                              title="Copy details (Name, Address, Email)"
+                            >
+                              {copiedState.id === tenant.id ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+                            </button>
+
+                            {activeCopyMenuId === tenant.id && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute right-0 top-full mt-1.5 w-56 bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.18)] border border-slate-200 p-1.5 z-50 text-left"
+                              >
+                                <div className="px-2.5 py-1.5 border-b border-slate-100 mb-1 flex items-center justify-between">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Copy to Clipboard</p>
+                                  {copiedState.id === tenant.id && (
+                                    <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                      <Check size={11} /> Copied!
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(tenant, 'name', e)}
+                                  className="w-full text-left px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between transition-colors group"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <User size={13} className="text-slate-400 group-hover:text-indigo-500 shrink-0" />
+                                    <span className="truncate">Copy Name</span>
+                                  </span>
+                                  {copiedState.id === tenant.id && copiedState.type === 'name' ? (
+                                    <Check size={13} className="text-emerald-600 shrink-0" />
+                                  ) : (
+                                    <Copy size={11} className="text-slate-300 group-hover:text-indigo-400 shrink-0" />
+                                  )}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(tenant, 'email', e)}
+                                  className="w-full text-left px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between transition-colors group"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <Mail size={13} className="text-slate-400 group-hover:text-indigo-500 shrink-0" />
+                                    <span className="truncate">Copy Email</span>
+                                  </span>
+                                  {copiedState.id === tenant.id && copiedState.type === 'email' ? (
+                                    <Check size={13} className="text-emerald-600 shrink-0" />
+                                  ) : (
+                                    <Copy size={11} className="text-slate-300 group-hover:text-indigo-400 shrink-0" />
+                                  )}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(tenant, 'address', e)}
+                                  className="w-full text-left px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between transition-colors group"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <Building2 size={13} className="text-slate-400 group-hover:text-indigo-500 shrink-0" />
+                                    <span className="truncate">Copy Address / Unit</span>
+                                  </span>
+                                  {copiedState.id === tenant.id && copiedState.type === 'address' ? (
+                                    <Check size={13} className="text-emerald-600 shrink-0" />
+                                  ) : (
+                                    <Copy size={11} className="text-slate-300 group-hover:text-indigo-400 shrink-0" />
+                                  )}
+                                </button>
+
+                                <div className="border-t border-slate-100 my-1"></div>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(tenant, 'all', e)}
+                                  className="w-full text-left px-2.5 py-2 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 flex items-center justify-between transition-colors group"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <Copy size={13} className="text-indigo-500 shrink-0" />
+                                    <span className="truncate">Copy All Details</span>
+                                  </span>
+                                  {copiedState.id === tenant.id && copiedState.type === 'all' ? (
+                                    <Check size={13} className="text-emerald-600 shrink-0" />
+                                  ) : (
+                                    <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">All</span>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                           
                           <AccessControl module="Tenant List" action="edit">
                             <button
@@ -706,6 +872,91 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             <Eye size={13} />
                             View
                           </button>
+
+                          <div className="relative copy-menu-container flex-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveCopyMenuId(activeCopyMenuId === `mobile-${tenant.id}` ? null : `mobile-${tenant.id}`);
+                              }}
+                              className={`w-full flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-all whitespace-nowrap ${
+                                activeCopyMenuId === `mobile-${tenant.id}`
+                                  ? 'text-indigo-600 bg-indigo-100'
+                                  : copiedState.id === tenant.id
+                                    ? 'text-emerald-700 bg-emerald-50'
+                                    : 'text-slate-600 bg-slate-100 hover:bg-slate-200'
+                              }`}
+                              title="Copy details"
+                            >
+                              {copiedState.id === tenant.id ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                              Copy
+                            </button>
+                            {activeCopyMenuId === `mobile-${tenant.id}` && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute left-0 bottom-full mb-1.5 w-52 bg-white rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.2)] border border-slate-200 p-1.5 z-50 text-left"
+                              >
+                                <div className="px-2 py-1 border-b border-slate-100 mb-1 flex items-center justify-between">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Copy to Clipboard</p>
+                                  {copiedState.id === tenant.id && (
+                                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded">Copied!</span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(tenant, 'name', e)}
+                                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <User size={13} className="text-slate-400 shrink-0" />
+                                    <span>Copy Name</span>
+                                  </span>
+                                  {copiedState.id === tenant.id && copiedState.type === 'name' && (
+                                    <Check size={12} className="text-emerald-600 shrink-0" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(tenant, 'email', e)}
+                                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <Mail size={13} className="text-slate-400 shrink-0" />
+                                    <span>Copy Email</span>
+                                  </span>
+                                  {copiedState.id === tenant.id && copiedState.type === 'email' && (
+                                    <Check size={12} className="text-emerald-600 shrink-0" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(tenant, 'address', e)}
+                                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-between"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <Building2 size={13} className="text-slate-400 shrink-0" />
+                                    <span>Copy Address</span>
+                                  </span>
+                                  {copiedState.id === tenant.id && copiedState.type === 'address' && (
+                                    <Check size={12} className="text-emerald-600 shrink-0" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(tenant, 'all', e)}
+                                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 flex items-center justify-between border-t border-slate-100 mt-1 pt-1.5"
+                                >
+                                  <span className="flex items-center gap-2 truncate">
+                                    <Copy size={13} className="text-indigo-500 shrink-0" />
+                                    <span>Copy All</span>
+                                  </span>
+                                  {copiedState.id === tenant.id && copiedState.type === 'all' && (
+                                    <Check size={12} className="text-emerald-600 shrink-0" />
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                           
                           <AccessControl module="Tenant List" action="edit">
                             <button
