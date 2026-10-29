@@ -63,6 +63,8 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   const [genLeaseId, setGenLeaseId] = useState('');
   const [genAmount, setGenAmount] = useState('');
   const [genDueDate, setGenDueDate] = useState('');
+  const [genCategory, setGenCategory] = useState('Rent');
+  const [genDescription, setGenDescription] = useState('');
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [editAmount, setEditAmount] = useState('');
   const [editDueDate, setEditDueDate] = useState('');
@@ -205,9 +207,11 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   const handleGenerateInvoiceSubmit = (e) => {
     e.preventDefault();
     if (!genLeaseId || !genAmount || !genDueDate) return;
-    invoiceService.generate(genLeaseId, genAmount, genDueDate);
+    invoiceService.generate(genLeaseId, genAmount, genDueDate, genCategory, genDescription);
     closeModal();
     loadData();
+    setGenCategory('Rent');
+    setGenDescription('');
   };
 
   const handleDuplicate = (id) => {
@@ -242,8 +246,8 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
       <div className="flex flex-col gap-6">
 
         {/* Tab Selection Bar */}
-        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center bg-white p-4 rounded-[22px] border border-slate-200 shadow-sm gap-3">
-          <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2">
+        <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center bg-white p-4 rounded-[22px] border border-slate-200 shadow-sm gap-4">
+          <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-2">
             {[
               { id: 'collection', label: 'Company Rent Collection', icon: Building2 },
               { id: 'dashboard', label: 'Overview Dashboard', icon: TrendingUp },
@@ -255,7 +259,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
                 key={tab.id}
                 variant={activeTab === tab.id ? 'primary' : 'secondary'}
                 onClick={() => setActiveTab(tab.id)}
-                className="text-xs font-bold justify-center"
+                className="text-xs font-bold justify-center whitespace-nowrap shrink-0"
               >
                 <tab.icon size={16} className="mr-1.5 shrink-0" />
                 <span className="truncate">{tab.label}</span>
@@ -263,14 +267,30 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
             ))}
           </div>
 
-          <Button
-            variant="primary"
-            onClick={() => openModal('generate')}
-            className="text-xs font-bold justify-center lg:self-auto self-stretch"
-          >
-            <Plus size={16} className="mr-1.5" />
-            Generate Invoice
-          </Button>
+          <div className="flex items-center gap-2.5 shrink-0 justify-end self-end xl:self-auto">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setGenCategory('Credit Memo');
+                openModal('generate');
+              }}
+              className="text-xs font-bold justify-center whitespace-nowrap shrink-0 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition-colors shadow-none px-4"
+            >
+              <Plus size={16} className="mr-1.5 shrink-0" />
+              Create Credit Memo
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setGenCategory('Rent');
+                openModal('generate');
+              }}
+              className="text-xs font-bold justify-center whitespace-nowrap shrink-0 px-4"
+            >
+              <Plus size={16} className="mr-1.5 shrink-0" />
+              Generate Invoice
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -573,7 +593,28 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
             <button onClick={closeModal} className="absolute right-6 top-6 p-1.5 hover:bg-slate-100 rounded-full text-slate-400">
               <X size={18} />
             </button>
-            <h3 className="text-base font-black text-slate-800 tracking-tight mb-4">Generate Rent Invoice</h3>
+            <h3 className="text-base font-black text-slate-800 tracking-tight mb-3">
+              {genCategory === 'Credit Memo' ? 'Create Credit Memo' : 'Generate Rent Invoice'}
+            </h3>
+            
+            {/* Invoice Type Toggle */}
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-xl mb-4">
+              <button
+                type="button"
+                onClick={() => setGenCategory('Rent')}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${genCategory === 'Rent' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Rent Invoice
+              </button>
+              <button
+                type="button"
+                onClick={() => setGenCategory('Credit Memo')}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${genCategory === 'Credit Memo' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Credit Memo
+              </button>
+            </div>
+
             <form onSubmit={handleGenerateInvoiceSubmit} className="space-y-4">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Select Lease Agreement</label>
@@ -597,18 +638,40 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Invoice Due Amount ($)</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                  {genCategory === 'Credit Memo' ? 'Credit Amount ($)' : 'Invoice Due Amount ($)'}
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   required
+                  placeholder="0.00"
                   value={genAmount}
                   onChange={(e) => setGenAmount(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-indigo-500 transition-all text-slate-800"
+                  className={`w-full px-3 py-2 border rounded-xl text-xs font-semibold outline-none transition-all text-slate-800 ${
+                    genCategory === 'Credit Memo'
+                      ? 'bg-rose-50/30 border-rose-200 focus:bg-white focus:border-rose-500 text-rose-700 font-mono font-bold'
+                      : 'bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500'
+                  }`}
                 />
               </div>
+              {genCategory === 'Credit Memo' && (
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Credit Reason / Description</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Rent concession, repair refund"
+                    value={genDescription}
+                    onChange={(e) => setGenDescription(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-indigo-500 transition-all text-slate-800"
+                  />
+                </div>
+              )}
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Due Date</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                  {genCategory === 'Credit Memo' ? 'Credit Date' : 'Due Date'}
+                </label>
                 <input
                   type="date"
                   required
@@ -619,7 +682,13 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
               </div>
               <div className="pt-2 flex gap-3">
                 <Button onClick={closeModal} variant="secondary" className="flex-1 text-xs font-bold">Cancel</Button>
-                <Button type="submit" variant="primary" className="flex-1 text-xs font-bold">Generate Invoice</Button>
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  className={`flex-1 text-xs font-bold ${genCategory === 'Credit Memo' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''}`}
+                >
+                  {genCategory === 'Credit Memo' ? 'Issue Credit Memo' : 'Generate Invoice'}
+                </Button>
               </div>
             </form>
           </div>

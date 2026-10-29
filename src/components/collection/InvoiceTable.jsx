@@ -47,7 +47,10 @@ export const InvoiceTable = ({
             ) : (
               invoices.map(inv => {
                 const key = Object.keys(COLLECTION_STATUSES).find(k => COLLECTION_STATUSES[k].label === inv.status);
-                const statusConfig = COLLECTION_STATUSES[key] || { label: inv.status, color: 'bg-slate-50 text-slate-500 border-slate-200' };
+                const isCreditMemo = inv.category === 'Credit Memo' || inv.category === 'CREDIT_MEMO';
+                const statusConfig = isCreditMemo
+                  ? { label: 'Credit Memo', color: 'bg-rose-50 text-rose-700 border-rose-200' }
+                  : (COLLECTION_STATUSES[key] || { label: inv.status, color: 'bg-slate-50 text-slate-500 border-slate-200' });
                 const isExpanded = expandedRow === inv.id;
 
                 return (

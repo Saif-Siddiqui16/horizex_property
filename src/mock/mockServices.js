@@ -1171,17 +1171,27 @@ export const mockInvoiceService = {
     const tenants = getStore('mock_tenants');
     const tenant = tenants.find(t => t.id === parseInt(data.tenantId));
     
+    const amountVal = parseFloat(data.amount != null ? data.amount : ((parseFloat(data.rent) || 0) + (parseFloat(data.serviceFees) || 0)));
+    const invNum = data.category === 'CREDIT_MEMO'
+      ? `CR-${(list.length + 1).toString().padStart(4, '0')}`
+      : `INV-2026-${(list.length + 1).toString().padStart(3, '0')}`;
     const newInvoice = {
       id: list.length ? Math.max(...list.map(i => i.id)) + 1 : 1,
-      invoiceNumber: `INV-2026-${(list.length + 1).toString().padStart(3, '0')}`,
+      invoiceNumber: invNum,
+      invoiceNo: invNum,
       tenantId: parseInt(data.tenantId),
       tenantName: tenant ? `${tenant.firstName} ${tenant.lastName}` : `Tenant #${data.tenantId}`,
       unitNumber: tenant ? tenant.unitNumber : 'Apt 101',
       propertyName: tenant ? tenant.propertyName : 'Parkview Heights',
-      amount: parseFloat(data.amount),
-      dueDate: data.dueDate,
-      status: data.status || 'Unpaid',
+      amount: amountVal,
+      rent: parseFloat(data.rent) || 0,
+      serviceFees: parseFloat(data.serviceFees) || 0,
+      dueDate: data.dueDate || new Date().toISOString().split('T')[0],
+      month: data.month,
+      status: data.status || (data.category === 'CREDIT_MEMO' ? 'paid' : 'Unpaid'),
       category: data.category || 'Rent',
+      description: data.description || '',
+      items: data.items || [],
       createdAt: new Date().toISOString(),
       payments: []
     };
@@ -2665,7 +2675,7 @@ export const invoiceService = {
     return enriched.filter(inv => allowedPropertyIds.includes(inv.propertyId));
   },
 
-  generate: (leaseId, amount, dueDate) => {
+  generate: (leaseId, amount, dueDate, category = 'Rent', description = '') => {
     const leases = getStore('mock_leases') || [];
     const tenants = getStore('mock_tenants') || [];
     const properties = getStore('mock_properties') || [];
@@ -2678,7 +2688,10 @@ export const invoiceService = {
     const invoices = getStore('mock_invoices') || [];
     const nextId = invoices.length ? Math.max(...invoices.map(i => i.id)) + 1 : 1;
     const year = new Date().getFullYear();
-    const invoiceNo = `INV-${year}-${String(nextId).padStart(6, '0')}`;
+    const isCreditMemo = category === 'Credit Memo' || category === 'CREDIT_MEMO';
+    const invoiceNo = isCreditMemo
+      ? `CR-${year}-${String(nextId).padStart(6, '0')}`
+      : `INV-${year}-${String(nextId).padStart(6, '0')}`;
 
     const newInvoice = {
       id: nextId,
@@ -2691,12 +2704,14 @@ export const invoiceService = {
       unitNumber: lease.unitNumber,
       unitId: lease.unitId,
       amountDue: parseFloat(amount),
+      amount: parseFloat(amount),
       dueDate,
       invoiceDate: new Date().toISOString().split('T')[0],
-      status: 'Generated',
-      category: 'Rent',
+      status: isCreditMemo ? 'Paid' : 'Generated',
+      category: isCreditMemo ? 'Credit Memo' : category,
+      description: description || (isCreditMemo ? 'Credit Memo Adjustment' : ''),
       history: [
-        { date: new Date().toLocaleDateString('en-CA'), activity: `Invoice Generated: ${invoiceNo}` }
+        { date: new Date().toLocaleDateString('en-CA'), activity: `${isCreditMemo ? 'Credit Memo' : 'Invoice'} Generated: ${invoiceNo}` }
       ],
       notes: []
     };
