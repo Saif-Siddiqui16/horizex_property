@@ -66,12 +66,6 @@ const NAV_ITEMS = [
     ]
   },
   {
-    icon: Landmark,
-    label: "Owners",
-    tKey: "sidebar.owners",
-    path: "/owners"
-  },
-  {
     icon: FileText,
     label: "Leases",
     tKey: "sidebar.leases",

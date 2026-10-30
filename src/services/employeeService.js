@@ -46,6 +46,27 @@ const DEFAULT_EMPLOYEES = [
     updatedAt: '2025-02-15T09:00:00Z',
     createdBy: 'Admin User',
     updatedBy: 'Admin User'
+  },
+  {
+    id: 6,
+    employeeNo: 'EMP-APEX-2026-00006',
+    companyId: 1,
+    buildingId: 1,
+    department: 'Sales & Leasing',
+    firstName: 'Sarah',
+    lastName: 'Jenkins',
+    email: 'sarah.jenkins@property.com',
+    phone: '+1 (514) 555-0190',
+    role: 'COWORKER',
+    designation: 'Listing Agent',
+    employmentType: 'Full-time',
+    shiftId: 1,
+    salary: 4800,
+    status: 'Active',
+    createdAt: '2025-03-01T09:00:00Z',
+    updatedAt: '2025-03-01T09:00:00Z',
+    createdBy: 'Admin User',
+    updatedBy: 'Admin User'
   }
 ];
 
@@ -53,7 +74,7 @@ const getStore = () => {
   const data = localStorage.getItem(KEY);
   if (!data) {
     localStorage.setItem(KEY, JSON.stringify(DEFAULT_EMPLOYEES));
-    localStorage.setItem(SEQ_KEY, '6');
+    localStorage.setItem(SEQ_KEY, '7');
     return DEFAULT_EMPLOYEES;
   }
   
@@ -119,6 +140,31 @@ const getStore = () => {
     if (changed) migrated = true;
     return emp;
   });
+
+  if (!list.some(emp => emp.department === 'Sales & Leasing')) {
+    list.push({
+      id: 6,
+      employeeNo: 'EMP-APEX-2026-00006',
+      companyId: 1,
+      buildingId: 1,
+      department: 'Sales & Leasing',
+      firstName: 'Sarah',
+      lastName: 'Jenkins',
+      email: 'sarah.jenkins@property.com',
+      phone: '+1 (514) 555-0190',
+      role: 'COWORKER',
+      designation: 'Listing Agent',
+      employmentType: 'Full-time',
+      shiftId: 1,
+      salary: 4800,
+      status: 'Active',
+      createdAt: '2025-03-01T09:00:00Z',
+      updatedAt: '2025-03-01T09:00:00Z',
+      createdBy: 'Admin User',
+      updatedBy: 'Admin User'
+    });
+    migrated = true;
+  }
 
   if (migrated) {
     localStorage.setItem(KEY, JSON.stringify(list));

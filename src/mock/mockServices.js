@@ -442,16 +442,49 @@ export const mockDashboardService = {
       })
       .sort((a, b) => a.daysLeft - b.daysLeft);
 
+    // Build vacant units list with listing agent & rent
+    const employees = getStore('mock_employees') || [];
+    const salesAgents = employees.filter(e => e.department === 'Sales & Leasing');
+    
+    const vacantApartments = apartments.filter(a => a.status === 'Vacant');
+    const baseVacantList = vacantApartments.length > 0 ? vacantApartments : [
+      { id: 101, unitNumber: 'Apt 101', propertyName: 'Parkview Heights', rent: 1400, propertyId: 1 },
+      { id: 205, unitNumber: 'Apt 205', propertyName: 'Sunset Towers', rent: 1650, propertyId: 2 },
+      { id: 302, unitNumber: 'Apt 302', propertyName: 'Greenfield Commons', rent: 1800, propertyId: 3 }
+    ];
+
+    const vacantUnitsList = baseVacantList.map((apt, idx) => {
+      const prop = properties.find(p => p.id === apt.propertyId) || { name: apt.propertyName || 'Parkview Heights' };
+      const buildingAgent = salesAgents.find(e => String(e.buildingId) === String(apt.propertyId));
+      const fallbackAgent = salesAgents[idx % (salesAgents.length || 1)];
+      const agentObj = buildingAgent || fallbackAgent || { firstName: 'Sarah', lastName: 'Jenkins', designation: 'Listing Agent', email: 'sarah.jenkins@property.com' };
+      const agentName = apt.listingAgent || `${agentObj.firstName} ${agentObj.lastName}`;
+
+      return {
+        id: apt.id,
+        unitNumber: apt.unitNumber || apt.name || `Unit ${apt.id}`,
+        building: prop.name || apt.propertyName || 'Main Building',
+        rent: apt.rent || (1400 + idx * 250),
+        listingAgent: agentName,
+        agentEmail: agentObj.email,
+        rentalStatus: apt.rentalStatus || (idx === 0 ? 'Ready to rent out' : (idx === 1 ? 'Under renovations' : 'Other')),
+        rentalStatusNote: apt.rentalStatusNote || (idx === 2 ? 'Waiting for deep clean' : null),
+        listingStatus: apt.listingStatus || (idx === 0 ? 'Already listed' : (idx === 1 ? 'Ready to list' : 'Unlisted')),
+        parking: apt.parking !== undefined ? apt.parking : (idx % 2 === 0 ? 'Yes' : 'No')
+      };
+    });
+
     return {
       total,
-      vacant,
+      vacant: vacantApartments.length > 0 ? vacantApartments.length : baseVacantList.length,
       occupied,
       totalVacantBedrooms,
       fullUnitCount,
       bedroomWiseCount,
       vacancyByBuilding,
       willBeVacant: upcomingVacancies.length,
-      upcomingVacancies
+      upcomingVacancies,
+      vacantUnitsList
     };
   }),
   cancelRefund: (tenantId, unitId) => withDelay(() => {

@@ -4,7 +4,7 @@ import { Card } from '../components/Card';
 
 import { useState, useEffect } from 'react';
 import api from '../api/client';
-import { Calendar, Home, Building2, AlertCircle, Car, CheckCircle2, Wrench } from 'lucide-react';
+import { Calendar, Home, Building2, AlertCircle, Car, CheckCircle2, Wrench, DollarSign } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import UnitReadiness from './UnitReadiness';
 
@@ -45,7 +45,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     bedroomWiseCount: 0,
     vacancyByBuilding: [],
     willBeVacant: 0,
-    upcomingVacancies: []
+    upcomingVacancies: [],
+    vacantUnitsList: []
   });
 
   const fetchStats = async (ownerId = '') => {
@@ -65,7 +66,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         bedroomWiseCount: 0,
         vacancyByBuilding: [],
         willBeVacant: 0,
-        upcomingVacancies: []
+        upcomingVacancies: [],
+        vacantUnitsList: []
       });
     } finally {
       setLoading(false);
@@ -134,7 +136,6 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     </h3>
                     <p className="text-sm text-gray-400 font-medium mt-1">Detailed status and turnover readiness of units that are empty right now</p>
                   </div>
-                  
                   {/* View Switcher: Vacant List vs Unit Readiness Pipeline */}
                   <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/70">
                     <button
@@ -147,7 +148,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                       }`}
                     >
                       <Home size={13} className={vacantView === 'vacant' ? 'text-rose-500' : 'text-slate-400'} />
-                      <span>Currently Vacant ({stats.vacant || 3})</span>
+                      <span>Currently Vacant ({stats.vacantUnitsList?.length || stats.vacant || 0})</span>
                     </button>
 
                     <button
@@ -175,87 +176,102 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     <thead>
                       <tr className="border-b border-gray-100">
                         <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest pl-2">Unit</th>
+                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Rent Listed</th>
+                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Listing Agent</th>
                         <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Rental Status</th>
                         <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Listing Status</th>
                         <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Parking</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {/* Fake Row 1 */}
-                        <tr className="group transition-colors hover:bg-gray-50/50">
-                          <td className="py-4 pl-2">
-                            <div className="flex flex-col">
-                                <span className="text-sm font-bold text-gray-800">Apt 101</span>
-                                <span className="text-xs text-gray-500">Main Building</span>
-                            </div>
-                          </td>
-                          <td className="py-4">
-                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 inline-flex items-center gap-1.5">
-                                <CheckCircle2 size={12} /> Ready to rent out
-                             </span>
-                          </td>
-                          <td className="py-4">
-                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
-                                Already listed
-                             </span>
-                          </td>
-                          <td className="py-4 text-center">
-                             <div className="flex items-center justify-center gap-1.5 text-slate-700">
-                                <Car size={16} className="text-slate-400" /> Yes
-                             </div>
+                      {stats.vacantUnitsList && stats.vacantUnitsList.length > 0 ? (
+                        stats.vacantUnitsList.map((unit) => (
+                          <tr key={unit.id} className="group transition-colors hover:bg-gray-50/50">
+                            {/* Unit & Building */}
+                            <td className="py-4 pl-2">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold text-gray-800">{unit.unitNumber}</span>
+                                <span className="text-xs text-gray-500">{unit.building}</span>
+                              </div>
+                            </td>
+
+                            {/* Rent Listed */}
+                            <td className="py-4">
+                              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+                                <DollarSign size={13} className="text-emerald-600 -mr-0.5" />
+                                <span>{Number(unit.rent).toLocaleString()}</span>
+                                <span className="text-[10px] text-emerald-600/80 font-normal">/ mo</span>
+                              </div>
+                            </td>
+
+                            {/* Listing Agent */}
+                            <td className="py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-bold text-xs shrink-0">
+                                  {unit.listingAgent ? unit.listingAgent[0] : 'A'}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-gray-800">{unit.listingAgent}</span>
+                                  <span className="text-[10px] text-gray-500">Sales &amp; Leasing</span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Rental Status */}
+                            <td className="py-4">
+                              {unit.rentalStatus === 'Ready to rent out' ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 inline-flex items-center gap-1.5">
+                                  <CheckCircle2 size={12} /> Ready to rent out
+                                </span>
+                              ) : unit.rentalStatus === 'Under renovations' ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-50 text-orange-600 border border-orange-100">
+                                  Under renovations
+                                </span>
+                              ) : (
+                                <div className="flex flex-col items-start gap-1">
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                                    {unit.rentalStatus || 'Other'}
+                                  </span>
+                                  {unit.rentalStatusNote && (
+                                    <span className="text-[10px] text-gray-500 italic flex items-center gap-1">
+                                      <AlertCircle size={10} className="text-amber-500" /> {unit.rentalStatusNote}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Listing Status */}
+                            <td className="py-4">
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                unit.listingStatus === 'Already listed'
+                                  ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              }`}>
+                                {unit.listingStatus}
+                              </span>
+                            </td>
+
+                            {/* Parking */}
+                            <td className="py-4 text-center">
+                              {unit.parking === 'Yes' ? (
+                                <div className="flex items-center justify-center gap-1.5 text-slate-700 text-xs font-medium">
+                                  <Car size={15} className="text-slate-400" /> Yes
+                                </div>
+                              ) : (
+                                <span className="text-xs font-medium text-gray-400">No</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="6" className="py-8 text-center text-gray-400 italic text-sm font-medium">
+                            <Home size={22} className="mx-auto mb-2 text-slate-300" />
+                            No vacant units currently
                           </td>
                         </tr>
-                        {/* Fake Row 2 */}
-                        <tr className="group transition-colors hover:bg-gray-50/50">
-                          <td className="py-4 pl-2">
-                            <div className="flex flex-col">
-                                <span className="text-sm font-bold text-gray-800">Apt 205</span>
-                                <span className="text-xs text-gray-500">North Tower</span>
-                            </div>
-                          </td>
-                          <td className="py-4">
-                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-50 text-orange-600 border border-orange-100">
-                                Under renovations
-                             </span>
-                          </td>
-                          <td className="py-4">
-                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-                                Ready to list
-                             </span>
-                          </td>
-                          <td className="py-4 text-center">
-                             <span className="text-sm font-medium text-gray-400">No</span>
-                          </td>
-                        </tr>
-                        {/* Fake Row 3 */}
-                        <tr className="group transition-colors hover:bg-gray-50/50">
-                          <td className="py-4 pl-2">
-                            <div className="flex flex-col">
-                                <span className="text-sm font-bold text-gray-800">Apt 302</span>
-                                <span className="text-xs text-gray-500">West Wing</span>
-                            </div>
-                          </td>
-                          <td className="py-4">
-                             <div className="flex flex-col items-start gap-1.5">
-                                 <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-                                    Other
-                                 </span>
-                                 <span className="text-[10px] text-gray-500 italic flex items-center gap-1">
-                                    <AlertCircle size={10} className="text-amber-500" /> Waiting for deep clean
-                                 </span>
-                             </div>
-                          </td>
-                          <td className="py-4">
-                             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-                                Unlisted
-                             </span>
-                          </td>
-                          <td className="py-4 text-center">
-                             <div className="flex items-center justify-center gap-1.5 text-slate-700">
-                                <Car size={16} className="text-slate-400" /> Yes
-                             </div>
-                          </td>
-                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -363,7 +379,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         <div className="flex flex-wrap sm:justify-end gap-2 shrink-0">
                           {b.vacant > 0 ? (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">
-                              {b.vacant} Unit{b.vacant > 1 ? 's' : ''} Vacant (Agent: Unassigned)
+                              {b.vacant} Unit{b.vacant > 1 ? 's' : ''} Vacant
                             </span>
                           ) : (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
