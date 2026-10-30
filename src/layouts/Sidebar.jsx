@@ -59,8 +59,7 @@ const NAV_ITEMS = [
     path: "/properties/buildings",
     children: [
       { label: "Buildings List", tKey: "sidebar.buildings", path: "/properties/buildings" },
-      { label: "Units", tKey: "sidebar.units", path: "/units" },
-      { label: "Unit Readiness", path: "/unit-readiness" }
+      { label: "Units", tKey: "sidebar.units", path: "/units" }
     ]
   },
   {
@@ -72,12 +71,6 @@ const NAV_ITEMS = [
       { label: "Tenant List", tKey: "sidebar.tenant_list", path: "/tenants" },
       { label: "Vehicle Management", tKey: "sidebar.vehicles", path: "/tenants/vehicles" }
     ]
-  },
-  {
-    icon: Landmark,
-    label: "Owners",
-    tKey: "sidebar.owners",
-    path: "/owners"
   },
   {
     icon: FileText,

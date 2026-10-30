@@ -6,6 +6,7 @@ import { Plus, Search, Filter, Eye, Pencil, Trash2, Building2, Home, X, Landmark
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
 import { mockCompanies } from '../mock/companies';
+
 export const Buildings = () => {
   const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
@@ -113,7 +114,6 @@ export const Buildings = () => {
     return () => window.removeEventListener('companyChanged', handleCompanyChange);
   }, [search]);
 
-
   const fetchOwners = async () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (user.role !== 'ADMIN') return;
@@ -148,10 +148,6 @@ export const Buildings = () => {
     }
   };
 
-  // Client-side filtering is no longer needed if we use backend search
-  // But strictly speaking, the original code had client side filtering. 
-  // If backend returns paginated results, we MUST use backend search. 
-  // Client-side filtering/pagination if backend returns full list
   const filteredBuildings = buildings.length > itemsPerPage
     ? buildings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
     : buildings;
@@ -162,6 +158,13 @@ export const Buildings = () => {
     const form = e.target;
     const currentCompanies = availableCompanies.length > 0 ? availableCompanies : mockCompanies;
     const selectedComp = currentCompanies.find(c => c.id === parseInt(form.companyId?.value || formCompanyId)) || currentCompanies[0];
+    
+    // Resolve owner names from selectedOwnerIds or direct ownerName input
+    const selectedOwnerObjs = owners.filter(o => selectedOwnerIds.includes(o.id));
+    const ownerNamesFromSelection = selectedOwnerObjs.map(o => o.name).join(', ');
+    const manualOwnerName = form.ownerName?.value?.trim() || '';
+    const finalOwnerNames = manualOwnerName || ownerNamesFromSelection || 'David Miller';
+
     // Note: Backend handles unit generation based on 'units' count
     const newBuilding = {
       name: form.name.value,
@@ -175,7 +178,8 @@ export const Buildings = () => {
       city: form.city.value,
       province: form.province.value,
       postalCode: form.postalCode.value,
-      ownerIds: [] // Assigned later via edit
+      ownerIds: selectedOwnerIds.length > 0 ? selectedOwnerIds : [3],
+      ownerNames: finalOwnerNames
     };
 
     try {
@@ -184,6 +188,7 @@ export const Buildings = () => {
       await fetchBuildings(1, search);
       setShowModal(false);
       form.reset();
+      setSelectedOwnerIds([]);
     } catch (error) {
       console.error('Error adding building:', error);
       alert('Error adding building');
@@ -231,6 +236,11 @@ export const Buildings = () => {
     const compId = parseInt(form.companyId?.value || editCompanyId);
     const selectedComp = currentCompanies.find(c => c.id === compId);
 
+    const selectedOwnerObjs = owners.filter(o => selectedOwnerIds.includes(o.id));
+    const ownerNamesFromSelection = selectedOwnerObjs.map(o => o.name).join(', ');
+    const manualOwnerName = form.ownerName?.value?.trim() || '';
+    const finalOwnerNames = manualOwnerName || ownerNamesFromSelection || currentBuilding.ownerNames || 'David Miller';
+
     const updatedData = {
       name: form.name.value,
       companyId: selectedComp ? selectedComp.id : (currentBuilding.companyId || null),
@@ -243,7 +253,8 @@ export const Buildings = () => {
       city: form.city.value,
       province: form.province.value,
       postalCode: form.postalCode.value,
-      ownerIds: selectedOwnerIds
+      ownerIds: selectedOwnerIds,
+      ownerNames: finalOwnerNames
     };
 
     try {
@@ -251,6 +262,7 @@ export const Buildings = () => {
       fetchBuildings(currentPage, search);
       setShowEditModal(false);
       form.reset();
+      setSelectedOwnerIds([]);
     } catch (error) {
       console.error('Error updating building:', error);
       alert('Error updating building');
@@ -653,6 +665,38 @@ export const Buildings = () => {
                   />
                 </div>
 
+                {/* Owner Selection & Entry */}
+                <div>
+                  <label className="block mb-2 font-medium text-slate-600">Property Owner(s)</label>
+                  <div className="flex flex-wrap gap-2 p-3 border-2 border-slate-200 rounded-xl bg-slate-50/30 max-h-[120px] overflow-y-auto mb-2">
+                    {owners.map(owner => (
+                      <label key={owner.id} className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg cursor-pointer hover:bg-slate-100 transition-all border border-slate-200 shadow-sm">
+                        <input
+                          type="checkbox"
+                          checked={selectedOwnerIds.includes(owner.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedOwnerIds([...selectedOwnerIds, owner.id]);
+                            } else {
+                              setSelectedOwnerIds(selectedOwnerIds.filter(id => id !== owner.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded text-[#667eea] focus:ring-[#667eea]"
+                        />
+                        <span className="text-sm font-medium text-slate-700">{owner.name}</span>
+                      </label>
+                    ))}
+                    {owners.length === 0 && <span className="text-slate-400 text-xs italic p-1">No owners found</span>}
+                  </div>
+                  <input
+                    type="text"
+                    id="ownerName"
+                    name="ownerName"
+                    placeholder="Or type owner name directly (e.g., David Miller, Grand Holdings)"
+                    className="w-full p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 bg-white placeholder:text-slate-400"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="units" className="block mb-2 font-medium text-slate-600">Total Units</label>
@@ -981,6 +1025,14 @@ export const Buildings = () => {
                     ))}
                     {owners.length === 0 && <span className="text-slate-400 text-xs italic p-1">No owners found</span>}
                   </div>
+                  <input
+                    type="text"
+                    id="edit-ownerName"
+                    name="ownerName"
+                    defaultValue={currentBuilding.ownerNames || ''}
+                    placeholder="Or type owner name directly (e.g. David Miller, Grand Holdings)"
+                    className="w-full mt-2 p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 bg-white placeholder:text-slate-400"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

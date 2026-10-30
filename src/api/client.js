@@ -23,6 +23,13 @@ api.defaults.adapter = async (config) => {
 
   const [cleanPath, queryString] = path.split('?');
   const query = new URLSearchParams(queryString || '');
+  if (config.params) {
+    Object.entries(config.params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && !query.has(key)) {
+        query.set(key, String(val));
+      }
+    });
+  }
   const method = (config.method || 'get').toLowerCase();
 
   let body = {};
