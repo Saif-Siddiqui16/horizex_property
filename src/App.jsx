@@ -12,6 +12,9 @@ import { VacancyDashboard } from "./pages/VacancyDashboard";
 import { RevenueDashboard } from "./pages/RevenueDashboard";
 import { Profile } from "./pages/Profile";
 
+/* COMPANIES */
+import Companies from "./pages/Companies";
+
 /* PROPERTIES */
 import { Properties } from "./pages/Properties";
 import Buildings from "./pages/Buildings";
@@ -134,6 +137,9 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/vacancy" element={<VacancyDashboard />} />
           <Route path="/revenue" element={<RevenueDashboard />} />
+
+          {/* COMPANIES */}
+          <Route path="/companies" element={<Companies />} />
 
           {/* PROPERTIES */}
           <Route path="/properties" element={<Properties />} />

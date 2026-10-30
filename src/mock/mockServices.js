@@ -1579,6 +1579,28 @@ export const mockCompanyService = {
       return list.filter(c => currentUser.assignedCompanyIds.includes(c.id));
     }
     return list;
+  }),
+  create: (data) => withDelay(() => {
+    const list = getStore('mock_companies');
+    const newId = list.length ? Math.max(...list.map(c => Number(c.id) || 0)) + 1 : 1;
+    const newComp = { id: newId, ...data };
+    const updated = [...list, newComp];
+    setStore('mock_companies', updated);
+    return newComp;
+  }),
+  update: (id, data) => withDelay(() => {
+    const list = getStore('mock_companies');
+    const compId = parseInt(id);
+    const updated = list.map(c => c.id === compId ? { ...c, ...data, id: compId } : c);
+    setStore('mock_companies', updated);
+    return updated.find(c => c.id === compId);
+  }),
+  delete: (id) => withDelay(() => {
+    const list = getStore('mock_companies');
+    const compId = parseInt(id);
+    const updated = list.filter(c => c.id !== compId);
+    setStore('mock_companies', updated);
+    return { success: true };
   })
 };
 

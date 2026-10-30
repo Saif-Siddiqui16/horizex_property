@@ -130,8 +130,25 @@ api.defaults.adapter = async (config) => {
 
   // Companies
   if (cleanPath === '/api/admin/companies') {
-    const res = await mockDb.mockCompanyService.getAll();
-    return response200(res.data);
+    if (method === 'get') {
+      const res = await mockDb.mockCompanyService.getAll();
+      return response200(res.data);
+    } else if (method === 'post') {
+      const res = await mockDb.mockCompanyService.create(body);
+      return response200(res.data);
+    }
+  }
+
+  const companyIdMatch = cleanPath.match(/\/api\/admin\/companies\/(\d+)$/);
+  if (companyIdMatch) {
+    const id = companyIdMatch[1];
+    if (method === 'put') {
+      const res = await mockDb.mockCompanyService.update(id, body);
+      return response200(res.data);
+    } else if (method === 'delete') {
+      const res = await mockDb.mockCompanyService.delete(id);
+      return response200(res.data);
+    }
   }
 
   // Properties / Buildings
