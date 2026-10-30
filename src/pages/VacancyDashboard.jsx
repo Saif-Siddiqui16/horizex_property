@@ -4,10 +4,29 @@ import { Card } from '../components/Card';
 
 import { useState, useEffect } from 'react';
 import api from '../api/client';
-import { Calendar, Home, Building2, AlertCircle, Car, CheckCircle2 } from 'lucide-react';
+import { Calendar, Home, Building2, AlertCircle, Car, CheckCircle2, Wrench } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import UnitReadiness from './UnitReadiness';
 
 
-export const VacancyDashboard = () => {
+export const VacancyDashboard = ({ defaultTab = 'vacant' }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const [vacantView, setVacantView] = useState(urlTab === 'readiness' ? 'readiness' : (defaultTab === 'readiness' ? 'readiness' : 'vacant'));
+
+  useEffect(() => {
+    if (urlTab === 'readiness') setVacantView('readiness');
+  }, [urlTab]);
+
+  const handleViewChange = (mode) => {
+    setVacantView(mode);
+    if (mode === 'readiness') {
+      setSearchParams({ tab: 'readiness' });
+    } else {
+      searchParams.delete('tab');
+      setSearchParams(searchParams);
+    }
+  };
 const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
@@ -108,21 +127,50 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             {/* CURRENT VACANCIES TABLE (FRONTEND MOCK) */}
             <section className="mt-8">
               <div className="saas-table-container p-5 md:p-8">
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-5 border-b border-gray-100 pb-4">
                   <div>
                     <h3 className="text-xl font-black text-gray-800 tracking-tight flex items-center gap-2">
                       <Home size={20} className="text-rose-500" /> Currently Vacant Units
                     </h3>
-                    <p className="text-sm text-gray-400 font-medium mt-1">Detailed status of units that are empty right now</p>
+                    <p className="text-sm text-gray-400 font-medium mt-1">Detailed status and turnover readiness of units that are empty right now</p>
                   </div>
-                  <div className="px-4 py-2 bg-rose-50 rounded-full border border-rose-100">
-                    <span className="text-xs font-bold text-rose-600 uppercase tracking-widest">
-                      3 Units
-                    </span>
+                  
+                  {/* View Switcher: Vacant List vs Unit Readiness Pipeline */}
+                  <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/70">
+                    <button
+                      type="button"
+                      onClick={() => handleViewChange('vacant')}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        vacantView === 'vacant'
+                          ? 'bg-white text-slate-800 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800 bg-transparent border-none'
+                      }`}
+                    >
+                      <Home size={13} className={vacantView === 'vacant' ? 'text-rose-500' : 'text-slate-400'} />
+                      <span>Currently Vacant ({stats.vacant || 3})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleViewChange('readiness')}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        vacantView === 'readiness'
+                          ? 'bg-zinc-900 text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800 bg-transparent border-none'
+                      }`}
+                    >
+                      <Wrench size={13} className={vacantView === 'readiness' ? 'text-white' : 'text-slate-400'} />
+                      <span>Unit Readiness Pipeline</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                {vacantView === 'readiness' ? (
+                  <div className="mt-2">
+                    <UnitReadiness />
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
                   <table className="saas-table">
                     <thead>
                       <tr className="border-b border-gray-100">
@@ -211,6 +259,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     </tbody>
                   </table>
                 </div>
+                )}
               </div>
             </section>
 

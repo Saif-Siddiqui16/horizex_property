@@ -145,7 +145,7 @@ function App() {
           <Route path="/units/:id" element={<UnitDetail />} />
           <Route path="/units/:id/bedrooms" element={<BedroomSetup />} />
           <Route path="/units/:id/switch-mode" element={<RentalModeSwitch />} />
-          <Route path="/unit-readiness" element={<UnitReadiness />} />
+          <Route path="/unit-readiness" element={<VacancyDashboard defaultTab="readiness" />} />
 
           {/* TENANTS */}
           <Route path="/tenants" element={<Tenants />} />
