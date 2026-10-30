@@ -310,48 +310,49 @@ export const DocumentLibrary = () => {
 
     return (
         <>
-            <div className="space-y-8 anim-fade-in">
+            <div className="space-y-6 sm:space-y-8 anim-fade-in w-full max-w-full overflow-hidden">
 
                 {/* STATS / HEADER */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1">
-                        <p className="text-slate-500 font-medium">Access and manage all system-wide documents and tenant uploads.</p>
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Document Library</h1>
+                        <p className="text-xs sm:text-sm text-slate-500 font-medium">Access and manage all system-wide documents and tenant uploads.</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
                         {hasPermission('Documents', 'add') && (
-                            <Button variant="primary" className="h-12 px-6 rounded-2xl shadow-lg shadow-zinc-200" onClick={() => setShowUploadModal(true)}>
-                                <Plus size={20} className="mr-2" />
+                            <Button variant="primary" className="h-11 sm:h-12 px-4 sm:px-6 rounded-2xl shadow-lg shadow-zinc-200 text-xs sm:text-sm font-bold" onClick={() => setShowUploadModal(true)}>
+                                <Plus size={18} className="mr-1.5" />
                                 Upload Document
                             </Button>
                         )}
-                        <div className="px-5 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
-                            <FileText className="text-indigo-600" size={20} />
+                        <div className="px-4 sm:px-5 py-2.5 sm:py-3 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+                            <FileText className="text-indigo-600" size={18} />
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Files</p>
-                                <p className="text-lg font-black text-slate-800 leading-none">{documents.length}</p>
+                                <p className="text-base sm:text-lg font-black text-slate-800 leading-none">{documents.length}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <Card className="flex flex-col md:flex-row gap-4 items-center">
-                    <div className="flex-1 relative w-full">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-3.5 sm:p-5 flex flex-col lg:flex-row gap-3 sm:gap-4 items-stretch lg:items-center">
+                    <div className="flex-1 relative w-full min-w-0">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                         <input
                             type="text"
                             placeholder="Search by filename or tenant..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-12 pr-5 py-3.5 rounded-[14px] border border-slate-200 outline-none focus:border-primary font-medium text-slate-700 bg-[#F8FAFC] focus:bg-white transition-all"
+                            className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-xs sm:text-sm text-slate-700 bg-[#F8FAFC] focus:bg-white transition-all"
                         />
                     </div>
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                        <div className="flex items-center gap-2 px-4 py-3.5 rounded-[18px] border border-slate-200 bg-white font-bold text-slate-600 text-sm">
-                            <Filter size={16} className="text-slate-400" />
+                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
+                        <div className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs sm:text-sm min-w-0">
+                            <Filter size={15} className="text-slate-400 shrink-0" />
                             <select
                                 value={typeFilter}
                                 onChange={(e) => setTypeFilter(e.target.value)}
-                                className="outline-none bg-transparent cursor-pointer"
+                                className="outline-none bg-transparent cursor-pointer w-full text-slate-700 font-semibold truncate text-xs sm:text-sm"
                             >
                                 <option value="All">All Types</option>
                                 <option value="Lease">Leases</option>
@@ -359,12 +360,12 @@ export const DocumentLibrary = () => {
                                 <option value="Refund Proof">Refund Proof</option>
                             </select>
                         </div>
-                        <div className="flex items-center gap-2 px-4 py-3.5 rounded-[18px] border border-slate-200 bg-white font-bold text-slate-600 text-sm">
-                            <Clock size={16} className="text-slate-400" />
+                        <div className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 text-xs sm:text-sm min-w-0">
+                            <Clock size={15} className="text-slate-400 shrink-0" />
                             <select
                                 value={expiryFilter}
                                 onChange={(e) => { setExpiryFilter(e.target.value); setCurrentPage(1); }}
-                                className="outline-none bg-transparent cursor-pointer"
+                                className="outline-none bg-transparent cursor-pointer w-full text-slate-700 font-semibold truncate text-xs sm:text-sm"
                             >
                                 <option value="All">All Expiry States</option>
                                 <option value="Active">Active (Has Date)</option>
@@ -374,18 +375,18 @@ export const DocumentLibrary = () => {
                         </div>
                         <Button
                             variant="secondary"
-                            className="h-14 px-6 rounded-[18px]"
+                            className="col-span-2 sm:col-span-1 h-10 sm:h-11 px-4 sm:px-5 rounded-xl text-xs sm:text-sm font-bold"
                             onClick={() => { setSearch(""); setTypeFilter("All"); setExpiryFilter("All"); setCurrentPage(1); }}
                         >
                             Reset
                         </Button>
                     </div>
-                </Card>
+                </div>
 
                 {/* TABLE VIEW */}
                 <div className="saas-table-container">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                    <div className="overflow-x-auto w-full">
+                        <table className="w-full text-left min-w-[680px]">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
                                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Name</th>
@@ -511,11 +512,11 @@ export const DocumentLibrary = () => {
 
                 {/* PAGINATION */}
                 {sortedDocuments.length > docsPerPage && (
-                    <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center sm:text-left">
                             Showing <span className="text-slate-800">{Math.min(sortedDocuments.length, (currentPage - 1) * docsPerPage + 1)}</span> to <span className="text-slate-800">{Math.min(sortedDocuments.length, currentPage * docsPerPage)}</span> of <span className="text-slate-800">{sortedDocuments.length}</span> Results
                         </p>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
                             <button
                                 type="button"
                                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}

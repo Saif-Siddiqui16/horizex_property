@@ -423,7 +423,7 @@ export const BankAccounts = () => {
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12">
+        <div className="space-y-6 max-w-7xl mx-auto pb-12 w-full max-w-full min-w-0 overflow-hidden">
             {/* TOAST NOTIFICATION */}
             {toastMessage && (
                 <div className="fixed bottom-6 right-6 z-50 bg-zinc-900 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-2 text-sm border border-zinc-700 animate-in fade-in">
@@ -435,19 +435,19 @@ export const BankAccounts = () => {
             {/* HEADER */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-                        <Landmark className="text-blue-600" size={26} />
+                    <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+                        <Landmark className="text-blue-600" size={24} />
                         Company Bank Accounts
                     </h1>
-                    <p className="text-sm text-zinc-500 mt-1">
+                    <p className="text-xs sm:text-sm text-zinc-500 mt-1">
                         Track separate operating bank accounts for each company, monitor live balances, and route rent payments & bills automatically.
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                     <Button
                         onClick={() => setShowAddAccountModal(true)}
-                        className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2 rounded-xl shadow-xs"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2.5 rounded-xl shadow-xs"
                     >
                         <Plus size={15} />
                         <span>Add Bank Account</span>
@@ -457,7 +457,7 @@ export const BankAccounts = () => {
                         <>
                             <Button
                                 onClick={() => setShowDepositModal(true)}
-                                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-xl shadow-xs"
+                                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl shadow-xs"
                             >
                                 <ArrowDownLeft size={15} />
                                 <span>Record Payment (In)</span>
@@ -465,7 +465,7 @@ export const BankAccounts = () => {
 
                             <Button
                                 onClick={() => setShowPayBillModal(true)}
-                                className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs px-3.5 py-2 rounded-xl shadow-xs"
+                                className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs px-3.5 py-2.5 rounded-xl shadow-xs"
                             >
                                 <ArrowUpRight size={15} />
                                 <span>Pay Bill (Out)</span>
@@ -477,7 +477,7 @@ export const BankAccounts = () => {
 
             {/* IF NO ACCOUNTS EXIST (EMPTY STATE) */}
             {bankData.accounts.length === 0 ? (
-                <div className="bg-white rounded-3xl p-12 text-center border-2 border-dashed border-slate-200 shadow-xs max-w-2xl mx-auto my-8">
+                <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border-2 border-dashed border-slate-200 shadow-xs max-w-2xl mx-auto my-8">
                     <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
                         <Landmark size={32} />
                     </div>
@@ -496,7 +496,7 @@ export const BankAccounts = () => {
             ) : (
                 <>
                     {/* 🏢 BANK ACCOUNT SELECTOR CARDS */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full min-w-0">
                         {bankData.accounts.map((acc) => {
                             const isSelected = acc.id === selectedAccountId;
                             return (
@@ -504,19 +504,19 @@ export const BankAccounts = () => {
                                     key={acc.id}
                                     onClick={() => setSelectedAccountId(acc.id)}
                                     className={clsx(
-                                        "p-5 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden bg-white shadow-xs",
+                                        "p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden bg-white shadow-xs w-full min-w-0",
                                         isSelected
                                             ? "border-blue-600 ring-4 ring-blue-500/10 shadow-md"
                                             : "border-zinc-200 hover:border-zinc-300 hover:shadow-xs"
                                     )}
                                 >
                                     <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                            <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">
+                                        <div className="min-w-0 flex-1">
+                                            <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block truncate">
                                                 {acc.companyName}
                                             </span>
-                                            <h3 className="text-base font-bold text-zinc-900 mt-0.5">{acc.accountName}</h3>
-                                            <p className="text-xs font-mono text-zinc-500">{acc.bankName} • {acc.accountNumber}</p>
+                                            <h3 className="text-base font-bold text-zinc-900 mt-0.5 truncate">{acc.accountName}</h3>
+                                            <p className="text-xs font-mono text-zinc-500 truncate">{acc.bankName} • {acc.accountNumber}</p>
                                         </div>
                                         <div
                                             className={clsx(
@@ -528,15 +528,15 @@ export const BankAccounts = () => {
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 pt-4 border-t border-zinc-100 flex items-baseline justify-between">
+                                    <div className="mt-4 pt-4 border-t border-zinc-100 flex items-baseline justify-between gap-2">
                                         <div>
                                             <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Live Balance</span>
-                                            <p className="text-2xl font-black text-zinc-900 font-mono tracking-tight">
+                                            <p className="text-xl sm:text-2xl font-black text-zinc-900 font-mono tracking-tight">
                                                 ${(acc.balance || 0).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </p>
                                         </div>
                                         <span className={clsx(
-                                            "text-xs px-2 py-0.5 rounded-full font-bold",
+                                            "text-xs px-2 py-0.5 rounded-full font-bold shrink-0",
                                             isSelected ? "bg-blue-100 text-blue-800" : "bg-zinc-100 text-zinc-600"
                                         )}>
                                             {isSelected ? "Active View" : "Select"}
@@ -549,46 +549,48 @@ export const BankAccounts = () => {
 
                     {/* SELECTED ACCOUNT SUMMARY BANNER */}
                     {currentAccount && (
-                        <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="flex items-center gap-3.5">
-                                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-                                    <Wallet size={24} />
+                        <div className="bg-white rounded-2xl border border-zinc-200 p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 w-full min-w-0">
+                            <div className="flex items-start sm:items-center gap-3.5">
+                                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                                    <Wallet size={22} />
                                 </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-lg font-bold text-zinc-900">{currentAccount.accountName}</h2>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center flex-wrap gap-2">
+                                        <h2 className="text-base sm:text-lg font-bold text-zinc-900 truncate">{currentAccount.accountName}</h2>
                                         <span className="text-xs px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 border border-zinc-200 font-mono">
                                             {currentAccount.accountNumber}
                                         </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleOpenEditModal(currentAccount)}
-                                            title="Edit this bank account"
-                                            className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100 ml-1"
-                                        >
-                                            <Pencil size={15} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteAccount(currentAccount.id)}
-                                            title="Delete this bank account"
-                                            className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
-                                        >
-                                            <Trash2 size={15} />
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenEditModal(currentAccount)}
+                                                title="Edit this bank account"
+                                                className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100"
+                                            >
+                                                <Pencil size={15} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteAccount(currentAccount.id)}
+                                                title="Delete this bank account"
+                                                className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-zinc-500 mt-0.5">
+                                    <p className="text-xs text-zinc-500 mt-1 break-words">
                                         Operating account for <span className="font-semibold text-zinc-800">{currentAccount.companyName}</span> • Routing Transit: {currentAccount.routingNumber}
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-zinc-100">
+                            <div className="flex items-center justify-between sm:justify-start gap-4 sm:gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-zinc-100">
                                 <div>
                                     <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1">
                                         <TrendingUp size={12} /> Total Deposits
                                     </span>
-                                    <p className="text-lg font-bold text-zinc-900 font-mono">
+                                    <p className="text-base sm:text-lg font-bold text-zinc-900 font-mono">
                                         +${totalDeposited.toLocaleString('en-CA', { minimumFractionDigits: 2 })}
                                     </p>
                                 </div>
@@ -599,7 +601,7 @@ export const BankAccounts = () => {
                                     <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider flex items-center gap-1">
                                         <TrendingDown size={12} /> Total Bills Paid
                                     </span>
-                                    <p className="text-lg font-bold text-zinc-900 font-mono">
+                                    <p className="text-base sm:text-lg font-bold text-zinc-900 font-mono">
                                         -${totalBillsPaid.toLocaleString('en-CA', { minimumFractionDigits: 2 })}
                                     </p>
                                 </div>
@@ -608,28 +610,28 @@ export const BankAccounts = () => {
                     )}
 
                     {/* TRANSACTIONS SECTION */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
                                 <Receipt size={18} className="text-zinc-500" />
                                 Recent Transactions Ledger
                             </h3>
 
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                                 {/* Search input */}
-                                <div className="relative">
+                                <div className="relative w-full sm:w-auto">
                                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
                                     <input
                                         type="text"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         placeholder="Search building, ref, or memo..."
-                                        className="pl-8 pr-3 py-1.5 text-xs bg-white border border-zinc-200 rounded-lg focus:outline-hidden focus:border-blue-500 w-48 sm:w-60"
+                                        className="pl-8 pr-3 py-2 sm:py-1.5 text-xs bg-white border border-zinc-200 rounded-lg focus:outline-hidden focus:border-blue-500 w-full sm:w-60"
                                     />
                                 </div>
 
                                 {/* Filter Tabs */}
-                                <div className="flex items-center bg-zinc-100 p-0.5 rounded-lg border border-zinc-200">
+                                <div className="flex items-center justify-between sm:justify-start bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 overflow-x-auto">
                                     {[
                                         { key: 'ALL', label: 'All Activity' },
                                         { key: 'INCOME', label: 'Payments In' },
@@ -639,7 +641,7 @@ export const BankAccounts = () => {
                                             key={flt.key}
                                             onClick={() => setFilterType(flt.key)}
                                             className={clsx(
-                                                "px-3 py-1 text-xs rounded-md font-medium transition-all",
+                                                "flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 sm:py-1 text-[11px] sm:text-xs rounded-md font-medium transition-all text-center whitespace-nowrap",
                                                 filterType === flt.key
                                                     ? "bg-white text-zinc-900 shadow-xs font-semibold"
                                                     : "text-zinc-500 hover:text-zinc-800"
@@ -653,9 +655,9 @@ export const BankAccounts = () => {
                         </div>
 
                         {/* Transactions Table */}
-                        <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs whitespace-nowrap">
+                        <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs overflow-hidden w-full min-w-0">
+                            <div className="overflow-x-auto w-full">
+                                <table className="w-full text-left text-xs whitespace-nowrap min-w-[650px]">
                                     <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">
                                         <tr>
                                             <th className="py-3 px-4">Date</th>
@@ -735,7 +737,7 @@ export const BankAccounts = () => {
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateAccount} className="p-6 space-y-4">
+                        <form onSubmit={handleCreateAccount} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                             {/* Company Selection */}
                             <div>
                                 <label className="block text-xs font-semibold text-zinc-700 mb-1">Company *</label>
@@ -866,7 +868,7 @@ export const BankAccounts = () => {
                             </button>
                         </div>
 
-                        <form onSubmit={handlePayBill} className="p-6 space-y-4">
+                        <form onSubmit={handlePayBill} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                             <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-200 text-xs">
                                 <span className="text-zinc-500 block">Deducting from Account:</span>
                                 <span className="font-bold text-zinc-900">{currentAccount.accountName} ({currentAccount.companyName})</span>
@@ -988,7 +990,7 @@ export const BankAccounts = () => {
                             </button>
                         </div>
 
-                        <form onSubmit={handleRecordDeposit} className="p-6 space-y-4">
+                        <form onSubmit={handleRecordDeposit} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                             <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-200 text-xs">
                                 <span className="text-zinc-500 block">Depositing into Account:</span>
                                 <span className="font-bold text-zinc-900">{currentAccount.accountName} ({currentAccount.companyName})</span>
@@ -1109,7 +1111,7 @@ export const BankAccounts = () => {
                             </button>
                         </div>
 
-                        <form onSubmit={handleUpdateAccount} className="p-6 space-y-4">
+                        <form onSubmit={handleUpdateAccount} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                             {/* Company Name */}
                             <div>
                                 <label className="block text-xs font-semibold text-zinc-700 mb-1">Company Name *</label>
