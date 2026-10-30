@@ -50,11 +50,14 @@ export const CompanySelector = () => {
         };
         const handleCompanyListChange = () => {
             fetchCompanies();
+            handleStorageChange();
         };
         window.addEventListener('companyChanged', handleCompanyListChange);
+        window.addEventListener('buildingChanged', handleStorageChange);
         window.addEventListener('storage', handleStorageChange);
         return () => {
             window.removeEventListener('companyChanged', handleCompanyListChange);
+            window.removeEventListener('buildingChanged', handleStorageChange);
             window.removeEventListener('storage', handleStorageChange);
         };
     }, []);
@@ -63,7 +66,10 @@ export const CompanySelector = () => {
         const val = e.target.value;
         localStorage.setItem('global_selected_company_id', val);
         setSelectedId(val);
+        // Reset building selection when switching company
+        localStorage.setItem('global_selected_building_id', '');
         window.dispatchEvent(new Event('companyChanged'));
+        window.dispatchEvent(new Event('buildingChanged'));
     };
 
     // If landlord or maintenance with single building limit, or if no companies, we can hide or restrict.

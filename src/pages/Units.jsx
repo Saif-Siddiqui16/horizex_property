@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Plus, Search, Filter, Eye, Edit2, Trash2, X, ChevronDown, Loader2, CheckCircle, AlertCircle, Settings, User, Shield } from 'lucide-react';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
+import { hasPermission } from '../utils/permissions';
 export const Units = () => {
 const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
@@ -75,12 +75,16 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   }, [pagination.page, typeFilter, buildingFilter, search, showInactive]);
 
   useEffect(() => {
-    const handleCompanyChange = () => {
+    const handleSync = () => {
       setPagination(prev => ({ ...prev, page: 1 }));
       fetchData(1);
     };
-    window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('buildingChanged', handleSync);
+    return () => {
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('buildingChanged', handleSync);
+    };
   }, [typeFilter, buildingFilter, search, showInactive]);
 
   useEffect(() => {

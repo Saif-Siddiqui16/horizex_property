@@ -106,12 +106,16 @@ export const Buildings = () => {
   }, [search]);
 
   useEffect(() => {
-    const handleCompanyChange = () => {
+    const handleSync = () => {
       setCurrentPage(1);
       fetchBuildings(1, search);
     };
-    window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('buildingChanged', handleSync);
+    return () => {
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('buildingChanged', handleSync);
+    };
   }, [search]);
 
   const fetchOwners = async () => {

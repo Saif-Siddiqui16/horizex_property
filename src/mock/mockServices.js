@@ -284,19 +284,27 @@ export const setStore = (key, val) => localStorage.setItem(key, JSON.stringify(v
 
 export const mockDashboardService = {
   getStats: () => withDelay(() => {
-    const stats = JSON.parse(localStorage.getItem('mock_dashboard_stats'));
-    // Dynamically count entities based on current storage
-    stats.totalProperties = getStore('mock_properties').length;
-    stats.totalUnits = getStore('mock_apartments').length;
-    stats.totalTenants = getStore('mock_tenants').length;
-    stats.activeLeases = getStore('mock_leases').filter(l => l.status === 'Active').length;
-    stats.pendingMaintenance = getStore('mock_maintenance_tickets').filter(t => t.status !== 'Resolved').length;
+    const stats = JSON.parse(localStorage.getItem('mock_dashboard_stats')) || {};
+    const allowedPropIds = getAllowedPropertyIds();
+    const properties = getStore('mock_properties').filter(p => allowedPropIds.includes(p.id));
+    const apartments = getStore('mock_apartments').filter(a => allowedPropIds.includes(a.propertyId));
+    const aptIds = apartments.map(a => a.id);
+    const leases = getStore('mock_leases').filter(l => aptIds.includes(l.unitId || l.apartmentId));
+    const tickets = getStore('mock_maintenance_tickets').filter(t => allowedPropIds.includes(t.propertyId || t.buildingId));
+
+    // Dynamically count entities based on allowed/selected building and company
+    stats.totalProperties = properties.length;
+    stats.totalUnits = apartments.length;
+    stats.totalTenants = leases.length;
+    stats.activeLeases = leases.filter(l => l.status === 'Active').length;
+    stats.pendingMaintenance = tickets.filter(t => t.status !== 'Resolved').length;
     
     // Pagination slicing helper for components
-    stats.leaseAlerts = getStore('mock_dashboard_stats').leaseAlerts || [];
-    stats.refundAlerts = getStore('mock_refunds') || [];
-    stats.reservedUnits = getStore('mock_dashboard_stats').reservedUnits || [];
-    stats.pendingRefunds = (getStore('mock_dashboard_stats').pendingRefunds || []).map(item => ({
+    const propNames = properties.map(p => p.name);
+    stats.leaseAlerts = (getStore('mock_dashboard_stats')?.leaseAlerts || []).filter(a => !a.building || propNames.includes(a.building));
+    stats.refundAlerts = (getStore('mock_refunds') || []).filter(r => !r.building || propNames.includes(r.building));
+    stats.reservedUnits = (getStore('mock_dashboard_stats')?.reservedUnits || []).filter(u => !u.building || propNames.includes(u.building));
+    stats.pendingRefunds = (getStore('mock_dashboard_stats')?.pendingRefunds || []).filter(r => !r.building || propNames.includes(r.building)).map(item => ({
       depositAmount: 0,
       leaseExpiryDate: '',
       building: '',
@@ -304,24 +312,31 @@ export const mockDashboardService = {
       tenantName: '',
       ...item
     }));
-    stats.recentActivity = (getStore('mock_dashboard_stats').recentActivity || []).map(act => 
+    stats.recentActivity = (getStore('mock_dashboard_stats')?.recentActivity || []).map(act => 
       typeof act === 'object' ? (act.description || act.message || JSON.stringify(act)) : act
     );
     
     return stats;
   }),
   getRevenue: () => withDelay(() => {
-    const invoices = getStore('mock_invoices');
-    const properties = getStore('mock_properties');
-    const apartments = getStore('mock_apartments');
+    const invoices = getStore('mock_invoices') || [];
+    const allowedPropIds = getAllowedPropertyIds();
+    const properties = getStore('mock_properties').filter(p => allowedPropIds.includes(p.id));
+    const apartments = getStore('mock_apartments').filter(a => allowedPropIds.includes(a.propertyId));
     
-    const paidInvoices = invoices.filter(inv => inv.status === 'Paid' || inv.status === 'paid');
+    const aptIds = apartments.map(a => a.id);
+    const aptNames = apartments.map(a => a.unitNumber);
+    const propInvoices = invoices.filter(inv => {
+      return aptIds.includes(inv.unitId) || aptNames.includes(inv.unitName) || allowedPropIds.includes(inv.propertyId);
+    });
+
+    const paidInvoices = propInvoices.filter(inv => inv.status === 'Paid' || inv.status === 'paid');
     const actualRevenue = paidInvoices.reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
     const actualRent = paidInvoices.filter(inv => inv.type === 'Rent' || inv.type === 'rent').reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
     const actualDeposit = paidInvoices.filter(inv => inv.type === 'Deposit' || inv.type === 'deposit').reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
     const actualServiceFees = actualRevenue - actualRent - actualDeposit;
     
-    const projectedRevenue = invoices.reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
+    const projectedRevenue = propInvoices.reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
     const totalRevenue = actualRevenue;
 
     const monthlyRevenue = [
@@ -377,9 +392,10 @@ export const mockDashboardService = {
     };
   }),
   getVacancyStats: () => withDelay(() => {
-    const apartments = getStore('mock_apartments');
-    const properties = getStore('mock_properties');
-    const leases = getStore('mock_leases');
+    const allowedPropIds = getAllowedPropertyIds();
+    const properties = getStore('mock_properties').filter(p => allowedPropIds.includes(p.id));
+    const apartments = getStore('mock_apartments').filter(a => allowedPropIds.includes(a.propertyId));
+    const leases = getStore('mock_leases').filter(l => apartments.some(a => a.id === l.unitId || a.id === l.apartmentId));
     
     const total = apartments.length;
     const vacant = apartments.filter(a => a.status === 'Vacant').length;
@@ -447,11 +463,11 @@ export const mockDashboardService = {
     const salesAgents = employees.filter(e => e.department === 'Sales & Leasing');
     
     const vacantApartments = apartments.filter(a => a.status === 'Vacant');
-    const baseVacantList = vacantApartments.length > 0 ? vacantApartments : [
+    const baseVacantList = vacantApartments.length > 0 ? vacantApartments : (allowedPropIds.length > 1 ? [
       { id: 101, unitNumber: 'Apt 101', propertyName: 'Parkview Heights', rent: 1400, propertyId: 1 },
       { id: 205, unitNumber: 'Apt 205', propertyName: 'Sunset Towers', rent: 1650, propertyId: 2 },
       { id: 302, unitNumber: 'Apt 302', propertyName: 'Greenfield Commons', rent: 1800, propertyId: 3 }
-    ];
+    ] : []);
 
     const vacantUnitsList = baseVacantList.map((apt, idx) => {
       const prop = properties.find(p => p.id === apt.propertyId) || { name: apt.propertyName || 'Parkview Heights' };
@@ -476,7 +492,7 @@ export const mockDashboardService = {
 
     return {
       total,
-      vacant: vacantApartments.length > 0 ? vacantApartments.length : baseVacantList.length,
+      vacant: vacantApartments.length,
       occupied,
       totalVacantBedrooms,
       fullUnitCount,
@@ -498,6 +514,7 @@ export const mockDashboardService = {
 export const getAllowedPropertyIds = () => {
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const selectedCompanyId = localStorage.getItem('global_selected_company_id');
+  const selectedBuildingId = localStorage.getItem('global_selected_building_id');
   
   let properties = getStore('mock_properties');
   
@@ -513,6 +530,10 @@ export const getAllowedPropertyIds = () => {
 
   if (selectedCompanyId && selectedCompanyId !== 'all' && selectedCompanyId !== '') {
     properties = properties.filter(p => p.companyId === parseInt(selectedCompanyId));
+  }
+
+  if (selectedBuildingId && selectedBuildingId !== 'all' && selectedBuildingId !== '') {
+    properties = properties.filter(p => p.id === parseInt(selectedBuildingId));
   }
 
   return properties.map(p => p.id);
