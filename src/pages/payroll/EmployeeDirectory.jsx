@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { Search, UserPlus, Filter, X, Plus } from 'lucide-react';
+import { Search, UserPlus, Filter, X, Plus, Edit2, Mail, Phone, Building2, Briefcase, DollarSign, Calendar, Clock, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import employeeService from '../../services/employeeService';
 import departmentService from '../../services/departmentService';
 import shiftService from '../../services/shiftService';
 import permissionService from '../../services/permissionService';
-import { EmployeeTable } from '../../components/payroll/EmployeeTable';
+import { EmployeeTable } from '../../components/payroll/EmployeeTable';
 const mockCompanies = [
   { id: 1, name: 'Apex Real Estate Partners', code: 'APEX' },
   { id: 2, name: 'Soros Capital LLC', code: 'SOROS' },
@@ -42,7 +42,9 @@ const location = useLocation();
   // Modal States
   const [addModal, setAddModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
+  const [viewModal, setViewModal] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState(null);
+  const [viewingEmp, setViewingEmp] = useState(null);
 
   const [shiftModal, setShiftModal] = useState(false);
   const [salaryModal, setSalaryModal] = useState(false);
@@ -94,7 +96,20 @@ const location = useLocation();
     e.preventDefault();
     if (!selectedEmp) return;
     try {
-      employeeService.update(selectedEmp.id, form);
+      employeeService.update(selectedEmp.id, {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        phone: form.phone,
+        companyId: parseInt(form.companyId) || 1,
+        buildingId: parseInt(form.buildingId) || 1,
+        department: form.department,
+        designation: form.designation,
+        employmentType: form.employmentType,
+        shiftId: parseInt(form.shiftId) || 1,
+        salary: parseFloat(form.salary) || 0,
+        status: form.status
+      });
       setEditModal(false);
       setSelectedEmp(null);
       resetForm();
@@ -171,6 +186,26 @@ const location = useLocation();
     setSalaryModal(true);
   };
 
+  const getCompanyName = (companyId) => {
+    const c = companies.find(comp => String(comp.id) === String(companyId));
+    return c ? c.name : `Company #${companyId}`;
+  };
+
+  const getBuildingName = (buildingId) => {
+    const b = buildings.find(build => String(build.id) === String(buildingId));
+    return b ? b.name : `Building #${buildingId}`;
+  };
+
+  const getShiftName = (shiftId) => {
+    const s = shifts.find(sh => String(sh.id) === String(shiftId));
+    return s ? `${s.name} (${s.startTime} - ${s.endTime})` : `Shift #${shiftId}`;
+  };
+
+  const openViewDetails = (emp) => {
+    setViewingEmp(emp);
+    setViewModal(true);
+  };
+
   const canManage = permissionService.canManageEmployees();
 
   return (
@@ -240,7 +275,7 @@ const location = useLocation();
           onDelete={handleDelete}
           onShiftChange={openShift}
           onSalaryUpdate={openSalary}
-          onViewDetails={(emp) => alert(`Employee: ${emp.firstName} ${emp.lastName}\nEmail: ${emp.email}\nPhone: ${emp.phone}\nDepartment: ${emp.department}\nEmployment Type: ${emp.employmentType}`)}
+          onViewDetails={openViewDetails}
         />
 
       </div>
@@ -444,6 +479,31 @@ const location = useLocation();
                 </div>
               </div>
 
+              {/* Company & Building */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company</label>
+                  <select 
+                    value={form.companyId} 
+                    onChange={(e) => setForm(p => ({ ...p, companyId: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium appearance-none"
+                  >
+                    {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Building</label>
+                  <select 
+                    value={form.buildingId} 
+                    onChange={(e) => setForm(p => ({ ...p, buildingId: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium appearance-none"
+                  >
+                    {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Department & Designation */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Department</label>
@@ -467,18 +527,44 @@ const location = useLocation();
                 </div>
               </div>
 
+              {/* Employment Type & Base Salary */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Employment Type</label>
                   <select 
-                    value={form.status} 
-                    onChange={(e) => setForm(p => ({ ...p, status: e.target.value }))}
+                    value={form.employmentType} 
+                    onChange={(e) => setForm(p => ({ ...p, employmentType: e.target.value }))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium appearance-none"
                   >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Temp">Temp</option>
                   </select>
                 </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Salary ($)</label>
+                  <input 
+                    type="number" 
+                    value={form.salary} 
+                    onChange={(e) => setForm(p => ({ ...p, salary: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
+                <select 
+                  value={form.status} 
+                  onChange={(e) => setForm(p => ({ ...p, status: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium appearance-none"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
             </div>
 
@@ -489,6 +575,126 @@ const location = useLocation();
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* VIEW EMPLOYEE DETAILS MODAL */}
+      {viewModal && viewingEmp && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6 overflow-y-auto">
+          <div className="bg-white w-full max-w-lg rounded-none md:rounded-3xl shadow-float border border-slate-100 flex flex-col overflow-hidden animate-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
+                  {viewingEmp.firstName ? viewingEmp.firstName[0] : 'E'}
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base">{viewingEmp.firstName} {viewingEmp.lastName}</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="font-mono text-[11px] font-bold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded">
+                      {viewingEmp.employeeNo}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                      viewingEmp.status === 'Active' 
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                        : 'bg-rose-50 text-rose-600 border-rose-100'
+                    }`}>
+                      {viewingEmp.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setViewModal(false)} 
+                className="text-slate-400 hover:text-slate-600 font-bold text-xl bg-transparent border-none p-1 cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+              {/* Contact Information */}
+              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 space-y-2.5">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Contact Details</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <Mail size={14} className="text-blue-500 shrink-0" />
+                    <span className="font-medium truncate">{viewingEmp.email || 'No email provided'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <Phone size={14} className="text-emerald-500 shrink-0" />
+                    <span className="font-medium">{viewingEmp.phone || 'No phone provided'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Assignment Information */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 bg-white border border-slate-100 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Company</span>
+                  <span className="text-xs font-bold text-slate-800 mt-1 block">{getCompanyName(viewingEmp.companyId)}</span>
+                </div>
+                <div className="p-3.5 bg-white border border-slate-100 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Assigned Building</span>
+                  <span className="text-xs font-bold text-slate-800 mt-1 block">{getBuildingName(viewingEmp.buildingId)}</span>
+                </div>
+              </div>
+
+              {/* Role & Department */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 bg-white border border-slate-100 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Department</span>
+                  <span className="text-xs font-bold text-slate-800 mt-1 block">{viewingEmp.department || 'Operations'}</span>
+                </div>
+                <div className="p-3.5 bg-white border border-slate-100 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Designation / Role</span>
+                  <span className="text-xs font-bold text-slate-800 mt-1 block">{viewingEmp.designation || 'Specialist'}</span>
+                </div>
+              </div>
+
+              {/* Employment & Compensation */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3.5 bg-white border border-slate-100 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Employment Type</span>
+                  <span className="text-xs font-bold text-slate-800 mt-1 block">{viewingEmp.employmentType || 'Full-time'}</span>
+                </div>
+                <div className="p-3.5 bg-white border border-slate-100 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Work Shift</span>
+                  <span className="text-xs font-bold text-slate-800 mt-1 block">{getShiftName(viewingEmp.shiftId)}</span>
+                </div>
+                <div className="p-3.5 bg-white border border-slate-100 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Base Monthly Salary</span>
+                  <span className="text-xs font-black text-emerald-600 mt-1 block">${Number(viewingEmp.salary || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+              <button 
+                type="button" 
+                onClick={() => setViewModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/60 rounded-xl transition-all cursor-pointer"
+              >
+                Close
+              </button>
+              {canManage && (
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setViewModal(false);
+                    openEdit(viewingEmp);
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Edit2 size={13} />
+                  <span>Edit Profile</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
