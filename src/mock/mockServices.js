@@ -1762,10 +1762,13 @@ export const mockReadinessService = {
     const units = getStore('mock_readiness_units');
     let filtered = units;
     if (propertyId) {
-      // Compare by name or parsed ID
-      const p = getStore('mock_properties').find(prop => prop.id === parseInt(propertyId));
+      const propId = String(propertyId);
+      const p = getStore('mock_properties').find(prop => String(prop.id) === propId);
       if (p) {
-        filtered = units.filter(u => u.building === p.name);
+        filtered = units.filter(u => 
+          (u.building && u.building.trim().toLowerCase() === p.name.trim().toLowerCase()) ||
+          (u.propertyId && String(u.propertyId) === propId)
+        );
       }
     }
     const totalUnits = filtered.length;
@@ -1788,9 +1791,13 @@ export const mockReadinessService = {
     let filtered = units;
 
     if (params.propertyId) {
-      const p = getStore('mock_properties').find(prop => prop.id === parseInt(params.propertyId));
+      const propId = String(params.propertyId);
+      const p = getStore('mock_properties').find(prop => String(prop.id) === propId);
       if (p) {
-        filtered = filtered.filter(u => u.building === p.name);
+        filtered = filtered.filter(u => 
+          (u.building && u.building.trim().toLowerCase() === p.name.trim().toLowerCase()) ||
+          (u.propertyId && String(u.propertyId) === propId)
+        );
       }
     }
 
@@ -1819,11 +1826,24 @@ export const mockReadinessService = {
     };
   }),
   getSettings: () => withDelay(() => {
-    return JSON.parse(localStorage.getItem('mock_readiness_settings')) || mockReadinessSettings;
+    try {
+      const stored = JSON.parse(localStorage.getItem('mock_readiness_settings'));
+      if (Array.isArray(stored) && stored.length > 0) return stored;
+      if (stored && Array.isArray(stored.settings) && stored.settings.length > 0) return stored.settings;
+    } catch (e) {}
+    return Array.isArray(mockReadinessSettings) ? mockReadinessSettings : [
+      { id: 1, key: 'gc_to_deficiencies', days: 2 },
+      { id: 2, key: 'deficiencies_to_cleaned', days: 2 },
+      { id: 3, key: 'cleaned_to_ffe', days: 4 },
+      { id: 4, key: 'ffe_to_final', days: 3 },
+      { id: 5, key: 'final_to_ose', days: 1 },
+      { id: 6, key: 'ose_to_ready', days: 2 }
+    ];
   }),
   updateSettings: (newSettings) => withDelay(() => {
-    localStorage.setItem('mock_readiness_settings', JSON.stringify(newSettings));
-    return newSettings;
+    const toStore = Array.isArray(newSettings) ? newSettings : (newSettings?.settings || newSettings);
+    localStorage.setItem('mock_readiness_settings', JSON.stringify(toStore));
+    return toStore;
   }),
   getHolidays: () => withDelay(() => {
     return getStore('mock_readiness_holidays');

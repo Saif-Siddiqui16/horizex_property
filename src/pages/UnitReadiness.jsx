@@ -13,7 +13,7 @@ import {
   Filter
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 // Timezone-safe date parser: extracts YYYY-MM-DD and parses at local noon.
 // This prevents UTC midnight dates from shifting back 1 day in Canadian timezones (UTC-3:30 to UTC-8).
 const safeDate = (dateStr) => {
@@ -21,6 +21,15 @@ if (!dateStr) return null;
   const datePart = String(dateStr).substring(0, 10); // e.g. "2026-04-01"
   return new Date(datePart + 'T12:00:00');           // local noon = same day in all of Canada
 };
+
+const DEFAULT_TIMELINE_SETTINGS = [
+  { id: 1, key: 'gc_to_deficiencies', days: 2 },
+  { id: 2, key: 'deficiencies_to_cleaned', days: 2 },
+  { id: 3, key: 'cleaned_to_ffe', days: 4 },
+  { id: 4, key: 'ffe_to_final', days: 3 },
+  { id: 5, key: 'final_to_ose', days: 1 },
+  { id: 6, key: 'ose_to_ready', days: 2 }
+];
 
 const UnitReadiness = () => {
   const navigate = useNavigate();
@@ -40,7 +49,7 @@ const UnitReadiness = () => {
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [newHoliday, setNewHoliday] = useState({ name: '', date: '' });
-  const [timelineSettings, setTimelineSettings] = useState([]);
+  const [timelineSettings, setTimelineSettings] = useState(DEFAULT_TIMELINE_SETTINGS);
   const [recalculateAll, setRecalculateAll] = useState(false);
   const limit = 15;
 
@@ -74,29 +83,20 @@ const UnitReadiness = () => {
     try {
       setLoading(true);
       // 1. Fetch Summary Stats - Dedicated Readiness Stats
-      const statsRes = await api.get('/api/admin/readiness/stats', {
-        params: { propertyId: propertyFilter, showLeased: showLeasedUnits }
-      });
-      setStats({
-        totalUnits: statsRes.data.totalUnits,
-        readyForLeasing: statsRes.data.readyForLeasing,
-        reservedUnits: statsRes.data.reservedUnits,
-        overdueUnits: statsRes.data.overdueUnits
-      });
+      const statsRes = await api.get(`/api/admin/readiness/stats?propertyId=${encodeURIComponent(propertyFilter || '')}&showLeased=${showLeasedUnits}`);
+      if (statsRes.data) {
+        setStats({
+          totalUnits: statsRes.data.totalUnits || 0,
+          readyForLeasing: statsRes.data.readyForLeasing || 0,
+          reservedUnits: statsRes.data.reservedUnits || 0,
+          overdueUnits: statsRes.data.overdueUnits || 0
+        });
+      }
 
       // 2. Fetch Dashboard Units
-      const response = await api.get(`/api/admin/readiness/dashboard`, {
-        params: { 
-          search: searchTerm, 
-          status: statusFilter, 
-          propertyId: propertyFilter,
-          showLeased: showLeasedUnits,
-          page, 
-          limit 
-        }
-      });
-      setUnits(response.data.units || []);
-      setTotalCount(response.data.total || 0);
+      const response = await api.get(`/api/admin/readiness/dashboard?search=${encodeURIComponent(searchTerm || '')}&status=${encodeURIComponent(statusFilter || '')}&propertyId=${encodeURIComponent(propertyFilter || '')}&showLeased=${showLeasedUnits}&page=${page}&limit=${limit}`);
+      setUnits(response.data?.units || []);
+      setTotalCount(response.data?.total || 0);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -107,9 +107,9 @@ const UnitReadiness = () => {
   const fetchSettings = async () => {
     try {
       const resp = await api.get('/api/admin/readiness/settings');
-      setTimelineSettings(resp.data);
+      setTimelineSettings(Array.isArray(resp.data) && resp.data.length > 0 ? resp.data : DEFAULT_TIMELINE_SETTINGS);
       const hResp = await api.get('/api/admin/readiness/holidays');
-      setHolidays(hResp.data);
+      setHolidays(Array.isArray(hResp.data) ? hResp.data : []);
     } catch (err) { console.error(err); }
   };
 
@@ -211,7 +211,7 @@ const UnitReadiness = () => {
                   <button onClick={() => setShowSettings(false)} className="hover:rotate-90 transition-all">✕</button>
                 </div>
                 <div className="p-6 space-y-4">
-                  {timelineSettings.map((s, idx) => {
+                  {(Array.isArray(timelineSettings) ? timelineSettings : DEFAULT_TIMELINE_SETTINGS).map((s, idx) => {
                     const labelMap = {
                       'gc_to_deficiencies': 'GC Delivered to Deficiencies',
                       'deficiencies_to_cleaned': 'Deficiencies to GC Complete',
