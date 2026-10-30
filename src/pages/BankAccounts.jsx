@@ -18,17 +18,199 @@ import {
     TrendingDown,
     Trash2,
     Pencil,
-    X
+    X,
+    FileCheck,
+    FileSpreadsheet,
+    History,
+    Sparkles
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import clsx from 'clsx';
 import { mockCompanies } from '../mock/companies';
+import { BankReconciliationModal } from '../components/accounting/BankReconciliationModal';
 
 const STORAGE_KEY = 'horizex_bank_accounts_data_v2';
 
-const EMPTY_BANK_DATA = {
-    accounts: [],
-    transactions: []
+// Default dummy data generator for demonstration
+const getInitialBankData = () => {
+    const nowMonth = new Date().toISOString().slice(0, 7); // e.g. "2026-10"
+    const prevMonthDate = new Date();
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+    const prevMonth = prevMonthDate.toISOString().slice(0, 7);
+
+    return {
+        accounts: [
+            {
+                id: 1,
+                companyId: 1,
+                companyName: 'Apex Real Estate Partners',
+                bankName: 'RBC Royal Bank',
+                accountName: 'RBC Main Operating Account',
+                shortAccount: 'RBC (Apex Real Estate Partners)',
+                accountNumber: '****-4820',
+                routingNumber: '003-10292',
+                balance: 54230.50,
+                currency: 'CAD',
+                buildingsCount: 3,
+                color: 'border-blue-500'
+            },
+            {
+                id: 2,
+                companyId: 1,
+                companyName: 'Apex Real Estate Partners',
+                bankName: 'TD Canada Trust',
+                accountName: 'TD Security Deposit Reserve',
+                shortAccount: 'TD (Apex Real Estate Partners)',
+                accountNumber: '****-9104',
+                routingNumber: '004-88319',
+                balance: 28400.00,
+                currency: 'CAD',
+                buildingsCount: 2,
+                color: 'border-emerald-500'
+            }
+        ],
+        transactions: [
+            {
+                id: 'TX-101',
+                accountId: 1,
+                companyId: 1,
+                date: `${nowMonth}-02`,
+                building: 'Tower A',
+                description: 'Tenant Rent Interac e-Transfer Apt 101 (John Smith)',
+                category: 'Rent Collection',
+                type: 'INCOME',
+                amount: 1450.00,
+                balanceAfter: 54230.50,
+                reference: 'ETR-8812',
+                reconciled: false
+            },
+            {
+                id: 'TX-102',
+                accountId: 1,
+                companyId: 1,
+                date: `${nowMonth}-03`,
+                building: 'Tower B',
+                description: 'Tenant Direct Deposit Apt 204 (Emily Watson)',
+                category: 'Rent Collection',
+                type: 'INCOME',
+                amount: 1850.00,
+                balanceAfter: 52780.50,
+                reference: 'DIR-9931',
+                reconciled: false
+            },
+            {
+                id: 'TX-103',
+                accountId: 1,
+                companyId: 1,
+                date: `${nowMonth}-05`,
+                building: 'Tower A',
+                description: 'Commercial Plaza - Retail Lease Suite 100',
+                category: 'Rent Collection',
+                type: 'INCOME',
+                amount: 3200.00,
+                balanceAfter: 50930.50,
+                reference: 'CHQ-5521',
+                reconciled: false
+            },
+            {
+                id: 'TX-104',
+                accountId: 1,
+                companyId: 1,
+                date: `${nowMonth}-08`,
+                building: 'Tower A',
+                description: 'Apex Plumbing Services - Repair Apt 304',
+                category: 'Maintenance',
+                type: 'EXPENSE',
+                amount: 420.00,
+                balanceAfter: 47730.50,
+                reference: 'BILL-410',
+                reconciled: false
+            },
+            {
+                id: 'TX-105',
+                accountId: 1,
+                companyId: 1,
+                date: `${nowMonth}-12`,
+                building: 'Tower B',
+                description: 'Hydro-Quebec Monthly Electric Bill',
+                category: 'Utilities',
+                type: 'EXPENSE',
+                amount: 785.60,
+                balanceAfter: 48150.50,
+                reference: 'UTIL-882',
+                reconciled: false
+            },
+            // Prior month reconciled transactions
+            {
+                id: 'TX-091',
+                accountId: 1,
+                companyId: 1,
+                date: `${prevMonth}-02`,
+                building: 'Tower A',
+                description: 'Tenant Rent Interac e-Transfer Apt 101',
+                category: 'Rent Collection',
+                type: 'INCOME',
+                amount: 1450.00,
+                balanceAfter: 48936.10,
+                reference: 'ETR-8100',
+                reconciled: true,
+                reconciledMonth: prevMonth,
+                reconciledAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString()
+            },
+            {
+                id: 'TX-092',
+                accountId: 1,
+                companyId: 1,
+                date: `${prevMonth}-05`,
+                building: 'Tower B',
+                description: 'Tenant Direct Deposit Apt 204',
+                category: 'Rent Collection',
+                type: 'INCOME',
+                amount: 1850.00,
+                balanceAfter: 47486.10,
+                reference: 'DIR-8101',
+                reconciled: true,
+                reconciledMonth: prevMonth,
+                reconciledAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString()
+            },
+            {
+                id: 'TX-093',
+                accountId: 1,
+                companyId: 1,
+                date: `${prevMonth}-15`,
+                building: 'Tower A',
+                description: 'Building HVAC Maintenance Service',
+                category: 'Maintenance',
+                type: 'EXPENSE',
+                amount: 650.00,
+                balanceAfter: 45636.10,
+                reference: 'CHQ-4491',
+                reconciled: true,
+                reconciledMonth: prevMonth,
+                reconciledAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString()
+            }
+        ]
+    };
+};
+
+const getInitialReconciliations = () => {
+    const prevMonthDate = new Date();
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+    const prevMonth = prevMonthDate.toISOString().slice(0, 7);
+
+    return [
+        {
+            id: `REC-1-${prevMonth}`,
+            accountId: 1,
+            accountName: 'RBC Main Operating Account',
+            companyName: 'Apex Real Estate Partners',
+            month: prevMonth,
+            statementFileName: `rbc_statement_${prevMonth}.csv`,
+            matchedCount: 3,
+            statementEndingBalance: '48936.10',
+            reconciledAt: new Date(Date.now() - 25 * 24 * 3600 * 1000).toISOString()
+        }
+    ];
 };
 
 // Helper to get companies from localStorage or fallback
@@ -56,20 +238,24 @@ const getStoredBuildings = () => {
 };
 
 export const BankAccounts = () => {
-    // Load persisted bank account data or start empty
+    // Load persisted bank account data or preload realistic initial demo accounts
     const [bankData, setBankData] = useState(() => {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 const parsed = JSON.parse(saved);
-                if (parsed && Array.isArray(parsed.accounts) && Array.isArray(parsed.transactions)) {
+                if (parsed && Array.isArray(parsed.accounts) && parsed.accounts.length > 0) {
                     return parsed;
                 }
             }
         } catch (e) {
             console.error('Failed to load bank accounts data:', e);
         }
-        return EMPTY_BANK_DATA;
+        const initial = getInitialBankData();
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
+        } catch (e) {}
+        return initial;
     });
 
     const [companies, setCompanies] = useState(getStoredCompanies);
@@ -85,7 +271,7 @@ export const BankAccounts = () => {
                 }
             } catch (e) {}
         }
-        return null;
+        return 1;
     });
 
     const [filterType, setFilterType] = useState('ALL'); // ALL, INCOME, EXPENSE
@@ -93,6 +279,24 @@ export const BankAccounts = () => {
     const [showAddAccountModal, setShowAddAccountModal] = useState(false);
     const [showPayBillModal, setShowPayBillModal] = useState(false);
     const [showDepositModal, setShowDepositModal] = useState(false);
+    const [showReconciliationModal, setShowReconciliationModal] = useState(false);
+    const [activeViewTab, setActiveViewTab] = useState('LEDGER'); // 'LEDGER' | 'RECONCILIATION_HISTORY'
+    const [reconciliationHistory, setReconciliationHistory] = useState(() => {
+        try {
+            const saved = localStorage.getItem('horizex_bank_reconciliations_v1');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed;
+                }
+            }
+        } catch (e) {}
+        const initialRecs = getInitialReconciliations();
+        try {
+            localStorage.setItem('horizex_bank_reconciliations_v1', JSON.stringify(initialRecs));
+        } catch (e) {}
+        return initialRecs;
+    });
     const [toastMessage, setToastMessage] = useState(null);
 
     // New Bank Account Form State
@@ -161,6 +365,42 @@ export const BankAccounts = () => {
     const showToast = (msg) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3500);
+    };
+
+    const handleReconciliationComplete = (record, matchedTxIds = []) => {
+        const matchedSet = new Set(matchedTxIds);
+        const updatedTxs = bankData.transactions.map(t => {
+            if (matchedSet.has(t.id)) {
+                return { ...t, reconciled: true, reconciledMonth: record.month, reconciledAt: record.reconciledAt };
+            }
+            return t;
+        });
+
+        setBankData(prev => ({
+            ...prev,
+            transactions: updatedTxs
+        }));
+
+        setReconciliationHistory(prev => [record, ...prev]);
+        showToast(`✓ ${record.accountName} reconciled for ${record.month} ($0.00 difference)!`);
+    };
+
+    const handleAddTransactionToLedger = (newTx) => {
+        setBankData(prev => {
+            const updatedAccs = prev.accounts.map(a => {
+                if (a.id === newTx.accountId) {
+                    const amt = parseFloat(newTx.amount) || 0;
+                    const newBal = newTx.type === 'INCOME' ? (a.balance || 0) + amt : (a.balance || 0) - amt;
+                    return { ...a, balance: newBal };
+                }
+                return a;
+            });
+
+            return {
+                accounts: updatedAccs,
+                transactions: [newTx, ...prev.transactions]
+            };
+        });
     };
 
     // Current selected account object
@@ -422,6 +662,74 @@ export const BankAccounts = () => {
         showToast(`Payment recorded. $${amt.toFixed(2)} deposited into ${currentAccount.accountName}.`);
     };
 
+    // Demo account loader for quick 1-click preview
+    const handleLoadDemoAccount = () => {
+        const targetComp = companies[0] || { id: 1, name: 'Apex Real Estate Partners' };
+        const demoAcc = {
+            id: 1,
+            companyId: targetComp.id,
+            companyName: targetComp.name,
+            bankName: 'RBC Royal Bank',
+            accountName: 'RBC Operating Account',
+            shortAccount: `RBC (${targetComp.name})`,
+            accountNumber: '****-4820',
+            routingNumber: '003-10292',
+            balance: 48500.00,
+            currency: 'CAD',
+            buildingsCount: 3,
+            color: 'border-blue-500'
+        };
+        const nowMonth = new Date().toISOString().slice(0, 7);
+        const demoTxs = [
+            {
+                id: `TX-101`,
+                accountId: 1,
+                companyId: targetComp.id,
+                date: `${nowMonth}-02`,
+                building: 'Tower A',
+                description: 'Tenant Rent Interac e-Transfer Apt 101',
+                category: 'Rent Collection',
+                type: 'INCOME',
+                amount: 1450.00,
+                balanceAfter: 48500.00,
+                reference: 'ETR-8812'
+            },
+            {
+                id: `TX-102`,
+                accountId: 1,
+                companyId: targetComp.id,
+                date: `${nowMonth}-05`,
+                building: 'Tower B',
+                description: 'Tenant Direct Deposit Apt 204',
+                category: 'Rent Collection',
+                type: 'INCOME',
+                amount: 1850.00,
+                balanceAfter: 47050.00,
+                reference: 'DIR-9931'
+            },
+            {
+                id: `TX-103`,
+                accountId: 1,
+                companyId: targetComp.id,
+                date: `${nowMonth}-10`,
+                building: 'Commercial Plaza',
+                description: 'Hydro Energy Monthly Utilities',
+                category: 'Utilities',
+                type: 'EXPENSE',
+                amount: 520.40,
+                balanceAfter: 45200.00,
+                reference: 'BILL-410'
+            }
+        ];
+
+        setBankData({
+            accounts: [demoAcc],
+            transactions: demoTxs
+        });
+        setSelectedAccountId(1);
+        showToast('Operating Bank Account loaded with active transactions!');
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12 w-full max-w-full min-w-0 overflow-hidden">
             {/* TOAST NOTIFICATION */}
@@ -456,6 +764,14 @@ export const BankAccounts = () => {
                     {bankData.accounts.length > 0 && (
                         <>
                             <Button
+                                onClick={() => setShowReconciliationModal(true)}
+                                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-2.5 rounded-xl shadow-xs font-semibold"
+                            >
+                                <FileCheck size={15} />
+                                <span>Monthly Reconciliation</span>
+                            </Button>
+
+                            <Button
                                 onClick={() => setShowDepositModal(true)}
                                 className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2.5 rounded-xl shadow-xs"
                             >
@@ -483,15 +799,25 @@ export const BankAccounts = () => {
                     </div>
                     <h3 className="text-xl font-bold text-slate-800 mb-2">No Bank Accounts Added Yet</h3>
                     <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
-                        Create an operating bank account for your companies to start tracking balances, tenant rent deposits, and vendor bills.
+                        Create an operating bank account for your companies to start tracking balances, tenant rent deposits, and monthly bank statement reconciliation.
                     </p>
-                    <Button
-                        onClick={() => setShowAddAccountModal(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold inline-flex items-center gap-2 shadow-xs"
-                    >
-                        <Plus size={18} />
-                        <span>Add First Bank Account</span>
-                    </Button>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <Button
+                            onClick={() => setShowAddAccountModal(true)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold inline-flex items-center gap-2 shadow-xs"
+                        >
+                            <Plus size={18} />
+                            <span>Add First Bank Account</span>
+                        </Button>
+                        <Button
+                            onClick={handleLoadDemoAccount}
+                            variant="secondary"
+                            className="px-5 py-2.5 rounded-xl font-semibold inline-flex items-center gap-2 border border-zinc-200 hover:bg-zinc-50"
+                        >
+                            <Sparkles size={16} className="text-amber-500" />
+                            <span>Load Demo Operating Account</span>
+                        </Button>
+                    </div>
                 </div>
             ) : (
                 <>
@@ -577,6 +903,15 @@ export const BankAccounts = () => {
                                             >
                                                 <Trash2 size={15} />
                                             </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowReconciliationModal(true)}
+                                                title="Reconcile this account with bank statement"
+                                                className="ml-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all border border-indigo-200 inline-flex items-center gap-1.5 shadow-2xs"
+                                            >
+                                                <FileCheck size={13} />
+                                                <span>Reconcile Month</span>
+                                            </button>
                                         </div>
                                     </div>
                                     <p className="text-xs text-zinc-500 mt-1 break-words">
@@ -609,116 +944,252 @@ export const BankAccounts = () => {
                         </div>
                     )}
 
-                    {/* TRANSACTIONS SECTION */}
-                    <div className="space-y-3 w-full min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                                <Receipt size={18} className="text-zinc-500" />
-                                Recent Transactions Ledger
-                            </h3>
+                    {/* TRANSACTIONS & RECONCILIATIONS SECTION */}
+                    <div className="space-y-4 w-full min-w-0">
+                        {/* VIEW SWITCHER TABS */}
+                        <div className="flex items-center gap-2 border-b border-zinc-200 pb-2">
+                            <button
+                                type="button"
+                                onClick={() => setActiveViewTab('LEDGER')}
+                                className={clsx(
+                                    "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                                    activeViewTab === 'LEDGER'
+                                        ? "bg-zinc-900 text-white shadow-xs"
+                                        : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100"
+                                )}
+                            >
+                                <Receipt size={14} />
+                                <span>Transactions Ledger</span>
+                            </button>
 
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-                                {/* Search input */}
-                                <div className="relative w-full sm:w-auto">
-                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
-                                    <input
-                                        type="text"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Search building, ref, or memo..."
-                                        className="pl-8 pr-3 py-2 sm:py-1.5 text-xs bg-white border border-zinc-200 rounded-lg focus:outline-hidden focus:border-blue-500 w-full sm:w-60"
-                                    />
-                                </div>
-
-                                {/* Filter Tabs */}
-                                <div className="flex items-center justify-between sm:justify-start bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 overflow-x-auto">
-                                    {[
-                                        { key: 'ALL', label: 'All Activity' },
-                                        { key: 'INCOME', label: 'Payments In' },
-                                        { key: 'EXPENSE', label: 'Bills Paid Out' }
-                                    ].map(flt => (
-                                        <button
-                                            key={flt.key}
-                                            onClick={() => setFilterType(flt.key)}
-                                            className={clsx(
-                                                "flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 sm:py-1 text-[11px] sm:text-xs rounded-md font-medium transition-all text-center whitespace-nowrap",
-                                                filterType === flt.key
-                                                    ? "bg-white text-zinc-900 shadow-xs font-semibold"
-                                                    : "text-zinc-500 hover:text-zinc-800"
-                                            )}
-                                        >
-                                            {flt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setActiveViewTab('RECONCILIATION_HISTORY')}
+                                className={clsx(
+                                    "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                                    activeViewTab === 'RECONCILIATION_HISTORY'
+                                        ? "bg-indigo-600 text-white shadow-xs"
+                                        : "text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50"
+                                )}
+                            >
+                                <History size={14} />
+                                <span>Reconciliation Reports ({reconciliationHistory.length})</span>
+                            </button>
                         </div>
 
-                        {/* Transactions Table */}
-                        <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs overflow-hidden w-full min-w-0">
-                            <div className="overflow-x-auto w-full">
-                                <table className="w-full text-left text-xs whitespace-nowrap min-w-[650px]">
-                                    <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">
-                                        <tr>
-                                            <th className="py-3 px-4">Date</th>
-                                            <th className="py-3 px-4">Building</th>
-                                            <th className="py-3 px-4">Description / Payee</th>
-                                            <th className="py-3 px-4">Category</th>
-                                            <th className="py-3 px-4">Reference</th>
-                                            <th className="py-3 px-4 text-right">Amount</th>
-                                            <th className="py-3 px-4 text-right">Balance After</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-zinc-100">
-                                        {filteredTransactions.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={7} className="py-8 text-center text-zinc-400 italic">
-                                                    No transactions recorded yet. Click "Record Payment" or "Pay Bill" to add entries.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            filteredTransactions.map((tx) => {
-                                                const isIncome = tx.type === 'INCOME';
-                                                return (
-                                                    <tr key={tx.id} className="hover:bg-zinc-50/80 transition-colors">
-                                                        <td className="py-3 px-4 font-mono text-zinc-600 flex items-center gap-1.5">
-                                                            <Calendar size={13} className="text-zinc-400" />
-                                                            {tx.date}
-                                                        </td>
-                                                        <td className="py-3 px-4 font-medium text-zinc-800">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Building2 size={13} className="text-zinc-400" />
-                                                                <span>{tx.building}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-4 font-semibold text-zinc-900">
-                                                            {tx.description}
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 text-zinc-600 border border-zinc-200">
-                                                                {tx.category}
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-3 px-4 font-mono text-zinc-500 text-[11px]">
-                                                            {tx.reference}
-                                                        </td>
-                                                        <td className={clsx(
-                                                            "py-3 px-4 text-right font-mono font-bold text-sm",
-                                                            isIncome ? "text-emerald-600" : "text-red-600"
-                                                        )}>
-                                                            {isIncome ? `+${tx.amount.toFixed(2)}` : `-${tx.amount.toFixed(2)}`}
-                                                        </td>
-                                                        <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-800">
-                                                            ${(tx.balanceAfter || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}
+                        {activeViewTab === 'LEDGER' && (
+                            <>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
+                                        <Receipt size={18} className="text-zinc-500" />
+                                        Recent Transactions Ledger
+                                    </h3>
+
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                                        {/* Search input */}
+                                        <div className="relative w-full sm:w-auto">
+                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
+                                            <input
+                                                type="text"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                placeholder="Search building, ref, or memo..."
+                                                className="pl-8 pr-3 py-2 sm:py-1.5 text-xs bg-white border border-zinc-200 rounded-lg focus:outline-hidden focus:border-blue-500 w-full sm:w-60"
+                                            />
+                                        </div>
+
+                                        {/* Filter Tabs */}
+                                        <div className="flex items-center justify-between sm:justify-start bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 overflow-x-auto">
+                                            {[
+                                                { key: 'ALL', label: 'All Activity' },
+                                                { key: 'INCOME', label: 'Payments In' },
+                                                { key: 'EXPENSE', label: 'Bills Paid Out' }
+                                            ].map(flt => (
+                                                <button
+                                                    key={flt.key}
+                                                    onClick={() => setFilterType(flt.key)}
+                                                    className={clsx(
+                                                        "flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 sm:py-1 text-[11px] sm:text-xs rounded-md font-medium transition-all text-center whitespace-nowrap",
+                                                        filterType === flt.key
+                                                            ? "bg-white text-zinc-900 shadow-xs font-semibold"
+                                                            : "text-zinc-500 hover:text-zinc-800"
+                                                    )}
+                                                >
+                                                    {flt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Transactions Table */}
+                                <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs overflow-hidden w-full min-w-0">
+                                    <div className="overflow-x-auto w-full">
+                                        <table className="w-full text-left text-xs whitespace-nowrap min-w-[700px]">
+                                            <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">
+                                                <tr>
+                                                    <th className="py-3 px-4">Date</th>
+                                                    <th className="py-3 px-4">Building</th>
+                                                    <th className="py-3 px-4">Description / Payee</th>
+                                                    <th className="py-3 px-4">Category</th>
+                                                    <th className="py-3 px-4">Reference</th>
+                                                    <th className="py-3 px-4">Match Status</th>
+                                                    <th className="py-3 px-4 text-right">Amount</th>
+                                                    <th className="py-3 px-4 text-right">Balance After</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-zinc-100">
+                                                {filteredTransactions.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={8} className="py-8 text-center text-zinc-400 italic">
+                                                            No transactions recorded yet. Click "Record Payment" or "Pay Bill" to add entries.
                                                         </td>
                                                     </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
+                                                ) : (
+                                                    filteredTransactions.map((tx) => {
+                                                        const isIncome = tx.type === 'INCOME';
+                                                        return (
+                                                            <tr key={tx.id} className="hover:bg-zinc-50/80 transition-colors">
+                                                                <td className="py-3 px-4 font-mono text-zinc-600 flex items-center gap-1.5">
+                                                                    <Calendar size={13} className="text-zinc-400" />
+                                                                    {tx.date}
+                                                                </td>
+                                                                <td className="py-3 px-4 font-medium text-zinc-800">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <Building2 size={13} className="text-zinc-400" />
+                                                                        <span>{tx.building}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-3 px-4 font-semibold text-zinc-900">
+                                                                    {tx.description}
+                                                                </td>
+                                                                <td className="py-3 px-4">
+                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 text-zinc-600 border border-zinc-200">
+                                                                        {tx.category}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-3 px-4 font-mono text-zinc-500 text-[11px]">
+                                                                    {tx.reference}
+                                                                </td>
+                                                                <td className="py-3 px-4">
+                                                                    {tx.reconciled ? (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200" title={`Reconciled in ${tx.reconciledMonth || 'period'}`}>
+                                                                            <CheckCircle2 size={11} /> Reconciled
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-100 text-zinc-500 border border-zinc-200">
+                                                                            Uncleared
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className={clsx(
+                                                                    "py-3 px-4 text-right font-mono font-bold text-sm",
+                                                                    isIncome ? "text-emerald-600" : "text-red-600"
+                                                                )}>
+                                                                    {isIncome ? `+${tx.amount.toFixed(2)}` : `-${tx.amount.toFixed(2)}`}
+                                                                </td>
+                                                                <td className="py-3 px-4 text-right font-mono font-semibold text-zinc-800">
+                                                                    ${(tx.balanceAfter || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {activeViewTab === 'RECONCILIATION_HISTORY' && (
+                            <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs overflow-hidden w-full min-w-0">
+                                <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div>
+                                        <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                                            <History size={16} className="text-indigo-600" />
+                                            Closed Monthly Bank Reconciliations
+                                        </h4>
+                                        <p className="text-xs text-zinc-500 mt-0.5">
+                                            Permanent audit log of verified monthly bank statements and matched records.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        onClick={() => setShowReconciliationModal(true)}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-2 rounded-xl inline-flex items-center gap-1.5 shadow-xs font-semibold"
+                                    >
+                                        <Plus size={14} />
+                                        <span>New Month Reconciliation</span>
+                                    </Button>
+                                </div>
+
+                                {reconciliationHistory.length === 0 ? (
+                                    <div className="p-12 text-center max-w-md mx-auto">
+                                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-indigo-100">
+                                            <FileSpreadsheet size={24} />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-zinc-800">No Monthly Reconciliations Logged Yet</h4>
+                                        <p className="text-xs text-zinc-500 mt-1">
+                                            Upload your bank statement at the end of each month to ensure zero variance and lock the period.
+                                        </p>
+                                        <Button
+                                            onClick={() => setShowReconciliationModal(true)}
+                                            className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-xl inline-flex items-center gap-1.5 font-semibold"
+                                        >
+                                            <FileCheck size={14} />
+                                            <span>Reconcile This Month</span>
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto w-full">
+                                        <table className="w-full text-left text-xs whitespace-nowrap min-w-[650px]">
+                                            <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">
+                                                <tr>
+                                                    <th className="py-3 px-4">Period / Month</th>
+                                                    <th className="py-3 px-4">Bank Account & Company</th>
+                                                    <th className="py-3 px-4">Statement File</th>
+                                                    <th className="py-3 px-4">Verified Matches</th>
+                                                    <th className="py-3 px-4">Closing Difference</th>
+                                                    <th className="py-3 px-4">Status</th>
+                                                    <th className="py-3 px-4 text-right">Reconciled On</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-zinc-100 font-medium">
+                                                {reconciliationHistory.map((rec) => (
+                                                    <tr key={rec.id} className="hover:bg-zinc-50/80 transition-colors">
+                                                        <td className="py-3 px-4 font-mono font-bold text-zinc-900 flex items-center gap-1.5">
+                                                            <Calendar size={13} className="text-indigo-600" />
+                                                            {rec.month}
+                                                        </td>
+                                                        <td className="py-3 px-4 font-semibold text-zinc-800">
+                                                            <span>{rec.accountName}</span>
+                                                            <span className="block text-[10px] text-zinc-400">{rec.companyName}</span>
+                                                        </td>
+                                                        <td className="py-3 px-4 font-mono text-zinc-600">
+                                                            {rec.statementFileName}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-zinc-700">
+                                                            <span className="font-bold text-emerald-700">{rec.matchedEntriesCount}</span> / {rec.totalEntriesCount} Entries
+                                                        </td>
+                                                        <td className="py-3 px-4 font-mono font-bold text-emerald-600">
+                                                            ${(rec.discrepancy || 0).toFixed(2)}
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                                <CheckCircle2 size={11} /> {rec.status || 'Balanced'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4 text-right font-mono text-zinc-500 text-[11px]">
+                                                            {new Date(rec.reconciledAt).toLocaleString()}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
-                        </div>
+                        )}
                     </div>
                 </>
             )}
@@ -1225,6 +1696,20 @@ export const BankAccounts = () => {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* MONTHLY BANK RECONCILIATION MODAL */}
+            {showReconciliationModal && (
+                <BankReconciliationModal
+                    isOpen={showReconciliationModal}
+                    onClose={() => setShowReconciliationModal(false)}
+                    currentAccount={currentAccount}
+                    allAccounts={bankData.accounts}
+                    transactions={bankData.transactions}
+                    onReconciliationComplete={handleReconciliationComplete}
+                    onAddTransactionToLedger={handleAddTransactionToLedger}
+                    showToast={showToast}
+                />
             )}
         </div>
     );
