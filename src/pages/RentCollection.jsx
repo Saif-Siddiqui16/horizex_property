@@ -19,7 +19,7 @@ import { TenantLedgerCard } from '../components/collection/TenantLedgerCard';
 import { InvoiceTable } from '../components/collection/InvoiceTable';
 import { RecentPaymentsWidget } from '../components/collection/RecentPaymentsWidget';
 import { CompanyRentCollection } from '../components/collection/CompanyRentCollection';
-import api from '../api/client';
+import api from '../api/client';
 export const RentCollection = ({ defaultTab = 'collection' }) => {
   const [activeTab, setActiveTab] = useState(defaultTab || 'collection'); // 'collection', 'dashboard', 'invoices', 'ledger', 'aging'
 
@@ -110,12 +110,16 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   }, []);
 
   useEffect(() => {
-    const handleCompanyChange = () => {
+    const handleSync = () => {
       loadData();
       loadPropertiesAndLeases();
     };
-    window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('buildingChanged', handleSync);
+    return () => {
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('buildingChanged', handleSync);
+    };
   }, []);
 
   useEffect(() => {

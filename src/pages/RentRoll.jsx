@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { Search, Filter, Building2, Download, Building, Users, Wallet, KeySquare, DoorOpen, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Edit2, X, Trash2, ShieldAlert, Calendar } from 'lucide-react';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
-import clsx from 'clsx';
+import clsx from 'clsx';
 export const RentRoll = () => {
 if (!hasPermission('Rent Roll', 'view')) {
         return (
@@ -95,12 +95,16 @@ if (!hasPermission('Rent Roll', 'view')) {
     }, []);
 
     useEffect(() => {
-        const handleCompanyChange = () => {
+        const handleSync = () => {
             setCurrentPage(1);
             fetchRentRoll();
         };
-        window.addEventListener('companyChanged', handleCompanyChange);
-        return () => window.removeEventListener('companyChanged', handleCompanyChange);
+        window.addEventListener('companyChanged', handleSync);
+        window.addEventListener('buildingChanged', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('buildingChanged', handleSync);
+        };
     }, []);
 
     const formatDaysRemaining = (endDateStr) => {
