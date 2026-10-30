@@ -820,7 +820,46 @@ export const mockApartmentService = {
     setStore('mock_apartments', list);
     return { success: true };
   }),
-  getTypes: () => withDelay(() => getStore('mock_unit_types'))
+  getTypes: () => withDelay(() => {
+    let types = getStore('mock_unit_types');
+    if (!types || !types.length) {
+      types = mockUnitTypes;
+      setStore('mock_unit_types', types);
+    }
+    return types.map((t, idx) => ({
+      ...t,
+      id: t.id || idx + 1,
+      typeName: t.typeName || t.name || `Type ${t.id || idx + 1}`,
+      name: t.name || t.typeName || `Type ${t.id || idx + 1}`,
+      fullUnitRate: t.fullUnitRate || 0,
+      singleBedroomRate: t.singleBedroomRate || 0
+    }));
+  }),
+  createType: (data) => withDelay(() => {
+    let types = getStore('mock_unit_types') || [];
+    const newType = {
+      id: types.length ? Math.max(...types.map(t => t.id || 0)) + 1 : 1,
+      typeName: data.typeName,
+      name: data.typeName,
+      fullUnitRate: parseFloat(data.fullUnitRate) || 0,
+      singleBedroomRate: parseFloat(data.singleBedroomRate) || 0
+    };
+    types.push(newType);
+    setStore('mock_unit_types', types);
+    return newType;
+  }),
+  updateType: (id, data) => withDelay(() => {
+    let types = getStore('mock_unit_types') || [];
+    types = types.map(t => t.id === parseInt(id) ? { ...t, ...data, name: data.typeName || t.name } : t);
+    setStore('mock_unit_types', types);
+    return types.find(t => t.id === parseInt(id));
+  }),
+  deleteType: (id) => withDelay(() => {
+    let types = getStore('mock_unit_types') || [];
+    types = types.filter(t => t.id !== parseInt(id));
+    setStore('mock_unit_types', types);
+    return { success: true };
+  })
 };
 
 export const mockLeaseService = {

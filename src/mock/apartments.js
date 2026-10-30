@@ -114,8 +114,8 @@ export const mockApartments = [
 ];
 
 export const mockUnitTypes = [
-  { id: 1, name: 'Studio', description: 'Open plan living area with kitchenette' },
-  { id: 2, name: '1-Bedroom', description: 'One separate bedroom with full bathroom' },
-  { id: 3, name: '2-Bedroom', description: 'Two separate bedrooms and bathroom' },
-  { id: 4, name: '3-Bedroom', description: 'Three separate bedrooms and bathroom' }
+  { id: 1, typeName: 'Studio', name: 'Studio', fullUnitRate: 1000, singleBedroomRate: 500, description: 'Open plan living area with kitchenette' },
+  { id: 2, typeName: '1-Bedroom', name: '1-Bedroom', fullUnitRate: 1200, singleBedroomRate: 600, description: 'One separate bedroom with full bathroom' },
+  { id: 3, typeName: '2-Bedroom', name: '2-Bedroom', fullUnitRate: 1500, singleBedroomRate: 750, description: 'Two separate bedrooms and bathroom' },
+  { id: 4, typeName: '3-Bedroom', name: '3-Bedroom', fullUnitRate: 1800, singleBedroomRate: 900, description: 'Three separate bedrooms and bathroom' }
 ];

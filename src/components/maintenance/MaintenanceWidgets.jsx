@@ -9,12 +9,15 @@ import {
 } from 'lucide-react';
 
 // ── 1. KPI WIDGETS & CARDS ───────────────────────────────────────────────
-export const MaintenanceKPICards = ({ stats }) => {
+export const MaintenanceKPICards = ({ stats = {} }) => {
+  const safeStats = stats || {};
+  const waitingCount = (Number(safeStats.waitingParts) || 0) + (Number(safeStats.waitingVendor) || 0);
+
   const items = [
-    { label: 'Open Requests', value: stats.open, color: 'text-blue-600 bg-blue-50 border-blue-100', icon: AlertCircle },
-    { label: 'In Progress', value: stats.inProgress, color: 'text-indigo-600 bg-indigo-50 border-indigo-100', icon: Clock },
-    { label: 'Waiting Parts/Vendor', value: stats.waitingParts + stats.waitingVendor, color: 'text-amber-600 bg-amber-50 border-amber-100', icon: Package },
-    { label: 'Emergency Alerts', value: stats.emergency, color: 'text-rose-600 bg-rose-50 border-rose-100 animate-pulse', icon: ShieldAlert }
+    { label: 'Open Requests', value: Number(safeStats.open) || 0, color: 'text-blue-600 bg-blue-50 border-blue-100', icon: AlertCircle },
+    { label: 'In Progress', value: Number(safeStats.inProgress) || 0, color: 'text-indigo-600 bg-indigo-50 border-indigo-100', icon: Clock },
+    { label: 'Waiting Parts/Vendor', value: waitingCount, color: 'text-amber-600 bg-amber-50 border-amber-100', icon: Package },
+    { label: 'Emergency Alerts', value: Number(safeStats.emergency) || 0, color: 'text-rose-600 bg-rose-50 border-rose-100 animate-pulse', icon: ShieldAlert }
   ];
 
   return (
@@ -696,29 +699,29 @@ export const RepairCostWidget = ({ summary, costByBuilding }) => {
       <div className="grid grid-cols-2 gap-4 text-xs font-bold text-slate-600 border-b border-slate-50 pb-4">
         <div className="p-3 bg-slate-50/50 rounded-2xl flex flex-col">
           <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Target Budget</span>
-          <span className="text-xl font-black text-slate-800 mt-1">${summary.budget?.toFixed(2)}</span>
+          <span className="text-xl font-black text-slate-800 mt-1">${Number(summary?.budget || 0).toFixed(2)}</span>
         </div>
         <div className="p-3 bg-slate-50/50 rounded-2xl flex flex-col">
           <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Portfolio Cost</span>
-          <span className="text-xl font-black text-indigo-600 mt-1">${summary.actual?.toFixed(2)}</span>
+          <span className="text-xl font-black text-indigo-600 mt-1">${Number(summary?.actual || 0).toFixed(2)}</span>
         </div>
         <div className="p-3 bg-slate-50/50 rounded-2xl flex flex-col col-span-2">
           <div className="flex justify-between text-[10px] font-black text-slate-400">
             <span>BUDGET UTILIZATION</span>
-            <span>{Math.round((summary.actual / summary.budget) * 100)}%</span>
+            <span>{summary?.budget ? Math.round(((summary.actual || 0) / summary.budget) * 100) : 0}%</span>
           </div>
           <div className="w-full bg-slate-100 h-2 rounded-full mt-2 overflow-hidden">
-            <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${Math.min(100, (summary.actual / summary.budget) * 100)}%` }} />
+            <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${summary?.budget ? Math.min(100, Math.max(0, ((summary.actual || 0) / summary.budget) * 100)) : 0}%` }} />
           </div>
         </div>
       </div>
 
       <div className="flex flex-col gap-2.5 text-xs font-semibold">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Actual Costs By Property</span>
-        {costByBuilding.map((item, idx) => (
+        {(costByBuilding || []).map((item, idx) => (
           <div key={idx} className="flex justify-between items-center text-slate-600">
             <span>{item.name}</span>
-            <span className="font-bold text-slate-800 font-mono">${item.value?.toFixed(2)}</span>
+            <span className="font-bold text-slate-800 font-mono">${Number(item.value || 0).toFixed(2)}</span>
           </div>
         ))}
       </div>
@@ -738,7 +741,7 @@ export const OpenRepairsWidget = ({ stats, onTabRedirect }) => {
           <p className="text-[10px] text-slate-400 font-medium">New and unassigned tickets queue</p>
         </div>
         <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center text-xs font-black">
-          {stats.open}
+          {stats?.open ?? 0}
         </span>
       </div>
       <div className="flex justify-between items-center text-xs font-bold text-slate-500 mt-2">
@@ -763,7 +766,7 @@ export const EmergencyRepairsWidget = ({ stats, onTabRedirect }) => {
           <p className="text-[10px] text-rose-500 font-medium">Urgent hazard repairs awaiting resolution</p>
         </div>
         <span className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center text-xs font-black animate-ping">
-          {stats.emergency}
+          {stats?.emergency ?? 0}
         </span>
       </div>
       <div className="flex justify-between items-center text-xs font-bold text-rose-600 mt-2">
@@ -848,17 +851,17 @@ export const AssetHealthWidget = ({ summary }) => {
       <div className="grid grid-cols-2 gap-4 text-xs font-bold text-slate-600">
         <div className="p-3 bg-slate-50/50 rounded-2xl flex flex-col">
           <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Asset Value</span>
-          <span className="text-xl font-black text-slate-800 mt-1">${summary.totalValue?.toLocaleString()}</span>
+          <span className="text-xl font-black text-slate-800 mt-1">${Number(summary?.totalValue || 0).toLocaleString()}</span>
         </div>
         <div className="p-3 bg-slate-50/50 rounded-2xl flex flex-col">
           <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Warranty Alert</span>
-          <span className="text-xl font-black text-amber-600 mt-1">{summary.warrantyExpiringCount} items</span>
+          <span className="text-xl font-black text-amber-600 mt-1">{summary?.warrantyExpiringCount ?? 0} items</span>
         </div>
       </div>
       
       <div className="text-[10px] text-slate-500 font-semibold border-t border-slate-50 pt-2 flex justify-between">
         <span>Critical repairs required:</span>
-        <span className="text-rose-500 font-black">{summary.replacementDueCount} Replacements due</span>
+        <span className="text-rose-500 font-black">{summary?.replacementDueCount ?? 0} Replacements due</span>
       </div>
     </div>
   );
@@ -876,12 +879,12 @@ export const InventoryAlertsWidget = ({ summary, onTabRedirect }) => {
           <p className="text-[10px] text-slate-400 font-medium">Parts falling below safety stock minimums</p>
         </div>
         <span className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center text-xs font-black animate-pulse">
-          {summary.lowStockCount}
+          {summary?.lowStockCount ?? 0}
         </span>
       </div>
 
       <div className="flex flex-col gap-2 text-xs font-semibold text-slate-600">
-        {summary.lowStockList.map((part, idx) => (
+        {(summary?.lowStockList || []).map((part, idx) => (
           <div key={idx} className="flex justify-between text-[10px]">
             <span>{part.name}</span>
             <span className="font-bold text-rose-500">Stock: {part.currentStock} (Min: {part.minimumStock})</span>
