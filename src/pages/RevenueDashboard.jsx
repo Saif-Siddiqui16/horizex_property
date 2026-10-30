@@ -110,11 +110,15 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
   useEffect(() => {
     fetchStats();
-    const handleCompanyChange = () => {
+    const handleSync = () => {
       fetchStats();
     };
-    window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('buildingChanged', handleSync);
+    return () => {
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('buildingChanged', handleSync);
+    };
   }, []);
 
   // Format month label: "2025-03" → "Mar '25" or "March 2026" → "Mar '26"

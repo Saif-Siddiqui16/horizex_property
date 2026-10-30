@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import api from '../api/client';
 import clsx from 'clsx';
 import { CompanySelector } from '../components/CompanySelector';
+import { BuildingSelector } from '../components/BuildingSelector';
 
 export const Topbar = ({ onMenuClick }) => {
     const navigate = useNavigate();
@@ -104,6 +105,9 @@ export const Topbar = ({ onMenuClick }) => {
             <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                 {/* COMPANY SELECTOR */}
                 <CompanySelector />
+
+                {/* BUILDING SELECTOR */}
+                <BuildingSelector />
 
                 <div className="h-6 w-px bg-zinc-200 hidden sm:block mx-1"></div>
 
