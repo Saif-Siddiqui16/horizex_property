@@ -126,9 +126,6 @@ const NAV_ITEMS = [
       { label: "Dashboard", tKey: "sidebar.payroll_dash", path: "/payroll/dashboard" },
       { label: "Employees", tKey: "sidebar.employees", path: "/payroll/employees" },
       { label: "Attendance", tKey: "sidebar.attendance", path: "/payroll/attendance" },
-      { label: "Shifts", tKey: "sidebar.shifts", path: "/payroll/shifts" },
-      { label: "Leaves", tKey: "sidebar.leaves", path: "/payroll/leaves" },
-      { label: "Overtime", tKey: "sidebar.overtime", path: "/payroll/overtime" },
       { label: "Run Payroll", tKey: "sidebar.run_payroll", path: "/payroll/run" },
       { label: "Audit Timeline", tKey: "sidebar.payroll_timeline", path: "/payroll/timeline" }
     ]
