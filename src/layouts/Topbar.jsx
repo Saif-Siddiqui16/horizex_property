@@ -1,3 +1,4 @@
+import { clearWorkspaceTabs } from '../context/WorkspaceContext';
 import React, { useState, useEffect } from 'react';
 import { Menu, LogOut, MessageSquare, Bell, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
@@ -24,6 +25,7 @@ export const Topbar = ({ onMenuClick }) => {
 
     const handleLogout = () => {
         localStorage.removeItem('isLoggedIn');
+        clearWorkspaceTabs();
         navigate('/login');
     };
 
@@ -80,12 +82,13 @@ export const Topbar = ({ onMenuClick }) => {
     };
 
     return (
-        <header className="h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40 transition-all">
+        <header className="h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-2.5 sm:px-4 lg:px-6 sticky top-0 z-40 transition-all gap-1.5 sm:gap-4">
             {/* LEFT */}
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
                 <button
-                    className="block lg:hidden text-zinc-500 p-2 hover:bg-zinc-100 hover:text-zinc-900 rounded-[var(--radius-md)] transition-colors shrink-0"
+                    className="block lg:hidden text-zinc-600 p-2 hover:bg-zinc-100 hover:text-zinc-900 rounded-[var(--radius-md)] transition-colors shrink-0 cursor-pointer"
                     onClick={onMenuClick}
+                    aria-label="Open menu"
                 >
                     <Menu size={20} />
                 </button>
@@ -95,40 +98,44 @@ export const Topbar = ({ onMenuClick }) => {
                         className="text-zinc-500 p-1.5 sm:p-2 hover:bg-zinc-100 hover:text-zinc-900 rounded-[var(--radius-md)] transition-colors shrink-0"
                         title="Go Back"
                     >
-                        <ArrowLeft size={20} />
+                        <ArrowLeft size={18} />
                     </button>
                 )}
-                <h1 className="text-base sm:text-lg font-bold text-zinc-900 tracking-tight truncate">{title}</h1>
+                <h1 className="text-sm sm:text-lg font-bold text-zinc-900 tracking-tight truncate hidden md:block">{title}</h1>
             </div>
 
             {/* RIGHT */}
-            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-3 min-w-0 justify-end flex-1 sm:flex-initial">
                 {/* COMPANY SELECTOR */}
-                <CompanySelector />
+                <div className="flex-1 sm:flex-initial max-w-[125px] sm:max-w-none [&>div]:min-w-0 [&>div]:w-full [&>div]:px-2 sm:[&>div]:px-3 [&>div]:h-8 sm:[&>div]:h-9 [&>div>select]:text-[11px] sm:[&>div>select]:text-xs [&>div>select]:pr-4 sm:[&>div>select]:pr-6 [&>div>div]:right-1.5 sm:[&>div>div]:right-3 shrink min-w-0">
+                    <CompanySelector />
+                </div>
 
                 {/* BUILDING SELECTOR */}
-                <BuildingSelector />
+                <div className="flex-1 sm:flex-initial max-w-[125px] sm:max-w-none [&>div]:min-w-0 [&>div]:w-full [&>div]:px-2 sm:[&>div]:px-3 [&>div]:h-8 sm:[&>div]:h-9 [&>div>select]:text-[11px] sm:[&>div>select]:text-xs [&>div>select]:pr-4 sm:[&>div>select]:pr-6 [&>div>div]:right-1.5 sm:[&>div>div]:right-3 shrink min-w-0">
+                    <BuildingSelector />
+                </div>
 
-                <div className="h-6 w-px bg-zinc-200 hidden sm:block mx-1"></div>
+                <div className="h-6 w-px bg-zinc-200 hidden sm:block mx-0.5 sm:mx-1"></div>
 
                 {/* SMS NOTIFICATION */}
                 <Link
                     to="/admin/sms/inbox"
-                    className="relative p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-full transition-colors flex items-center justify-center w-9 h-9"
+                    className="relative p-1.5 sm:p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-full transition-colors flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 shrink-0"
                     title="SMS Inbox"
                 >
-                    <MessageSquare size={18} />
+                    <MessageSquare size={17} />
                     {unreadCount > 0 && (
                         <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white shadow-sm"></span>
                     )}
                 </Link>
 
                 {/* LANGUAGE SWITCHER */}
-                <div className="flex items-center bg-zinc-100/80 p-0.5 rounded-[var(--radius-md)] h-9 border border-zinc-200/50 notranslate">
+                <div className="flex items-center bg-zinc-100/80 p-0.5 rounded-[var(--radius-md)] h-8 sm:h-9 border border-zinc-200/50 notranslate shrink-0">
                     <button
                         onClick={() => handleLanguageChange('en')}
                         className={clsx(
-                            "px-2.5 h-full text-xs font-semibold rounded-[var(--radius-sm)] transition-all",
+                            "px-2 sm:px-2.5 h-full text-[11px] sm:text-xs font-semibold rounded-[var(--radius-sm)] transition-all",
                             currentLang === 'en'
                                 ? "bg-white text-zinc-900 shadow-sm"
                                 : "text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50"
@@ -139,7 +146,7 @@ export const Topbar = ({ onMenuClick }) => {
                     <button
                         onClick={() => handleLanguageChange('fr')}
                         className={clsx(
-                            "px-2.5 h-full text-xs font-semibold rounded-[var(--radius-sm)] transition-all",
+                            "px-2 sm:px-2.5 h-full text-[11px] sm:text-xs font-semibold rounded-[var(--radius-sm)] transition-all",
                             currentLang === 'fr'
                                 ? "bg-white text-zinc-900 shadow-sm"
                                 : "text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50"
@@ -151,7 +158,7 @@ export const Topbar = ({ onMenuClick }) => {
 
                 {/* LOGOUT */}
                 <button
-                    className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-red-600 transition-colors cursor-pointer"
+                    className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-red-600 transition-colors cursor-pointer shrink-0"
                     onClick={handleLogout}
                     title="Logout"
                 >
