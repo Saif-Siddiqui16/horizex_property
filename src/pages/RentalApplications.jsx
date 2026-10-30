@@ -503,7 +503,7 @@ export const RentalApplications = () => {
 
             {/* APPLICATIONS TABLE */}
             <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
-                <div className="overflow-x-auto pb-1">
+                <div className="overflow-x-auto pb-2 custom-scrollbar [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-track]:bg-zinc-100 [&::-webkit-scrollbar-thumb]:bg-zinc-300 hover:[&::-webkit-scrollbar-thumb]:bg-zinc-400 [&::-webkit-scrollbar-thumb]:rounded-full">
                     <table className="w-full text-left border-collapse text-sm min-w-[950px]">
                         <thead>
                             <tr className="bg-zinc-50/80 border-b border-zinc-200 text-xs font-semibold text-zinc-500 uppercase tracking-wider">

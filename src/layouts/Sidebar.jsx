@@ -353,7 +353,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           {(() => {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
-            
+
             // Re-render trigger from custom event
             const [forceUpdate, setForceUpdate] = React.useState(0);
             React.useEffect(() => {
@@ -435,7 +435,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
             const getVisibleItems = (items) => {
               return items.reduce((acc, item) => {
                 if (!canUserView(item)) return acc;
-                
+
                 const newItem = { ...item };
                 if (newItem.children?.length > 0) {
                   newItem.children = getVisibleItems(newItem.children);
@@ -483,26 +483,26 @@ export const Sidebar = ({ isOpen, onClose }) => {
 };
 
 const UnreadSMSBadge = () => {
-    const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0);
 
-    useEffect(() => {
-        const fetchCount = async () => {
-            try {
-                const res = await api.get('/api/communication/unread-stats');
-                setCount(res.data.count || 0);
-            } catch (e) { }
-        };
-        fetchCount();
-        const interval = setInterval(fetchCount, 30000); // Check every 30s
-        return () => clearInterval(interval);
-    }, []);
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const res = await api.get('/api/communication/unread-stats');
+        setCount(res.data.count || 0);
+      } catch (e) { }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
 
-    if (count === 0) return null;
+  if (count === 0) return null;
 
-    return (
-        <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full inline-flex items-center justify-center min-w-[1.25rem] h-5 shadow-sm ml-auto mr-2">
-            {count > 99 ? '99+' : count}
-        </span>
-    );
+  return (
+    <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full inline-flex items-center justify-center min-w-[1.25rem] h-5 shadow-sm ml-auto mr-2">
+      {count > 99 ? '99+' : count}
+    </span>
+  );
 };
 

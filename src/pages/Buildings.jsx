@@ -69,6 +69,11 @@ export const Buildings = () => {
       : (acc.shortAccount || acc.accountName);
   };
 
+  const getCompanyBankAccount = (companyId) => {
+    const accounts = getCompanyBankAccounts(companyId);
+    return accounts.length > 0 ? getAccountLabel(accounts[0]) : '';
+  };
+
   const [availableCompanies, setAvailableCompanies] = useState(getDynamicCompanies);
   const [availableBankAccounts, setAvailableBankAccounts] = useState(getDynamicBankAccounts);
 
