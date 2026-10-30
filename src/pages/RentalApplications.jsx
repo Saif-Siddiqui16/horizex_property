@@ -418,7 +418,7 @@ export const RentalApplications = () => {
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12">
+        <div className="space-y-6 max-w-7xl mx-auto pb-12 w-full min-w-0">
             {/* TOAST NOTIFICATION */}
             {toastMessage && (
                 <div className="fixed bottom-6 right-6 z-50 bg-zinc-900 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-2 text-sm border border-zinc-700 animate-in fade-in slide-in-from-bottom-2">
@@ -470,7 +470,7 @@ export const RentalApplications = () => {
             </div>
 
             {/* SEARCH & FILTERS */}
-            <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 w-full min-w-0">
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
                     <input
@@ -482,7 +482,7 @@ export const RentalApplications = () => {
                     />
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto">
+                <div className="flex items-center gap-2 overflow-x-auto max-w-full">
                     <span className="text-xs font-medium text-zinc-500 shrink-0">Filter Status:</span>
                     {['ALL', 'PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED'].map((st) => (
                         <button
@@ -502,18 +502,45 @@ export const RentalApplications = () => {
             </div>
 
             {/* APPLICATIONS TABLE */}
-            <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
-                <div className="overflow-x-auto pb-2 custom-scrollbar [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-track]:bg-zinc-100 [&::-webkit-scrollbar-thumb]:bg-zinc-300 hover:[&::-webkit-scrollbar-thumb]:bg-zinc-400 [&::-webkit-scrollbar-thumb]:rounded-full">
-                    <table className="w-full text-left border-collapse text-sm min-w-[950px]">
-                        <thead>
+            <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden flex flex-col w-full min-w-0">
+                <style>{`
+                    .rental-app-scroll {
+                        overflow-x: auto;
+                        scrollbar-width: thin;
+                        scrollbar-color: #94a3b8 #f1f5f9;
+                    }
+                    .rental-app-scroll::-webkit-scrollbar {
+                        height: 10px;
+                    }
+                    .rental-app-scroll::-webkit-scrollbar-track {
+                        background: #f1f5f9;
+                        border-radius: 6px;
+                    }
+                    .rental-app-scroll::-webkit-scrollbar-thumb {
+                        background: #94a3b8;
+                        border-radius: 6px;
+                    }
+                    .rental-app-scroll::-webkit-scrollbar-thumb:hover {
+                        background: #64748b;
+                    }
+                `}</style>
+                <div 
+                    className="w-full overflow-x-auto rental-app-scroll"
+                    style={{
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: '#94a3b8 #f1f5f9'
+                    }}
+                >
+                    <table className="w-full text-left border-collapse text-sm min-w-[1150px]">
+                        <thead className="sticky top-0 z-10 bg-zinc-50 shadow-xs">
                             <tr className="bg-zinc-50/80 border-b border-zinc-200 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                                <th className="py-3.5 px-4">Applicant Name</th>
-                                <th className="py-3.5 px-4">Unit Address</th>
-                                <th className="py-3.5 px-4">Listing Agent</th>
-                                <th className="py-3.5 px-4">Credit Score</th>
-                                <th className="py-3.5 px-4">Verification Checklist</th>
-                                <th className="py-3.5 px-4">Status</th>
-                                <th className="py-3.5 px-4 text-right">Action</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Applicant Name</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Unit Address</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Listing Agent</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Credit Score</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Verification Checklist</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
+                                <th className="py-3.5 px-4 text-right pr-6 whitespace-nowrap">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-200">
@@ -534,7 +561,7 @@ export const RentalApplications = () => {
                                             className="hover:bg-zinc-50/80 transition-colors group cursor-pointer"
                                             onClick={() => handleOpenReview(app)}
                                         >
-                                            <td className="py-3.5 px-4">
+                                            <td className="py-3.5 px-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-2.5">
                                                     <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0 border border-blue-200">
                                                         {app.applicantName[0]}
@@ -548,24 +575,24 @@ export const RentalApplications = () => {
                                                 </div>
                                             </td>
 
-                                            <td className="py-3.5 px-4">
+                                            <td className="py-3.5 px-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-1.5 text-zinc-700">
                                                     <Building2 size={14} className="text-zinc-400 shrink-0" />
-                                                    <span className="font-medium truncate max-w-[200px]">{app.unitAddress}</span>
+                                                    <span className="font-medium whitespace-nowrap">{app.unitAddress}</span>
                                                 </div>
                                             </td>
 
-                                            <td className="py-3.5 px-4 text-zinc-600">
+                                            <td className="py-3.5 px-4 text-zinc-600 whitespace-nowrap">
                                                 {app.listingAgent}
                                             </td>
 
-                                            <td className="py-3.5 px-4">
+                                            <td className="py-3.5 px-4 whitespace-nowrap">
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-200">
                                                     {app.creditScore.value}
                                                 </span>
                                             </td>
 
-                                            <td className="py-3.5 px-4">
+                                            <td className="py-3.5 px-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-24 bg-zinc-100 rounded-full h-2 overflow-hidden border border-zinc-200">
                                                         <div
@@ -582,7 +609,7 @@ export const RentalApplications = () => {
                                                 </div>
                                             </td>
 
-                                            <td className="py-3.5 px-4">
+                                            <td className="py-3.5 px-4 whitespace-nowrap">
                                                 <span
                                                     className={clsx(
                                                         "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold",
@@ -600,7 +627,7 @@ export const RentalApplications = () => {
                                                 </span>
                                             </td>
 
-                                            <td className="py-3.5 px-4 text-right">
+                                            <td className="py-3.5 px-4 text-right pr-6 whitespace-nowrap">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <button
                                                         onClick={(e) => {
@@ -631,6 +658,19 @@ export const RentalApplications = () => {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Table Footer with Summary and Scroll Note */}
+                <div className="px-5 py-3 border-t border-zinc-200 bg-zinc-50/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-zinc-500 shrink-0">
+                    <div className="font-semibold text-zinc-700">
+                        Showing <span className="font-bold text-zinc-900">{filteredApps.length}</span> of <span className="font-bold text-zinc-900">{applications.length}</span> Total Applications
+                    </div>
+                    <div className="flex items-center gap-1.5 text-zinc-400 font-medium text-[11px]">
+                        <span>← Scroll bottom bar horizontally to view full table details & actions →</span>
+                    </div>
+                </div>
+                <div className="hidden">
+
                 </div>
             </div>
 
