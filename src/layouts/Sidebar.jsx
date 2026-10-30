@@ -1,3 +1,4 @@
+import { clearWorkspaceTabs } from '../context/WorkspaceContext';
 import React, { useState, useEffect } from "react";
 import { NavLink, useLocation, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
@@ -279,6 +280,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
+    clearWorkspaceTabs();
     navigate('/login');
   };
 

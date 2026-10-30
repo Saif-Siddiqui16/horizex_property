@@ -123,6 +123,23 @@ export const getRouteInfo = (pathname) => {
 const STORAGE_KEY = 'horizex_workspace_windows_v1';
 const STORAGE_SPLIT_KEY = 'horizex_workspace_split_v1';
 
+export const clearWorkspaceTabs = () => {
+    try {
+        sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(STORAGE_SPLIT_KEY);
+        window.dispatchEvent(new Event('clearWorkspaceTabs'));
+    } catch (e) {
+        console.error('Failed to clear workspace tabs storage:', e);
+    }
+};
+
+const DEFAULT_DASHBOARD_TAB = {
+    id: '/dashboard',
+    path: '/dashboard',
+    title: 'Overview Dashboard',
+    closable: false
+};
+
 export const WorkspaceProvider = ({ children }) => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -140,14 +157,22 @@ export const WorkspaceProvider = ({ children }) => {
         } catch (e) {
             console.error('Failed to parse saved workspace windows:', e);
         }
-        // Default initial tab
+
+        // On fresh login or if at /dashboard, only Overview Dashboard is shown
+        if (location.pathname === '/dashboard') {
+            return [DEFAULT_DASHBOARD_TAB];
+        }
+
         const initialInfo = getRouteInfo(location.pathname);
-        return [{
-            id: location.pathname,
-            path: location.pathname + location.search,
-            title: initialInfo.title,
-            closable: location.pathname !== '/dashboard'
-        }];
+        return [
+            DEFAULT_DASHBOARD_TAB,
+            {
+                id: location.pathname,
+                path: location.pathname + location.search,
+                title: initialInfo.title,
+                closable: true
+            }
+        ];
     });
 
     const [activeWindowId, setActiveWindowId] = useState(location.pathname);
@@ -342,6 +367,25 @@ export const WorkspaceProvider = ({ children }) => {
         navigate('/dashboard');
     }, [navigate]);
 
+    const resetWorkspace = useCallback(() => {
+        try {
+            sessionStorage.removeItem(STORAGE_KEY);
+            sessionStorage.removeItem(STORAGE_SPLIT_KEY);
+        } catch (e) {}
+        setOpenWindows([DEFAULT_DASHBOARD_TAB]);
+        setActiveWindowId('/dashboard');
+        setSecondaryWindowId(null);
+        setSplitMode(false);
+    }, []);
+
+    useEffect(() => {
+        const handleClear = () => {
+            resetWorkspace();
+        };
+        window.addEventListener('clearWorkspaceTabs', handleClear);
+        return () => window.removeEventListener('clearWorkspaceTabs', handleClear);
+    }, [resetWorkspace]);
+
     return (
         <WorkspaceContext.Provider
             value={{
@@ -355,7 +399,8 @@ export const WorkspaceProvider = ({ children }) => {
                 toggleSplitMode,
                 setSecondaryWindowId,
                 closeOtherWindows,
-                closeAllWindows
+                closeAllWindows,
+                resetWorkspace
             }}
         >
             {children}

@@ -1,3 +1,4 @@
+import { clearWorkspaceTabs } from '../context/WorkspaceContext';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
@@ -26,6 +27,7 @@ export const Login = () => {
 
       if (user.role === 'ADMIN' || user.role === 'COWORKER') {
         localStorage.setItem('isLoggedIn', 'true');
+        clearWorkspaceTabs();
         if (user.role === 'COWORKER') {
           try {
             const permRes = await api.get(`/api/admin/coworkers/${user.id}/permissions`);

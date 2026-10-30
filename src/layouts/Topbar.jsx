@@ -1,3 +1,4 @@
+import { clearWorkspaceTabs } from '../context/WorkspaceContext';
 import React, { useState, useEffect } from 'react';
 import { Menu, LogOut, MessageSquare, Bell, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
@@ -24,6 +25,7 @@ export const Topbar = ({ onMenuClick }) => {
 
     const handleLogout = () => {
         localStorage.removeItem('isLoggedIn');
+        clearWorkspaceTabs();
         navigate('/login');
     };
 
