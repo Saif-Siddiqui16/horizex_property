@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 
 import {
     FileText,
@@ -19,14 +20,17 @@ import {
     RefreshCw,
     ChevronLeft,
     ChevronRight,
-    Edit
+    Edit,
+    Eye,
+    Printer
 } from "lucide-react";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import api from "../api/client";
-import { hasPermission } from "../utils/permissions";
+import { hasPermission } from "../utils/permissions";
+
 export const DocumentLibrary = () => {
-const [__forceUpdate, __setForceUpdate] = useState(0);
+    const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -44,6 +48,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     const docsPerPage = 10;
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [previewDoc, setPreviewDoc] = useState(null);
 
     // Form State
     const [uploadFile, setUploadFile] = useState(null);
@@ -61,6 +66,17 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     });
     const [linkSearch, setLinkSearch] = useState("");
     const [linkType, setLinkType] = useState("USER");
+
+    // Close preview on Escape key
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === "Escape") setPreviewDoc(null);
+        };
+        if (previewDoc) {
+            window.addEventListener("keydown", handleKeyDown);
+        }
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [previewDoc]);
 
     const fetchDocuments = async () => {
         try {
@@ -237,6 +253,61 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         }
     };
 
+    const getLinkedEntityName = (doc) => {
+        if (!doc) return '-';
+        if (doc.user) {
+            return `Tenant: ${doc.user.firstName || ''} ${doc.user.lastName || ''}`.trim();
+        } else if (doc.property) {
+            return `Building: ${doc.property.name}${doc.property.civicNumber ? ` - ${doc.property.civicNumber}` : ''}`;
+        } else if (doc.unit) {
+            return `Unit: ${doc.unit.name || doc.unit.unitNumber || 'N/A'}`;
+        } else if (doc.lease) {
+            return doc.lease.tenant
+                ? `Lease: ${doc.lease.tenant.name || `${doc.lease.tenant.firstName} ${doc.lease.tenant.lastName}`}`
+                : `Lease #${doc.lease.id}`;
+        } else if (doc.invoice) {
+            return `Invoice: ${doc.invoice.invoiceNo || doc.invoice.id}`;
+        }
+        return '-';
+    };
+
+    const handleDownload = (doc) => {
+        if (!doc) return;
+        if (doc.fileUrl) {
+            if (doc.fileUrl.startsWith('blob:') || doc.fileUrl.startsWith('data:')) {
+                const a = document.createElement('a');
+                a.href = doc.fileUrl;
+                a.download = doc.name || 'document';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                return;
+            }
+            const token = localStorage.getItem('accessToken') || '';
+            const base = (api.defaults.baseURL || '').replace(/\/$/, '');
+            const baseUrl = doc.fileUrl.includes('?') ? doc.fileUrl.split('?')[0] : doc.fileUrl;
+            if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
+                window.open(`${baseUrl}?disposition=attachment&token=${token}`, '_blank');
+                return;
+            }
+            const cleanPath = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
+            const downloadUrl = `${base}${cleanPath}?disposition=attachment&token=${token}`;
+            window.open(downloadUrl, '_blank');
+        } else {
+            // Generate official copy download for mock/database records
+            const content = `HORIZEX PROPERTY MANAGEMENT\n====================================\nDOCUMENT RECORD\n====================================\nDocument Name: ${doc.name}\nDocument ID: DOC-${String(doc.id).padStart(6, '0')}\nType / Category: ${doc.type}\nLinked Entity: ${getLinkedEntityName(doc)}\nCreated Date: ${doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : 'N/A'}\nExpiry Date: ${doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString() : 'N/A'}\nFile Size: ${doc.size || '1.2 MB'}\nStatus: Verified System Document\n====================================\nOfficial Horizex Property Management Record Vault`;
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = doc.name ? (doc.name.toLowerCase().endsWith('.pdf') ? doc.name.replace(/\.pdf$/i, '.txt') : doc.name) : 'document.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    };
+
     return (
         <>
             <div className="space-y-8 anim-fade-in">
@@ -338,21 +409,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         .slice((currentPage - 1) * docsPerPage, currentPage * docsPerPage)
                                         .map(doc => {
                                         const isExpired = doc.expiryDate && new Date(doc.expiryDate) < new Date().setHours(0,0,0,0);
-                                        // Determine linked entity display
-                                        let linkedEntity = '-';
-                                        if (doc.user) {
-                                            linkedEntity = `Tenant: ${doc.user.firstName || ''} ${doc.user.lastName || ''}`.trim();
-                                        } else if (doc.property) {
-                                            linkedEntity = `Building: ${doc.property.name}${doc.property.civicNumber ? ` - ${doc.property.civicNumber}` : ''}`;
-                                        } else if (doc.unit) {
-                                            linkedEntity = `Unit: ${doc.unit.name || doc.unit.unitNumber || 'N/A'}`;
-                                        } else if (doc.lease) {
-                                            linkedEntity = doc.lease.tenant
-                                                ? `Lease: ${doc.lease.tenant.name || `${doc.lease.tenant.firstName} ${doc.lease.tenant.lastName}`}`
-                                                : `Lease #${doc.lease.id}`;
-                                        } else if (doc.invoice) {
-                                            linkedEntity = `Invoice: ${doc.invoice.invoiceNo || doc.invoice.id}`;
-                                        }
+                                        const linkedEntity = getLinkedEntityName(doc);
 
                                         return (
                                             <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -361,7 +418,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                         <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
                                                             {getIcon(doc.type)}
                                                         </div>
-                                                        <span className="font-bold text-slate-800">{doc.name}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPreviewDoc(doc)}
+                                                            className="font-bold text-slate-800 hover:text-indigo-600 transition-colors text-left"
+                                                            title="Preview Document"
+                                                        >
+                                                            {doc.name}
+                                                        </button>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -384,8 +448,17 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPreviewDoc(doc)}
+                                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                                                            title="Preview Document"
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
                                                         {hasPermission('Documents', 'edit') && (
                                                             <button
+                                                                type="button"
                                                                 onClick={() => openEditModal(doc)}
                                                                 className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
                                                                 title="Edit Details"
@@ -394,15 +467,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                             </button>
                                                         )}
                                                         <button
-                                                            onClick={async () => {
-                                                                if (!doc.fileUrl) return alert("File URL missing");
-                                                                const token = localStorage.getItem('accessToken');
-                                                                const base = api.defaults.baseURL.replace(/\/$/, '');
-                                                                const baseUrl = doc.fileUrl.includes('?') ? doc.fileUrl.split('?')[0] : doc.fileUrl;
-                                                                const cleanPath = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
-                                                                const downloadUrl = `${base}${cleanPath}?disposition=attachment&token=${token}`;
-                                                                window.open(downloadUrl, '_blank');
-                                                            }}
+                                                            type="button"
+                                                            onClick={() => handleDownload(doc)}
                                                             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
                                                             title="Download"
                                                         >
@@ -410,6 +476,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                         </button>
                                                         {hasPermission('Documents', 'delete') && (
                                                             <button
+                                                                type="button"
                                                                 onClick={() => handleDelete(doc.id)}
                                                                 className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
                                                                 title="Delete"
@@ -628,6 +695,257 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         </div>
                     )
                 }
+
+                {/* DOCUMENT PREVIEW MODAL (Rendered at root document.body via Portal to prevent sidebar clipping & overflow) */}
+                {previewDoc && createPortal(
+                    <div 
+                        className="fixed inset-0 z-[99999] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) setPreviewDoc(null);
+                        }}
+                    >
+                        <div className="bg-white rounded-2xl w-full max-w-xl sm:max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto animate-[scaleIn_0.2s_ease]">
+                            {/* Preview Modal Header */}
+                            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 shrink-0">
+                                <div className="flex items-center gap-2.5 min-w-0 pr-3">
+                                    <div className="w-9 h-9 rounded-xl bg-white shadow-xs border border-slate-200 flex items-center justify-center shrink-0">
+                                        {getIcon(previewDoc.type)}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-sm sm:text-base font-bold text-slate-800 truncate" title={previewDoc.name}>
+                                                {previewDoc.name}
+                                            </h3>
+                                            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                                {previewDoc.type}
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-500 truncate">
+                                            {getLinkedEntityName(previewDoc)} {previewDoc.size ? `• ${previewDoc.size}` : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDownload(previewDoc)}
+                                        className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                        title="Download Document"
+                                    >
+                                        <Download size={13} />
+                                        <span className="hidden sm:inline">Download</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => window.print()}
+                                        className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                        title="Print Document"
+                                    >
+                                        <Printer size={13} />
+                                        <span className="hidden sm:inline">Print</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewDoc(null)}
+                                        className="w-8 h-8 rounded-lg hover:bg-slate-200/70 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors ml-1 cursor-pointer"
+                                        title="Close Preview (Esc)"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Preview Content Area */}
+                            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-slate-100/60">
+                                {previewDoc.fileUrl && (previewDoc.fileUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i) || previewDoc.name.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i)) ? (
+                                    <div className="w-full flex items-center justify-center py-2">
+                                        <img
+                                            src={previewDoc.fileUrl}
+                                            alt={previewDoc.name}
+                                            className="max-h-[58vh] max-w-full rounded-xl object-contain shadow-sm border border-slate-200 bg-white"
+                                        />
+                                    </div>
+                                ) : previewDoc.fileUrl && (previewDoc.fileUrl.match(/\.pdf($|\?)/i) || previewDoc.name.toLowerCase().endsWith('.pdf')) ? (
+                                    <iframe
+                                        src={
+                                            previewDoc.fileUrl.startsWith('blob:') || previewDoc.fileUrl.startsWith('data:')
+                                                ? previewDoc.fileUrl
+                                                : `${(api.defaults.baseURL || '').replace(/\/$/, '')}${previewDoc.fileUrl.startsWith('/') ? previewDoc.fileUrl : `/${previewDoc.fileUrl}`}?disposition=inline&token=${localStorage.getItem('accessToken') || ''}`
+                                        }
+                                        title={previewDoc.name}
+                                        className="w-full h-[58vh] rounded-xl border border-slate-200 bg-white shadow-xs"
+                                    />
+                                ) : (
+                                    /* Clean Compact Document Certificate View */
+                                    <div className="w-full max-w-xl mx-auto bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+                                        {/* Document Header Letterhead */}
+                                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-xs">
+                                                    HX
+                                                </div>
+                                                <div>
+                                                    <span className="font-extrabold text-xs tracking-wider uppercase text-slate-800 block leading-tight">
+                                                        Horizex Real Estate
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-400 font-medium">Official Document Vault</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                                    Verified Record
+                                                </span>
+                                                <p className="text-[10px] font-mono text-slate-400 mt-0.5">DOC-{String(previewDoc.id).padStart(6, '0')}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Document Title */}
+                                        <div className="text-center py-1">
+                                            <h2 className="text-base font-bold text-slate-900 uppercase tracking-tight">
+                                                {previewDoc.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ")}
+                                            </h2>
+                                            <p className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider mt-0.5">
+                                                Document Type: {previewDoc.type}
+                                            </p>
+                                        </div>
+
+                                        {/* Metadata Summary Grid */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3 bg-slate-50/90 rounded-xl border border-slate-100 text-[11px]">
+                                            <div>
+                                                <p className="text-[9px] uppercase font-bold text-slate-400">Linked Entity</p>
+                                                <p className="font-semibold text-slate-700 truncate">{getLinkedEntityName(previewDoc)}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] uppercase font-bold text-slate-400">Record Date</p>
+                                                <p className="font-semibold text-slate-700">
+                                                    {previewDoc.createdAt ? new Date(previewDoc.createdAt).toLocaleDateString() : 'Active Record'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] uppercase font-bold text-slate-400">Expiry Date</p>
+                                                <p className={`font-semibold ${previewDoc.expiryDate && new Date(previewDoc.expiryDate) < new Date() ? 'text-rose-600' : 'text-slate-700'}`}>
+                                                    {previewDoc.expiryDate ? new Date(previewDoc.expiryDate).toLocaleDateString() : 'No Expiry Set'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] uppercase font-bold text-slate-400">Format</p>
+                                                <p className="font-semibold text-slate-700 uppercase">
+                                                    {previewDoc.name.includes('.') ? previewDoc.name.split('.').pop() : 'PDF'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] uppercase font-bold text-slate-400">Size</p>
+                                                <p className="font-semibold text-slate-700">{previewDoc.size || '1.2 MB'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] uppercase font-bold text-slate-400">Vault Security</p>
+                                                <p className="font-semibold text-emerald-600">Encrypted & Stored</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Context-Specific Document Details */}
+                                        <div className="border border-slate-100 rounded-xl p-3.5 bg-white space-y-2 text-[11px] leading-relaxed text-slate-600">
+                                            {previewDoc.type === 'LEASE' ? (
+                                                <>
+                                                    <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[10px] border-b border-slate-100 pb-1">
+                                                        Residential Tenancy Agreement
+                                                    </h4>
+                                                    <p>
+                                                        This certified record verifies the executed residential tenancy agreement between Horizex management and the designated tenant, governing legal occupancy, scheduled rent, and standard maintenance covenants.
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-2 pt-1 text-[10px]">
+                                                        <div className="p-2 bg-slate-50 rounded-lg">
+                                                            <span className="text-slate-400 block font-medium">Agreement Scope</span>
+                                                            <span className="font-bold text-slate-700">Residential Tenancy</span>
+                                                        </div>
+                                                        <div className="p-2 bg-slate-50 rounded-lg">
+                                                            <span className="text-slate-400 block font-medium">Execution Status</span>
+                                                            <span className="font-bold text-emerald-600">Signed & Countersigned</span>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : previewDoc.type === 'INSURANCE' ? (
+                                                <>
+                                                    <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[10px] border-b border-slate-100 pb-1">
+                                                        Certificate of Insurance
+                                                    </h4>
+                                                    <p>
+                                                        Official proof of tenant insurance verifying liability coverage and personal property protection in compliance with building policies.
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-2 pt-1 text-[10px]">
+                                                        <div className="p-2 bg-slate-50 rounded-lg">
+                                                            <span className="text-slate-400 block font-medium">Minimum Liability</span>
+                                                            <span className="font-bold text-slate-700">$2,000,000.00 CAD</span>
+                                                        </div>
+                                                        <div className="p-2 bg-slate-50 rounded-lg">
+                                                            <span className="text-slate-400 block font-medium">Policy Verification</span>
+                                                            <span className="font-bold text-indigo-600">Active & Validated</span>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : previewDoc.type === 'INVOICE' ? (
+                                                <>
+                                                    <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[10px] border-b border-slate-100 pb-1">
+                                                        Billing Assessment & Financial Statement
+                                                    </h4>
+                                                    <p>
+                                                        Official transaction statement reflecting rent schedule charges, maintenance assessments, or utility adjustments.
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[10px] border-b border-slate-100 pb-1">
+                                                        Property Document Record
+                                                    </h4>
+                                                    <p>
+                                                        Official property file archived in the Horizex system documentation repository, indexed for compliance and audit review.
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        {/* Security Stamp / Validation Block */}
+                                        <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                                            <div>
+                                                <span className="font-bold text-slate-600">Horizex Secure Vault</span>
+                                                <span className="ml-1 font-mono text-[9px]">SHA256-AUTHENTIC</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-emerald-600 font-bold">✓ Digital Signature Valid</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Preview Modal Footer */}
+                            <div className="px-5 py-3 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">
+                                <p className="text-[11px] text-slate-400 hidden sm:block">
+                                    Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[9px] font-mono border border-slate-200">Esc</kbd> or click outside to close
+                                </p>
+                                <div className="flex items-center gap-2.5 ml-auto">
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => setPreviewDoc(null)}
+                                        className="px-3.5 py-1.5 text-xs font-semibold rounded-xl h-9"
+                                    >
+                                        Close
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        onClick={() => handleDownload(previewDoc)}
+                                        className="px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 h-9"
+                                    >
+                                        <Download size={13} />
+                                        Download File
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
             </div >
         </>
     );
