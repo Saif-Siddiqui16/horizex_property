@@ -301,10 +301,12 @@ export const mockDashboardService = {
     
     // Pagination slicing helper for components
     const propNames = properties.map(p => p.name);
-    stats.leaseAlerts = (getStore('mock_dashboard_stats')?.leaseAlerts || []).filter(a => !a.building || propNames.includes(a.building));
-    stats.refundAlerts = (getStore('mock_refunds') || []).filter(r => !r.building || propNames.includes(r.building));
-    stats.reservedUnits = (getStore('mock_dashboard_stats')?.reservedUnits || []).filter(u => !u.building || propNames.includes(u.building));
-    stats.pendingRefunds = (getStore('mock_dashboard_stats')?.pendingRefunds || []).filter(r => !r.building || propNames.includes(r.building)).map(item => ({
+    const rawDash = JSON.parse(localStorage.getItem('mock_dashboard_stats')) || {};
+    stats.leaseAlerts = rawDash.leaseAlerts || { expired: 0, expiringSoon: 0 };
+    stats.leaseAlertList = Array.isArray(rawDash.leaseAlertList) ? rawDash.leaseAlertList : [];
+    stats.refundAlerts = Array.isArray(getStore('mock_refunds')) ? getStore('mock_refunds').filter(r => !r.building || propNames.includes(r.building)) : [];
+    stats.reservedUnits = (rawDash.reservedUnits || []).filter(u => !u.propertyName || propNames.includes(u.propertyName));
+    stats.pendingRefunds = (rawDash.pendingRefunds || []).filter(r => !r.building || propNames.includes(r.building)).map(item => ({
       depositAmount: 0,
       leaseExpiryDate: '',
       building: '',
@@ -312,7 +314,7 @@ export const mockDashboardService = {
       tenantName: '',
       ...item
     }));
-    stats.recentActivity = (getStore('mock_dashboard_stats')?.recentActivity || []).map(act => 
+    stats.recentActivity = (rawDash.recentActivity || []).map(act => 
       typeof act === 'object' ? (act.description || act.message || JSON.stringify(act)) : act
     );
     
