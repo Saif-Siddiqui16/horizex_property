@@ -95,8 +95,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const [audits, setAudits] = useState([]);
 
   // Analytics states
-  const [stats, setStats] = useState({});
-  const [costSummary, setCostSummary] = useState({});
+  const [stats, setStats] = useState({ open: 0, inProgress: 0, waitingParts: 0, waitingVendor: 0, emergency: 0 });
+  const [costSummary, setCostSummary] = useState({ budget: 0, actual: 0 });
   const [costByBuilding, setCostByBuilding] = useState([]);
   const [vendorStats, setVendorStats] = useState({ performance: [] });
   const [techStats, setTechStats] = useState([]);

@@ -425,9 +425,12 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 className="border-none outline-none text-sm bg-transparent text-slate-700 min-w-[100px] font-medium cursor-pointer"
               >
                 <option value="">All Types</option>
-                {unitTypes.map(t => (
-                  <option key={t.typeName} value={t.typeName}>{t.typeName}</option>
-                ))}
+                {unitTypes.map((t, idx) => {
+                  const typeVal = t.typeName || t.name || `type-${idx}`;
+                  return (
+                    <option key={t.id || typeVal || idx} value={typeVal}>{typeVal}</option>
+                  );
+                })}
               </select>
             </div>
 
@@ -439,8 +442,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 className="border-none outline-none text-sm bg-transparent text-slate-700 min-w-[100px] font-medium cursor-pointer"
               >
                 <option value="">All Buildings</option>
-                {buildings.map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
+                {buildings.map((b, idx) => (
+                  <option key={b.id || `bldg-${idx}`} value={b.id}>{b.name}</option>
                 ))}
               </select>
             </div>
@@ -652,8 +655,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                           <option value="" disabled>Select Building</option>
                           {buildings
                             .filter(b => b.status === 'Active')
-                            .map(b => (
-                              <option key={b.id} value={b.id}>
+                            .map((b, idx) => (
+                              <option key={b.id || `modal-bldg-${idx}`} value={b.id}>
                                 {b.name} - {b.civicNumber}
                               </option>
                             ))}
@@ -693,11 +696,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             className="w-full p-3.5 rounded-xl border-2 border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 bg-white text-sm appearance-none pr-10 transition-all font-medium"
                           >
                             <option value="">Select Type</option>
-                            {unitTypes.map((type) => (
-                              <option key={type.typeName} value={type.typeName}>
-                                {type.typeName}
-                              </option>
-                            ))}
+                            {unitTypes.map((type, idx) => {
+                              const typeVal = type.typeName || type.name || `type-opt-${idx}`;
+                              return (
+                                <option key={type.id || typeVal || idx} value={typeVal}>
+                                  {typeVal}
+                                </option>
+                              );
+                            })}
                           </select>
                           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                             <ChevronDown size={18} className="text-slate-400" />
@@ -706,11 +712,11 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
                         {/* Rate visualizer below select */}
                         {formData.unitType && (() => {
-                          const matchedType = unitTypes.find(t => t.typeName === formData.unitType);
+                          const matchedType = unitTypes.find(t => (t.typeName || t.name) === formData.unitType);
                           if (!matchedType) return null;
                           return (
                             <p className="text-[11px] font-black text-indigo-500 mt-1.5 pl-1 anim-slide-up">
-                               💡 Standard Rates: Full ${parseFloat(matchedType.fullUnitRate).toLocaleString()} | Single Bed ${parseFloat(matchedType.singleBedroomRate).toLocaleString()}
+                              💡 Standard Rates: Full ${parseFloat(matchedType.fullUnitRate || 0).toLocaleString()} | Single Bed ${parseFloat(matchedType.singleBedroomRate || 0).toLocaleString()}
                             </p>
                           );
                         })()}
@@ -1254,8 +1260,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                           className="px-4 py-3 rounded-xl border border-amber-200 bg-white"
                         >
                           <option value="">Select Primary Tenant...</option>
-                          {billableTenants.map(t => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
+                          {billableTenants.map((t, idx) => (
+                            <option key={t.id || `tenant-${idx}`} value={t.id}>{t.name}</option>
                           ))}
                         </select>
                          {quickAddErrors.parentId && <p className="text-red-500 text-xs ml-1">{quickAddErrors.parentId}</p>}
@@ -1406,10 +1412,10 @@ const ManageTypesModal = ({ types, onClose, onRefresh }) => {
             {types.length === 0 ? (
               <p className="text-center text-slate-400 py-4 text-xs">No unit types found.</p>
             ) : (
-              types.map((type) => (
-                <div key={type.id} className={`flex justify-between items-center bg-white p-3 rounded-xl border ${editingId === type.id ? 'border-indigo-500 bg-indigo-50/20' : 'border-slate-100'} hover:shadow-md hover:border-indigo-100 transition-all`}>
+              types.map((type, idx) => (
+                <div key={type.id || type.typeName || type.name || idx} className={`flex justify-between items-center bg-white p-3 rounded-xl border ${editingId === type.id ? 'border-indigo-500 bg-indigo-50/20' : 'border-slate-100'} hover:shadow-md hover:border-indigo-100 transition-all`}>
                   <div>
-                    <p className="font-bold text-slate-800 text-sm">{type.typeName}</p>
+                    <p className="font-bold text-slate-800 text-sm">{type.typeName || type.name}</p>
                     <p className="text-xs text-slate-500 mt-0.5">
                       Full: <span className="font-bold text-slate-700">${parseFloat(type.fullUnitRate || 0).toLocaleString()}</span> | 
                       Bed: <span className="font-bold text-slate-700">${parseFloat(type.singleBedroomRate || 0).toLocaleString()}</span>

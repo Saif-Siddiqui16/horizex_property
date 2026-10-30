@@ -236,8 +236,24 @@ api.defaults.adapter = async (config) => {
   }
 
   if (cleanPath === '/api/admin/unit-types') {
+    if (method === 'post') {
+      const res = await mockDb.mockApartmentService.createType(body);
+      return response200(res.data);
+    }
     const res = await mockDb.mockApartmentService.getTypes();
     return response200(res.data);
+  }
+
+  const unitTypeIdMatch = cleanPath.match(/\/api\/admin\/unit-types\/(\d+)$/);
+  if (unitTypeIdMatch) {
+    const id = unitTypeIdMatch[1];
+    if (method === 'put') {
+      const res = await mockDb.mockApartmentService.updateType(id, body);
+      return response200(res.data);
+    } else if (method === 'delete') {
+      const res = await mockDb.mockApartmentService.deleteType(id);
+      return response200(res.data);
+    }
   }
 
   // Tenants
