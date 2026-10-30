@@ -1,8 +1,11 @@
-export const mockReadinessSettings = {
-  gcTargetLeadDays: 14,
-  opsTargetLeadDays: 10,
-  cleaningDays: 2
-};
+export const mockReadinessSettings = [
+  { id: 1, key: 'gc_to_deficiencies', days: 2 },
+  { id: 2, key: 'deficiencies_to_cleaned', days: 2 },
+  { id: 3, key: 'cleaned_to_ffe', days: 4 },
+  { id: 4, key: 'ffe_to_final', days: 3 },
+  { id: 5, key: 'final_to_ose', days: 1 },
+  { id: 6, key: 'ose_to_ready', days: 2 }
+];
 
 export const mockReadinessHolidays = [
   { id: 1, name: "New Year's Day", date: "2026-01-01" },

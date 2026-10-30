@@ -25,7 +25,8 @@ import {
   Gavel,
   StickyNote,
   Clock,
-  Network
+  Network,
+  Briefcase
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -46,14 +47,19 @@ const NAV_ITEMS = [
     ]
   },
   {
+    icon: Briefcase,
+    label: "Companies",
+    tKey: "sidebar.companies",
+    path: "/companies"
+  },
+  {
     icon: Building2,
     label: "Buildings",
     tKey: "sidebar.properties",
     path: "/properties/buildings",
     children: [
       { label: "Buildings List", tKey: "sidebar.buildings", path: "/properties/buildings" },
-      { label: "Units", tKey: "sidebar.units", path: "/units" },
-      { label: "Unit Readiness", path: "/unit-readiness" }
+      { label: "Units", tKey: "sidebar.units", path: "/units" }
     ]
   },
   {
@@ -229,7 +235,7 @@ const NavItem = ({ item, depth = 0, onClose }) => {
     <>
       <NavLink
         to={item.path}
-        end={item.path === '/leases' || item.path === '/tenants' || item.path === '/dashboard' || item.path === '/properties/buildings' || item.path === '/accounting' || item.path === '/accounting/bank-accounts' || item.path === '/tal-cases' || item.path === '/notes-hub' || item.path === '/payments/collection' || item.path === '/payroll/dashboard'}
+        end={item.path === '/companies' || item.path === '/leases' || item.path === '/tenants' || item.path === '/dashboard' || item.path === '/properties/buildings' || item.path === '/accounting' || item.path === '/accounting/bank-accounts' || item.path === '/tal-cases' || item.path === '/notes-hub' || item.path === '/payments/collection' || item.path === '/payroll/dashboard'}
         onClick={handleClick}
         className={({ isActive }) =>
           clsx(

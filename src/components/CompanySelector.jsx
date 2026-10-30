@@ -48,8 +48,15 @@ export const CompanySelector = () => {
             const current = localStorage.getItem('global_selected_company_id') || '';
             setSelectedId(current);
         };
+        const handleCompanyListChange = () => {
+            fetchCompanies();
+        };
+        window.addEventListener('companyChanged', handleCompanyListChange);
         window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
+        return () => {
+            window.removeEventListener('companyChanged', handleCompanyListChange);
+            window.removeEventListener('storage', handleStorageChange);
+        };
     }, []);
 
     const handleChange = (e) => {

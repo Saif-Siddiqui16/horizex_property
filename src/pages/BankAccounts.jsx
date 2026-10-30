@@ -97,9 +97,7 @@ export const BankAccounts = () => {
 
     // New Bank Account Form State
     const [newAccountForm, setNewAccountForm] = useState({
-        companyMode: 'existing', // 'existing' or 'new'
         companyId: '',
-        newCompanyName: '',
         bankName: '',
         accountName: '',
         accountNumber: '',
@@ -198,39 +196,14 @@ export const BankAccounts = () => {
     const handleCreateAccount = (e) => {
         e.preventDefault();
 
-        let targetCompanyId = parseInt(newAccountForm.companyId);
-        let targetCompanyName = '';
-
-        if (newAccountForm.companyMode === 'new') {
-            targetCompanyName = newAccountForm.newCompanyName.trim();
-            if (!targetCompanyName) {
-                alert('Please enter a company name.');
-                return;
-            }
-            const currentCompanies = getStoredCompanies();
-            targetCompanyId = currentCompanies.length ? Math.max(...currentCompanies.map(c => c.id)) + 1 : 1;
-            const newComp = {
-                id: targetCompanyId,
-                name: targetCompanyName,
-                code: targetCompanyName.slice(0, 4).toUpperCase(),
-                bankName: newAccountForm.bankName,
-                bankAccount: `${newAccountForm.bankName} #${newAccountForm.accountNumber}`,
-                shortAccount: `${newAccountForm.bankName} (${targetCompanyName})`,
-                ownerName: 'Admin User'
-            };
-            const updatedCompanies = [...currentCompanies, newComp];
-            localStorage.setItem('mock_companies', JSON.stringify(updatedCompanies));
-            setCompanies(updatedCompanies);
-            window.dispatchEvent(new Event('companyChanged'));
-        } else {
-            const currentCompanies = getStoredCompanies();
-            const matchedComp = currentCompanies.find(c => c.id === targetCompanyId);
-            if (!matchedComp) {
-                alert('Please select a company.');
-                return;
-            }
-            targetCompanyName = matchedComp.name;
+        const targetCompanyId = parseInt(newAccountForm.companyId);
+        const currentCompanies = getStoredCompanies();
+        const matchedComp = currentCompanies.find(c => c.id === targetCompanyId);
+        if (!matchedComp) {
+            alert('Please select a company.');
+            return;
         }
+        const targetCompanyName = matchedComp.name;
 
         const newAccountId = bankData.accounts.length ? Math.max(...bankData.accounts.map(a => a.id)) + 1 : 1;
         const openingBal = parseFloat(newAccountForm.openingBalance) || 0;
@@ -275,9 +248,7 @@ export const BankAccounts = () => {
         setSelectedAccountId(newAccountId);
         setShowAddAccountModal(false);
         setNewAccountForm({
-            companyMode: 'existing',
             companyId: '',
-            newCompanyName: '',
             bankName: '',
             accountName: '',
             accountNumber: '',
@@ -765,44 +736,20 @@ export const BankAccounts = () => {
                         </div>
 
                         <form onSubmit={handleCreateAccount} className="p-6 space-y-4">
-                            {/* Company Mode: Select Existing or Type New */}
+                            {/* Company Selection */}
                             <div>
-                                <div className="flex items-center justify-between mb-1">
-                                    <label className="text-xs font-semibold text-zinc-700">Company Name *</label>
-                                    <button
-                                        type="button"
-                                        onClick={() => setNewAccountForm({
-                                            ...newAccountForm,
-                                            companyMode: newAccountForm.companyMode === 'new' ? 'existing' : 'new'
-                                        })}
-                                        className="text-[11px] text-blue-600 font-semibold hover:underline"
-                                    >
-                                        {newAccountForm.companyMode === 'new' ? '← Choose Existing Company' : '+ Create New Company'}
-                                    </button>
-                                </div>
-
-                                {newAccountForm.companyMode === 'new' ? (
-                                    <input
-                                        type="text"
-                                        required
-                                        value={newAccountForm.newCompanyName}
-                                        onChange={(e) => setNewAccountForm({ ...newAccountForm, newCompanyName: e.target.value })}
-                                        placeholder="Enter new company name (e.g. Apex Holdings LLC)"
-                                        className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500"
-                                    />
-                                ) : (
-                                    <select
-                                        required
-                                        value={newAccountForm.companyId}
-                                        onChange={(e) => setNewAccountForm({ ...newAccountForm, companyId: e.target.value })}
-                                        className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 bg-white"
-                                    >
-                                        <option value="" disabled>Select Company</option>
-                                        {companies.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                )}
+                                <label className="block text-xs font-semibold text-zinc-700 mb-1">Company *</label>
+                                <select
+                                    required
+                                    value={newAccountForm.companyId}
+                                    onChange={(e) => setNewAccountForm({ ...newAccountForm, companyId: e.target.value })}
+                                    className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 bg-white"
+                                >
+                                    <option value="" disabled>Select Company</option>
+                                    {companies.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             {/* Bank Name */}

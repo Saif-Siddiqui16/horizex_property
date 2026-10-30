@@ -12,6 +12,9 @@ import { VacancyDashboard } from "./pages/VacancyDashboard";
 import { RevenueDashboard } from "./pages/RevenueDashboard";
 import { Profile } from "./pages/Profile";
 
+/* COMPANIES */
+import Companies from "./pages/Companies";
+
 /* PROPERTIES */
 import { Properties } from "./pages/Properties";
 import Buildings from "./pages/Buildings";
@@ -135,6 +138,9 @@ function App() {
           <Route path="/vacancy" element={<VacancyDashboard />} />
           <Route path="/revenue" element={<RevenueDashboard />} />
 
+          {/* COMPANIES */}
+          <Route path="/companies" element={<Companies />} />
+
           {/* PROPERTIES */}
           <Route path="/properties" element={<Properties />} />
           <Route path="/properties/buildings" element={<Buildings />} />
@@ -145,7 +151,7 @@ function App() {
           <Route path="/units/:id" element={<UnitDetail />} />
           <Route path="/units/:id/bedrooms" element={<BedroomSetup />} />
           <Route path="/units/:id/switch-mode" element={<RentalModeSwitch />} />
-          <Route path="/unit-readiness" element={<UnitReadiness />} />
+          <Route path="/unit-readiness" element={<VacancyDashboard defaultTab="readiness" />} />
 
           {/* TENANTS */}
           <Route path="/tenants" element={<Tenants />} />

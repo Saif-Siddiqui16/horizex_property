@@ -20,7 +20,8 @@ import {
     Mail,
     Send,
     HelpCircle,
-    Landmark
+    Landmark,
+    Briefcase
 } from 'lucide-react';
 
 const WorkspaceContext = createContext(null);
@@ -30,6 +31,7 @@ const ROUTE_INFO_MAP = {
     '/dashboard': { title: 'Overview Dashboard', icon: LayoutDashboard },
     '/vacancy': { title: 'Vacancy Dashboard', icon: PieChart },
     '/revenue': { title: 'Revenue Dashboard', icon: DollarSign },
+    '/companies': { title: 'Companies Directory', icon: Briefcase },
     '/properties': { title: 'Properties', icon: Building2 },
     '/properties/buildings': { title: 'Buildings List', icon: Building2 },
     '/units': { title: 'Units Dashboard', icon: Building2 },

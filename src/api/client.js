@@ -23,6 +23,13 @@ api.defaults.adapter = async (config) => {
 
   const [cleanPath, queryString] = path.split('?');
   const query = new URLSearchParams(queryString || '');
+  if (config.params) {
+    Object.entries(config.params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && !query.has(key)) {
+        query.set(key, String(val));
+      }
+    });
+  }
   const method = (config.method || 'get').toLowerCase();
 
   let body = {};
@@ -130,8 +137,25 @@ api.defaults.adapter = async (config) => {
 
   // Companies
   if (cleanPath === '/api/admin/companies') {
-    const res = await mockDb.mockCompanyService.getAll();
-    return response200(res.data);
+    if (method === 'get') {
+      const res = await mockDb.mockCompanyService.getAll();
+      return response200(res.data);
+    } else if (method === 'post') {
+      const res = await mockDb.mockCompanyService.create(body);
+      return response200(res.data);
+    }
+  }
+
+  const companyIdMatch = cleanPath.match(/\/api\/admin\/companies\/(\d+)$/);
+  if (companyIdMatch) {
+    const id = companyIdMatch[1];
+    if (method === 'put') {
+      const res = await mockDb.mockCompanyService.update(id, body);
+      return response200(res.data);
+    } else if (method === 'delete') {
+      const res = await mockDb.mockCompanyService.delete(id);
+      return response200(res.data);
+    }
   }
 
   // Properties / Buildings
