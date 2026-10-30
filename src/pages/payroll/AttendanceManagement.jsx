@@ -1,13 +1,39 @@
 import React, { useState, useEffect } from 'react';
 
-import { Search, Calendar, Clock, Edit3, ShieldAlert } from 'lucide-react';
+import { Search, Calendar, Clock, Edit3, ShieldAlert, FileText, Zap } from 'lucide-react';
 import attendanceService from '../../services/attendanceService';
 import employeeService from '../../services/employeeService';
 import departmentService from '../../services/departmentService';
 import permissionService from '../../services/permissionService';
 import AttendanceTable from '../../components/payroll/AttendanceTable';
-import AttendanceTimeline from '../../components/payroll/AttendanceTimeline';
-export const AttendanceManagement = () => {
+import AttendanceTimeline from '../../components/payroll/AttendanceTimeline';
+import { useSearchParams } from 'react-router-dom';
+import { ShiftManagement } from './ShiftManagement';
+import { LeaveManagement } from './LeaveManagement';
+import { OvertimeTracking } from './OvertimeTracking';
+
+export const AttendanceManagement = ({ defaultTab = 'attendance' }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(urlTab || defaultTab);
+
+  useEffect(() => {
+    if (urlTab) {
+      setActiveTab(urlTab);
+    } else if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [urlTab, defaultTab]);
+
+  const handleTabChange = (key) => {
+    setActiveTab(key);
+    if (key === 'attendance') {
+      searchParams.delete('tab');
+      setSearchParams(searchParams);
+    } else {
+      setSearchParams({ tab: key });
+    }
+  };
 const [logs, setLogs] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -127,10 +153,46 @@ const [logs, setLogs] = useState([]);
   };
 
   const canManage = permissionService.canManageAttendance();
+  const TABS = [
+    { key: 'attendance', label: 'Attendance Logs', icon: Clock },
+    { key: 'shifts', label: 'Shifts', icon: Calendar },
+    { key: 'leaves', label: 'Leaves', icon: FileText },
+    { key: 'overtime', label: 'Overtime', icon: Zap }
+  ];
 
   return (
     <>
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-6">
+        {/* Navigation Tabs Bar */}
+        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-slate-200/80 rounded-2xl shadow-sm w-fit">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => handleTabChange(tab.key)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-transparent border-none'
+                }`}
+              >
+                <Icon size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab Views */}
+        {activeTab === 'shifts' && <ShiftManagement />}
+        {activeTab === 'leaves' && <LeaveManagement />}
+        {activeTab === 'overtime' && <OvertimeTracking />}
+
+        {activeTab === 'attendance' && (
+          <div className="flex flex-col gap-8">
         
         {/* Filters Header bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-slate-100 rounded-3xl p-6 shadow-card">
@@ -205,7 +267,8 @@ const [logs, setLogs] = useState([]);
             <AttendanceTimeline log={selectedLog} />
           </div>
         </div>
-
+          </div>
+        )}
       </div>
 
       {/* OVERRIDE ATTENDANCE MODAL */}

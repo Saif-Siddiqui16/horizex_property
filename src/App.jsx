@@ -209,9 +209,9 @@ function App() {
           <Route path="/payroll/dashboard" element={<PayrollDashboard />} />
           <Route path="/payroll/employees" element={<EmployeeDirectory />} />
           <Route path="/payroll/attendance" element={<AttendanceManagement />} />
-          <Route path="/payroll/shifts" element={<ShiftManagement />} />
-          <Route path="/payroll/leaves" element={<LeaveManagement />} />
-          <Route path="/payroll/overtime" element={<OvertimeTracking />} />
+          <Route path="/payroll/shifts" element={<AttendanceManagement defaultTab="shifts" />} />
+          <Route path="/payroll/leaves" element={<AttendanceManagement defaultTab="leaves" />} />
+          <Route path="/payroll/overtime" element={<AttendanceManagement defaultTab="overtime" />} />
           <Route path="/payroll/run" element={<PayrollProcessing />} />
           <Route path="/payroll/timeline" element={<PayrollTimelinePage />} />
 
