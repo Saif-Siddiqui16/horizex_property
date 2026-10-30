@@ -348,39 +348,37 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     <Link
                         key={idx}
                         to={card.path}
-                        className="saas-card p-4 flex flex-col justify-between h-fit hover:ring-2 hover:ring-indigo-500 hover:-translate-y-1 transition-all cursor-pointer block"
+                        className="saas-card p-3 sm:p-4 flex flex-col justify-between h-fit hover:ring-2 hover:ring-indigo-500 hover:-translate-y-1 transition-all cursor-pointer block overflow-hidden min-w-0"
                     >
-                        <div>
-                            <div className="flex justify-between items-start mb-3">
-                                <div className={`w-10 h-10 ${card.color} rounded-xl flex items-center justify-center text-white shadow-lg`}>
-                                    <card.icon size={20} />
+                        <div className="min-w-0">
+                            <div className="flex justify-between items-start mb-2 gap-1">
+                                <div className={`w-8 h-8 sm:w-10 sm:h-10 ${card.color} rounded-xl flex items-center justify-center text-white shadow-md shrink-0`}>
+                                    <card.icon size={16} className="sm:w-5 sm:h-5" />
                                 </div>
                                 {card.isCombined && (
-                                    <div className="text-right">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Collection Rate</span>
-                                        <span className="text-lg font-black text-indigo-600 tracking-tight">{card.collectionRate}</span>
+                                    <div className="text-right shrink-0">
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100 text-[10px] font-black leading-none whitespace-nowrap">
+                                            {card.collectionRate} <span className="text-[8px] font-bold text-indigo-400">Rate</span>
+                                        </span>
                                     </div>
                                 )}
                             </div>
-                            <h4 className="text-slate-500 font-bold text-[11px] uppercase tracking-wider">{card.title}</h4>
+                            <h4 className="text-slate-500 font-bold text-[10px] sm:text-[11px] uppercase tracking-wider truncate" title={card.title}>{card.title}</h4>
                             {card.isCombined ? (
-                                <div className="flex items-baseline gap-2 mt-0.5">
-                                    <p className="text-xl font-black text-slate-800 tracking-tight">{card.value}</p>
+                                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-0.5 min-w-0">
+                                    <p className="text-lg sm:text-xl font-black text-slate-800 tracking-tight leading-tight">{card.value}</p>
                                     {card.countText && (
-                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                        <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 leading-tight whitespace-nowrap">
                                             {card.countText}
                                         </span>
                                     )}
                                 </div>
                             ) : (
-                                <p className="text-xl font-black text-slate-800 tracking-tight mt-0.5">{card.value}</p>
+                                <p className="text-lg sm:text-xl font-black text-slate-800 tracking-tight mt-0.5 leading-tight truncate">{card.value}</p>
                             )}
                         </div>
-                        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{card.subValue}</span>
-                            {card.isCombined && (
-                                <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest">Perf: {card.collectionRate}</span>
-                            )}
+                        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between min-w-0 gap-1">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate" title={card.subValue}>{card.subValue}</span>
                         </div>
                     </Link>
                 ))}
