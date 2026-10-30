@@ -110,13 +110,11 @@ const NAV_ITEMS = [
     icon: Calculator,
     label: "Accounting",
     tKey: "sidebar.accounting",
-    path: "/accounting",
+    path: "/accounting/bank-accounts",
     children: [
       { label: "Bank Accounts", path: "/accounting/bank-accounts" },
-      { label: "General Ledger", tKey: "sidebar.ledger", path: "/accounting" },
-      { label: "QuickBooks Sync", tKey: "sidebar.quickbooks", path: "/settings/quickbooks" },
       { label: "Chart of Accounts", tKey: "sidebar.chart_of_accounts", path: "/accounting/chart-of-accounts" },
-      { label: "Tax Settings", tKey: "sidebar.tax_settings", path: "/accounting/tax-settings" }
+      { label: "QuickBooks Sync", tKey: "sidebar.quickbooks", path: "/settings/quickbooks" }
     ]
   },
   {
@@ -240,7 +238,7 @@ const NavItem = ({ item, depth = 0, onClose }) => {
     <>
       <NavLink
         to={item.path}
-        end={item.path === '/leases' || item.path === '/tenants' || item.path === '/dashboard' || item.path === '/properties/buildings' || item.path === '/accounting' || item.path === '/tal-cases' || item.path === '/notes-hub' || item.path === '/payments/collection' || item.path === '/payroll/dashboard'}
+        end={item.path === '/leases' || item.path === '/tenants' || item.path === '/dashboard' || item.path === '/properties/buildings' || item.path === '/accounting' || item.path === '/accounting/bank-accounts' || item.path === '/tal-cases' || item.path === '/notes-hub' || item.path === '/payments/collection' || item.path === '/payroll/dashboard'}
         onClick={handleClick}
         className={({ isActive }) =>
           clsx(
@@ -505,4 +503,3 @@ const UnreadSMSBadge = () => {
     </span>
   );
 };
-
