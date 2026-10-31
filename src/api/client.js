@@ -3,7 +3,7 @@ import * as mockDb from '../mock/mockServices';
 
 
 const api = axios.create({
-  baseURL: 'https://saif-property-client-railway-production.up.railway.app',
+  baseURL: '',
   headers: {
     'Content-Type': 'application/json',
   },
