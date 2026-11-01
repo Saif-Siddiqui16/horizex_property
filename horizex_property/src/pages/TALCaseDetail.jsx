@@ -4,8 +4,7 @@ import { useParams } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ArrowLeft, User, Calendar, DollarSign, Clock, FileText, ClipboardList, Scale, Download, Shield, ShieldAlert, CheckCircle, Edit2 } from 'lucide-react';
-import { talCaseService, taskService, ledgerService } from '../mock/mockServices';
-import { TAL_CASE_STATUSES, TAL_CASE_PRIORITIES } from '../mock/talCases';
+import { TAL_CASE_STATUSES, TAL_CASE_PRIORITIES } from '../constants/talCases';
 import { CaseSummaryCard } from '../components/tal/CaseSummaryCard';
 import { LegalTimeline } from '../components/tal/LegalTimeline';
 import { CaseDocuments } from '../components/tal/CaseDocuments';
@@ -33,7 +32,7 @@ const { id } = useParams();
   const loadCaseDetail = async () => {
     try {
       setLoading(true);
-      const data = talCaseService.getById(id);
+      const res = await api.get(`/admin/tal-cases/${id}`).catch(() => ({ data: null })); const data = res.data?.data || res.data;
       if (!data) return;
 
       setCaseData(data);
@@ -46,7 +45,7 @@ const { id } = useParams();
       if (tenantRes?.data) setTenant(tenantRes.data);
       if (leaseRes?.data) setLease(leaseRes.data);
 
-      setLedgerData(ledgerService.getLedger(data.tenantId));
+      setLedgerData([]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -59,27 +58,27 @@ const { id } = useParams();
   }, [id]);
 
   // Actions
-  const handleAddHearing = (hearing) => {
-    talCaseService.addHearing(id, hearing);
+  const handleAddHearing = async (hearing) => {
+    await api.post(`/admin/tal-cases/${id}/hearings`, hearing).catch(() => {});
     loadCaseDetail();
   };
 
-  const handleUploadDocument = (doc) => {
-    talCaseService.addDocument(id, doc);
+  const handleUploadDocument = async (doc) => {
+    await api.post(`/admin/tal-cases/${id}/documents`, doc).catch(() => {});
     loadCaseDetail();
   };
 
-  const handleDeleteDocument = (docId) => {
-    talCaseService.deleteDocument(id, docId);
+  const handleDeleteDocument = async (docId) => {
+    await api.delete(`/admin/tal-cases/${id}/documents/${docId}`).catch(() => {});
     loadCaseDetail();
   };
 
-  const handleAddNote = (note) => {
-    talCaseService.addNote(id, note);
+  const handleAddNote = async (note) => {
+    await api.post('/admin/notes', { entityType: 'TAL_CASE', entityId: id, content: typeof note === 'string' ? note : note.text }).catch(() => {});
     loadCaseDetail();
   };
 
-  const handleAddTask = (task) => {
+  const handleAddTask = async (task) => {
     const taskPayload = {
       ...task,
       entityType: 'TAL_CASE',
@@ -94,23 +93,23 @@ const { id } = useParams();
       leaseId: caseData.leaseId || 3
     };
 
-    taskService.create(taskPayload);
+    await api.post(`/admin/tal-cases/${id}/tasks`, taskPayload).catch(() => {});
     loadCaseDetail();
   };
 
-  const handleCompleteTask = (taskId) => {
-    taskService.markComplete(taskId);
+  const handleCompleteTask = async (taskId) => {
+    await api.put(`/admin/tal-cases/tasks/${taskId}`, { status: 'COMPLETED' }).catch(() => {});
     loadCaseDetail();
   };
 
-  const handleDeleteTask = (taskId) => {
-    taskService.delete(taskId);
+  const handleDeleteTask = async (taskId) => {
+    await api.delete(`/admin/tal-cases/tasks/${taskId}`).catch(() => {});
     loadCaseDetail();
   };
 
-  const handleStatusChange = (newStatus) => {
+  const handleStatusChange = async (newStatus) => {
     try {
-      talCaseService.update(id, { status: newStatus });
+      await api.put(`/admin/tal-cases/${id}`, { status: newStatus }).catch(() => {});
       loadCaseDetail();
       setShowStatusTransition(false);
     } catch (e) {

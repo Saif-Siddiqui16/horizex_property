@@ -3,7 +3,7 @@ import { Card } from '../Card';
 import { Button } from '../Button';
 import { Eye, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { RENEWAL_STATUSES } from '../../mock/renewals';
+import { RENEWAL_STATUSES } from '../../constants/renewals';
 
 export const UpcomingRenewalsWidget = ({ renewals = [] }) => {
   const navigate = useNavigate();

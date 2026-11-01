@@ -6,7 +6,7 @@ import { Plus, Search, User, Eye, Trash2, FileText, Shield, Download, Upload, Ar
 import clsx from 'clsx';
 import api from '../api/client';
 import { AccessControl } from '../components/AccessControl';
-import { talCaseService } from '../mock/mockServices';
+// talCaseService removed
 import { EntityNotesPanel } from '../components/notes/EntityNotesPanel';
 const initialTenants = [];
 
@@ -1467,7 +1467,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   ========================= */
 
 const TenantTALHistoryWidget = ({ tenantId, tenantName }) => {
-  const allCases = talCaseService.getAll() || [];
+  const allCases = [];
   const tenantCases = allCases.filter(c => c.tenantId === tenantId);
 
   const openCasesCount = tenantCases.filter(c => !['Closed', 'Archived'].includes(c.status)).length;

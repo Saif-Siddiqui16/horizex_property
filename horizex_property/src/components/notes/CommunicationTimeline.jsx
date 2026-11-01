@@ -1,5 +1,5 @@
 import React from 'react';
-import { COMM_EVENT_TYPES } from '../../mock/notes';
+import { COMM_EVENT_TYPES } from '../../constants/notes';
 
 export const CommunicationTimeline = ({ events = [], compact = false }) => {
   if (!events.length) {

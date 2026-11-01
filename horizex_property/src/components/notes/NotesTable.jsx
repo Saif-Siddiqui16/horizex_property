@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Pin, MessageSquare, Paperclip, Lock, Eye } from 'lucide-react';
 import { EntityBadge } from './EntityBadge';
-import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../../mock/notes';
+import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../../constants/notes';
 
 export const NotesTable = ({ notes = [], categories = NOTE_CATEGORIES, priorities = NOTE_PRIORITIES }) => {
   if (!notes.length) {

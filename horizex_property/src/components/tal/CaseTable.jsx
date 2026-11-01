@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, Edit3, ArrowUpDown, ShieldAlert, MoreVertical, FileUp, CalendarPlus, Power, FileText, CheckCircle } from 'lucide-react';
 import { CaseStatusBadge } from './CaseStatusBadge';
-import { TAL_CASE_PRIORITIES, TAL_CASE_STATUSES } from '../../mock/talCases';
+import { TAL_CASE_PRIORITIES, TAL_CASE_STATUSES } from '../../constants/talCases';
 
 export const CaseTable = ({ cases = [], onView, onStatusChange }) => {
   const [activeMenuId, setActiveMenuId] = useState(null);

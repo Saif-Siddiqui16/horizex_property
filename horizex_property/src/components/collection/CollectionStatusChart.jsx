@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '../Card';
 import { PieChart as PieIcon } from 'lucide-react';
-import { COLLECTION_STATUSES } from '../../mock/rentCollection';
+import { COLLECTION_STATUSES } from '../../constants/rentCollection';
 
 export const CollectionStatusChart = ({ invoices = [] }) => {
   const total = invoices.length || 1;

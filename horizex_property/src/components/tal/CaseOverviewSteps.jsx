@@ -12,7 +12,7 @@ import {
   Sparkles,
   AlertCircle
 } from 'lucide-react';
-import { talCaseService } from '../../mock/mockServices';
+import api from '../../api/client';
 
 // The exact 8 steps requested by the client in order
 export const TAL_OVERVIEW_STEPS = [
@@ -147,7 +147,7 @@ export const CaseOverviewSteps = ({
     try {
       const stepConfig = TAL_OVERVIEW_STEPS.find(s => s.id === stepId);
       if (stepConfig && !isCurrentlyDone) {
-        talCaseService.update(activeCaseId, {
+        api.put(`/admin/tal-cases/${activeCaseId}`, {
           internalNotes: `Step completed: ${stepConfig.label}`
         });
       }

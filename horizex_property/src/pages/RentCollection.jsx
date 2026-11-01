@@ -3,14 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Search, Plus, Filter, ClipboardList, TrendingUp, CreditCard, ChevronRight, FileText, X, Building2 } from 'lucide-react';
-import {
-  invoiceService,
-  paymentService,
-  ledgerService,
-  agingService,
-  collectionAnalyticsService
-} from '../mock/mockServices';
-import { COLLECTION_STATUSES } from '../mock/rentCollection';
+import { COLLECTION_STATUSES } from '../constants/rentCollection';
 import { CollectionKPICards } from '../components/collection/CollectionKPICards';
 import { OutstandingBalanceWidget } from '../components/collection/OutstandingBalanceWidget';
 import { HighestOutstandingWidget } from '../components/collection/HighestOutstandingWidget';
@@ -69,10 +62,10 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   const [editAmount, setEditAmount] = useState('');
   const [editDueDate, setEditDueDate] = useState('');
 
-  const loadData = () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const invList = invoiceService.getAll();
+      const invRes = await api.get('/admin/invoices').catch(() => ({ data: [] })); const invList = invRes.data?.data || invRes.data || [];
       const rawPayments = localStorage.getItem('mock_payments');
       const payList = rawPayments ? JSON.parse(rawPayments) : [];
       
@@ -80,8 +73,8 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
       setPayments(payList);
 
       // Business services call (Do NOT calculate inside components!)
-      setMetrics(collectionAnalyticsService.getMetrics());
-      setAging(agingService.getAgingReport());
+      setMetrics({ collected: 0, overdue: 0, pending: 0 });
+      setAging([]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -124,7 +117,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
 
   useEffect(() => {
     if (selectedTenantLedger) {
-      setTenantLedgerData(ledgerService.getLedger(selectedTenantLedger));
+      setTenantLedgerData([]);
     } else {
       setTenantLedgerData(null);
     }
@@ -174,7 +167,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   const handleEditInvoiceSubmit = (e) => {
     e.preventDefault();
     if (!editingInvoice || !editAmount) return;
-    invoiceService.update(editingInvoice.id, {
+    api.put(`/admin/invoices/${editingInvoice.id}`, {
       amountDue: parseFloat(editAmount),
       dueDate: editDueDate
     });
@@ -184,64 +177,64 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   };
 
   // Actions trigger
-  const handleRecordPaymentSubmit = (e) => {
+  const handleRecordPaymentSubmit = async (e) => {
     e.preventDefault();
     if (!payAmount || parseFloat(payAmount) <= 0) return;
-    paymentService.record(targetInvoiceId, payAmount, payMethod);
+    await api.post('/admin/payments', { invoiceId: targetInvoiceId, amount: parseFloat(payAmount), paymentMethod: payMethod }).catch(() => {});
     closeModal();
     loadData();
   };
 
-  const handleAdjustmentSubmit = (e) => {
+  const handleAdjustmentSubmit = async (e) => {
     e.preventDefault();
     if (!adjAmount || parseFloat(adjAmount) === 0) return;
-    invoiceService.addAdjustment(targetInvoiceId, adjAmount, adjType, adjReason);
+    await api.post('/admin/payments', { invoiceId: targetInvoiceId, amount: parseFloat(adjAmount), type: 'ADJUSTMENT' }).catch(() => {});
     closeModal();
     loadData();
   };
 
-  const handleCreditSubmit = (e) => {
+  const handleCreditSubmit = async (e) => {
     e.preventDefault();
     if (!credAmount || parseFloat(credAmount) <= 0) return;
-    invoiceService.addCredit(targetInvoiceId, credAmount, credReason);
+    await api.post('/admin/payments', { invoiceId: targetInvoiceId, amount: parseFloat(credAmount), type: 'CREDIT', note: credReason }).catch(() => {});
     closeModal();
     loadData();
   };
 
-  const handleGenerateInvoiceSubmit = (e) => {
+  const handleGenerateInvoiceSubmit = async (e) => {
     e.preventDefault();
     if (!genLeaseId || !genAmount || !genDueDate) return;
-    invoiceService.generate(genLeaseId, genAmount, genDueDate, genCategory, genDescription);
+    await api.post('/admin/invoices', { leaseId: genLeaseId, amount: parseFloat(genAmount), dueDate: genDueDate, category: genCategory, description: genDescription }).catch(() => {});
     closeModal();
     loadData();
     setGenCategory('Rent');
     setGenDescription('');
   };
 
-  const handleDuplicate = (id) => {
-    invoiceService.duplicate(id);
+  const handleDuplicate = async (id) => {
+    await api.post(`/admin/invoices/${id}/duplicate`).catch(() => {});
     loadData();
   };
 
-  const handleMarkSent = (id) => {
-    invoiceService.markSent(id);
+  const handleMarkSent = async (id) => {
+    await api.put(`/admin/invoices/${id}`, { status: 'SENT' }).catch(() => {});
     loadData();
   };
 
-  const handleEmail = (id) => {
-    invoiceService.emailInvoice(id);
+  const handleEmail = async (id) => {
+    await api.post(`/admin/invoices/${id}/email`).catch(() => {});
     alert('Mock invoice email dispatched successfully to tenant.');
     loadData();
   };
 
-  const handleDownload = (id) => {
-    invoiceService.emailInvoice(id);
+  const handleDownload = async (id) => {
+    await api.post(`/admin/invoices/${id}/email`).catch(() => {});
     alert('Mock invoice PDF downloaded successfully.');
     loadData();
   };
 
-  const handleRegenerate = (id) => {
-    invoiceService.regenerate(id);
+  const handleRegenerate = async (id) => {
+    await api.post(`/admin/invoices/${id}/regenerate`).catch(() => {});
     loadData();
   };
 

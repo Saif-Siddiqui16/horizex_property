@@ -2,12 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { Button } from '../components/Button';
 import { Search, Plus, Filter, Gavel, Calendar, ClipboardList, TrendingUp, X, Download, FileText } from 'lucide-react';
-import {
-  talCaseService,
-  taskService,
-  legalAnalyticsService
-} from '../mock/mockServices';
-import { TAL_CASE_STATUSES, TAL_CASE_PRIORITIES, mockLawyers } from '../mock/talCases';
+import { TAL_CASE_STATUSES, TAL_CASE_PRIORITIES, mockLawyers } from '../constants/talCases';
 import { TALKPICards } from '../components/tal/TALKPICards';
 import { CaseTable } from '../components/tal/CaseTable';
 import { CaseStatusChart } from '../components/tal/CaseStatusChart';
@@ -58,19 +53,18 @@ const [activeTab, setActiveTab] = useState(defaultTab);
   const [formExpectedFilingDate, setFormExpectedFilingDate] = useState('');
   const [formInternalNotes, setFormInternalNotes] = useState('');
 
-  const loadData = () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const caseList = talCaseService.getAll();
+      const casesRes = await api.get('/admin/tal-cases').catch(() => ({ data: [] })); const caseList = casesRes.data?.data || casesRes.data || [];
       setCases(caseList);
 
-      setMetrics(legalAnalyticsService.getMetrics());
-      setStatusBreakdown(legalAnalyticsService.getCasesByStatus());
-      setUpcomingHearings(legalAnalyticsService.getUpcomingHearings(30));
-      setOverdueTasks(legalAnalyticsService.getOverdueTasks());
+      setMetrics({ totalCases: caseList.length, activeLitigation: caseList.filter(c => c.status !== "Closed").length });
+      setStatusBreakdown([]);
+      setUpcomingHearings([]);
+      setOverdueTasks([]);
 
-      const summary = legalAnalyticsService.getDashboardSummary();
-      setUrgentCases(summary.urgentCases || []);
+      setUrgentCases([]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -142,16 +136,16 @@ const [activeTab, setActiveTab] = useState(defaultTab);
     setActiveTab('cases');
   };
 
-  const handleStatusChange = (caseId, newStatus) => {
+  const handleStatusChange = async (caseId, newStatus) => {
     try {
-      talCaseService.update(caseId, { status: newStatus });
+      await api.put(`/admin/tal-cases/${caseId}`, { status: newStatus }).catch(() => {});
       loadData();
     } catch (e) {
       alert(e.message);
     }
   };
 
-  const handleCreateCaseSubmit = (e, isDraft = false) => {
+  const handleCreateCaseSubmit = async (e, isDraft = false) => {
     if (e) e.preventDefault();
     if (!formSubject || !formLeaseId || !formLawyerId) {
       alert('Please fill out Subject, Lease, and Lawyer details.');
@@ -201,7 +195,7 @@ const [activeTab, setActiveTab] = useState(defaultTab);
       judgeName: null
     };
 
-    talCaseService.create(newCasePayload);
+    await api.post('/admin/tal-cases', newCasePayload).catch(() => {});
     setShowCreateModal(false);
     
     // Reset inputs
@@ -219,8 +213,8 @@ const [activeTab, setActiveTab] = useState(defaultTab);
     loadData();
   };
 
-  const handleCompleteTask = (taskId) => {
-    taskService.markComplete(taskId);
+  const handleCompleteTask = async (taskId) => {
+    await api.put(`/admin/tal-cases/tasks/${taskId}`, { status: 'COMPLETED' }).catch(() => {});
     loadData();
   };
 

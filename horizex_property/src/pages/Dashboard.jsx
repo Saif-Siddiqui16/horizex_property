@@ -6,7 +6,7 @@ import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
 
 import { RecentRenewalsWidget } from '../components/renewals/RecentRenewalsWidget';
-import { mockRenewalService, collectionAnalyticsService, invoiceService, legalAnalyticsService, taskService } from '../mock/mockServices';
+
 import { notesHubService } from '../services/notesHubService';
 
 /* TIME & PAYROLL INTEGRATION */
@@ -125,19 +125,20 @@ export const Dashboard = () => {
     try {
       setLoading(true);
       const ownerParam = ownerId ? `?ownerId=${ownerId}` : '';
-      const [dashRes, revRes, renewalRes] = await Promise.all([
+      const [dashRes, revRes, renewalRes, invRes] = await Promise.all([
         api.get(`/api/admin/dashboard/stats${ownerParam}`),
         api.get(`/api/admin/analytics/revenue${ownerParam}`),
-        mockRenewalService.getAll()
+        api.get('/admin/leases/renewals').catch(() => ({ data: [] })),
+        api.get('/admin/invoices').catch(() => ({ data: [] }))
       ]);
       setStats(dashRes.data);
       setRevenueStats(revRes.data);
       setRenewals(renewalRes.data || []);
-      setCollectionMetrics(collectionAnalyticsService.getMetrics());
-      setDashboardInvoices(invoiceService.getAll());
-      setLegalSummary(legalAnalyticsService.getDashboardSummary());
-      setUpcomingHearings(legalAnalyticsService.getUpcomingHearings(7));
-      setOverdueTasks(legalAnalyticsService.getOverdueTasks());
+      setCollectionMetrics({ collected: 0, overdue: 0, pending: 0 });
+      setDashboardInvoices(invRes?.data?.data || invRes?.data || []);
+      setLegalSummary({ activeCases: 0, pendingHearings: 0 });
+      setUpcomingHearings([]);
+      setOverdueTasks([]);
       setNotesActivity(notesHubService.getRecentActivity(8));
       setNotesStats(notesHubService.getStats());
       setRecentNotes(notesHubService.listNotes({}).slice(0, 5));
@@ -187,7 +188,7 @@ export const Dashboard = () => {
   }, []);
 
   const handleCompleteTask = (taskId) => {
-    taskService.markComplete(taskId);
+    api.put(`/admin/tal-cases/tasks/${taskId}`, { status: 'COMPLETED' }).catch(() => {});
     fetchStats();
   };
 

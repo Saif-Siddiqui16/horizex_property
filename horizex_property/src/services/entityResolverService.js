@@ -1,4 +1,4 @@
-import { NOTE_ENTITY_TYPES } from '../mock/notes';
+import { NOTE_ENTITY_TYPES } from '../constants/notes';
 
 const getStore = (key) => JSON.parse(localStorage.getItem(key) || '[]');
 

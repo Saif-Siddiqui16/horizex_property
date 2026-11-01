@@ -19,7 +19,7 @@ import {
   TrendingDown
 } from 'lucide-react';
 import api from '../../api/client';
-import { paymentService } from '../../mock/mockServices';
+
 
 export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
   // State
@@ -282,7 +282,7 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
       // Also record payment in mock payment service
       const matchingInvoice = invoices.find(inv => inv.tenantId === id && inv.status !== 'Paid');
       if (matchingInvoice) {
-        paymentService.record(matchingInvoice.id, amountPaid, paymentMethod);
+        api.post('/admin/payments', { invoiceId: matchingInvoice.id, amount: amountPaid, paymentMethod }).catch(() => {});
       }
 
       recordedSummary.push({

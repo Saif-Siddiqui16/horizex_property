@@ -4,8 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ArrowLeft, Clock, FileText, Send, Calendar, CheckCircle2, AlertCircle, Plus, Trash2, Download } from 'lucide-react';
-import { mockRenewalService } from '../mock/mockServices';
-import { RENEWAL_STATUSES } from '../mock/renewals';
+import api from '../api/client';
+import { RENEWAL_STATUSES } from '../constants/renewals';
 export const RenewalDetail = () => {
 const { id } = useParams();
   const navigate = useNavigate();
@@ -21,8 +21,8 @@ const { id } = useParams();
   const fetchRenewalDetails = async () => {
     try {
       setLoading(true);
-      const res = await mockRenewalService.getById(id);
-      setRenewal(res.data);
+      const res = await api.get(`/admin/leases/renewals/${id}`);
+      setRenewal(res.data?.data || res.data || null);
       setStatus(res.data?.status || '');
     } catch (e) {
       console.error(e);
@@ -36,38 +36,58 @@ const { id } = useParams();
   }, [id]);
 
   const handleUpdateStatus = async (newStatus) => {
-    await mockRenewalService.updateStatus(id, newStatus);
-    setStatus(newStatus);
-    fetchRenewalDetails();
+    try {
+      await api.put(`/admin/leases/renewals/${id}`, { status: newStatus });
+      setStatus(newStatus);
+      fetchRenewalDetails();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleAddNote = async (e) => {
     e.preventDefault();
     if (!noteText.trim()) return;
-    await mockRenewalService.addNote(id, noteText, 'Admin User');
-    setNoteText('');
-    fetchRenewalDetails();
+    try {
+      await api.post('/admin/notes', { entityType: 'RENEWAL', entityId: id, content: noteText });
+      setNoteText('');
+      fetchRenewalDetails();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleUploadDoc = async (e) => {
     e.preventDefault();
     if (!docName.trim()) return;
-    await mockRenewalService.uploadDocument(id, docName, docType);
-    setDocName('');
-    fetchRenewalDetails();
+    try {
+      await api.post('/admin/notes', { entityType: 'RENEWAL', entityId: id, title: docName, category: 'LEASE' });
+      setDocName('');
+      fetchRenewalDetails();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleDeleteDoc = async (docId) => {
     if (window.confirm('Delete this document?')) {
-      await mockRenewalService.deleteDocument(id, docId);
-      fetchRenewalDetails();
+      try {
+        await api.delete(`/admin/notes/${docId}`);
+        fetchRenewalDetails();
+      } catch (e) {
+        console.error(e);
+      }
     }
   };
 
   const handleSendNoticeDirect = async () => {
-    await mockRenewalService.sendNotice(id);
-    alert('Lease renewal notice dispatched to tenant email.');
-    fetchRenewalDetails();
+    try {
+      await api.post(`/admin/leases/${id}/renew`, { status: 'NOTICE_SENT' });
+      alert('Lease renewal notice dispatched.');
+      fetchRenewalDetails();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   if (loading) {

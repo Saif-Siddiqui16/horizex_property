@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
 import { Search, Eye, Filter, Calendar as CalendarIcon, ClipboardList, Send, Plus, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { mockRenewalService } from '../mock/mockServices';
-import { RENEWAL_STATUSES } from '../mock/renewals';
+
+import { RENEWAL_STATUSES } from '../constants/renewals';
 import { RenewalKPICards } from '../components/renewals/RenewalKPICards';
 import { RenewalStatusChart } from '../components/renewals/RenewalStatusChart';
 import { RecentRenewalsWidget } from '../components/renewals/RecentRenewalsWidget';
@@ -28,7 +28,7 @@ const navigate = useNavigate();
   const fetchRenewals = async () => {
     try {
       setLoading(true);
-      const res = await mockRenewalService.getAll();
+      const res = await api.get('/admin/leases/renewals');
       setRenewals(res.data || []);
     } catch (e) {
       console.error(e);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '../Card';
 import { CaseStatusBadge } from './CaseStatusBadge';
-import { TAL_CASE_PRIORITIES } from '../../mock/talCases';
+import { TAL_CASE_PRIORITIES } from '../../constants/talCases';
 import { Shield, User, Scale, FileText } from 'lucide-react';
 
 export const CaseSummaryCard = ({ caseData = {} }) => {

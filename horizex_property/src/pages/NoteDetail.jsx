@@ -7,7 +7,7 @@ import { hasPermission } from '../utils/permissions';
 import { notesHubService } from '../services/notesHubService';
 import { EntityBadge } from '../components/notes/EntityBadge';
 import { CommunicationTimeline } from '../components/notes/CommunicationTimeline';
-import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../mock/notes';
+import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../constants/notes';
 import {  ArrowLeft,
   Pin,
   Lock,

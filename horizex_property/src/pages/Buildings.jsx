@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { Plus, Search, Filter, Eye, Pencil, Trash2, Building2, Home, X, Landmark } from 'lucide-react';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
-import { mockCompanies } from '../mock/companies';
+const mockCompanies = [];
 
 export const Buildings = () => {
   const [__forceUpdate, __setForceUpdate] = useState(0);

@@ -1,4 +1,4 @@
-import { COMM_EVENT_TYPES } from '../mock/notes';
+import { COMM_EVENT_TYPES } from '../constants/notes';
 
 const TIMELINE_KEY = 'mock_comm_timeline';
 const NOTIFICATIONS_KEY = 'mock_notifications';

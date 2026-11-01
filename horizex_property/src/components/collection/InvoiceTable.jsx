@@ -1,5 +1,5 @@
 import React from 'react';
-import { COLLECTION_STATUSES } from '../../mock/rentCollection';
+import { COLLECTION_STATUSES } from '../../constants/rentCollection';
 import { Eye, Edit, Send, Copy, Mail, Download, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const InvoiceTable = ({

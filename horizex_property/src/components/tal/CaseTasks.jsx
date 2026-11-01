@@ -3,7 +3,7 @@ import { Card } from '../Card';
 import { Plus, Check, Trash2, Calendar, User, ClipboardList, ShieldAlert, X } from 'lucide-react';
 import { TaskStatusBadge } from './TaskStatusBadge';
 import { Button } from '../Button';
-import { TASK_PRIORITIES } from '../../mock/talCases';
+import { TASK_PRIORITIES } from '../../constants/talCases';
 
 export const CaseTasks = ({ tasks = [], onAddTask, onCompleteTask, onDeleteTask }) => {
   const [showAddForm, setShowAddForm] = useState(false);

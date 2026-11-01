@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import clsx from 'clsx';
-import { mockCompanies } from '../mock/companies';
+const mockCompanies = [];
 import { BankReconciliationModal } from '../components/accounting/BankReconciliationModal';
 
 const STORAGE_KEY = 'horizex_bank_accounts_data_v2';

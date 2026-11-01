@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from '../Card';
 import { File, Upload, Trash2, Eye, Download, FileText, Image, Gavel, Scale, Paperclip, Mail, Smartphone, MessageSquare, Video, ClipboardList } from 'lucide-react';
-import { TAL_DOCUMENT_TYPES } from '../../mock/talCases';
+import { TAL_DOCUMENT_TYPES } from '../../constants/talCases';
 
 export const CaseDocuments = ({ documents = [], onUpload, onDelete }) => {
   const [docName, setDocName] = useState('');

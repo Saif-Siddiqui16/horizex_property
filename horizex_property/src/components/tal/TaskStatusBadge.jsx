@@ -1,5 +1,5 @@
 import React from 'react';
-import { TASK_STATUSES } from '../../mock/talCases';
+import { TASK_STATUSES } from '../../constants/talCases';
 
 export const TaskStatusBadge = ({ status }) => {
   const config = Object.values(TASK_STATUSES).find(

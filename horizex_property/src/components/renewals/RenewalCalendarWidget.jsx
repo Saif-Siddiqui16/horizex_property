@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from '../Card';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
-import { RENEWAL_STATUSES } from '../../mock/renewals';
+import { RENEWAL_STATUSES } from '../../constants/renewals';
 
 export const RenewalCalendarWidget = ({ renewals = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());

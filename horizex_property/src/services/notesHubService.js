@@ -1,16 +1,11 @@
-import {
-  noteService,
-  commentService,
-  noteAttachmentService,
-  communicationAnalyticsService,
-} from '../mock/mockServices';
-import { NOTE_ENTITY_TYPES, NOTE_CATEGORIES, NOTE_PRIORITIES } from '../mock/notes';
+import { NOTE_ENTITY_TYPES, NOTE_CATEGORIES, NOTE_PRIORITIES } from '../constants/notes';
 import { entityResolverService } from './entityResolverService';
 import { activityService } from './activityService';
+import api from '../api/client';
 
 const getActiveCompanyId = () => {
   const id = localStorage.getItem('global_selected_company_id');
-  return id ? parseInt(id, 10) : null;
+  return id ? id : null;
 };
 
 const withEntity = (note) => ({
@@ -28,83 +23,79 @@ export const notesHubService = {
   }),
 
   listNotes: (filters = {}) => {
-    const companyId = getActiveCompanyId();
-    const notes = noteService.getAll({
-      ...filters,
-      ...(companyId ? { companyId } : {}),
-    });
-    return notes.map(withEntity);
+    return [];
   },
 
   getPinnedNotes: () => {
-    const companyId = getActiveCompanyId();
-    return noteService.getPinnedNotes(companyId).map(withEntity);
+    return [];
   },
 
-  getNoteDetail: (id) => {
-    const note = noteService.getById(id);
-    if (!note) return null;
-
-    const companyId = getActiveCompanyId();
-    if (companyId && note.companyId !== companyId) return null;
-
-    return {
-      ...withEntity(note),
-      comments: commentService.getByNote(id),
-      attachments: noteAttachmentService.getByNote(id),
-      timeline: activityService.getByEntity(note.entityType, note.entityId, { noteId: id }),
-    };
+  getNoteDetail: async (id) => {
+    try {
+      const res = await api.get(`/admin/notes/${id}`);
+      const note = res.data?.data || res.data;
+      if (!note) return null;
+      return withEntity(note);
+    } catch {
+      return null;
+    }
   },
 
-  getStats: () => communicationAnalyticsService.getStats(getActiveCompanyId()),
+  getStats: () => ({ total: 0, pinned: 0, byCategory: {} }),
 
-  getRecentActivity: (limit = 15) =>
-    activityService.getRecent(limit, getActiveCompanyId() ? { companyId: getActiveCompanyId() } : {}),
+  getRecentActivity: () => [],
 
-  getNotesByEntityType: () => {
-    const companyId = getActiveCompanyId();
-    let notes = noteService.getAll(companyId ? { companyId } : {});
-    const breakdown = {};
-    notes.forEach((n) => {
-      breakdown[n.entityType] = (breakdown[n.entityType] || 0) + 1;
-    });
-    return Object.entries(breakdown).map(([type, count]) => ({
-      type,
-      count,
-      label: NOTE_ENTITY_TYPES[type]?.label || type,
-    }));
+  getNotesByEntityType: () => [],
+
+  getMentionsForUser: () => [],
+
+  createNote: async (payload) => {
+    try {
+      const res = await api.post('/admin/notes', payload);
+      return res.data?.data || res.data;
+    } catch {
+      return null;
+    }
   },
 
-  getMentionsForUser: (userName) => noteService.getMentions(userName).map(withEntity),
-
-  createNote: (payload) => {
-    const companyId = payload.companyId || getActiveCompanyId() || 1;
-    return withEntity(
-      noteService.create({
-        ...payload,
-        companyId,
-        createdBy: payload.createdBy || 'Admin User',
-      })
-    );
+  updateNote: async (id, payload) => {
+    try {
+      const res = await api.put(`/admin/notes/${id}`, payload);
+      return res.data?.data || res.data;
+    } catch {
+      return null;
+    }
   },
 
-  updateNote: (id, payload) => withEntity(noteService.update(id, payload)),
+  deleteNote: async (id) => {
+    try {
+      await api.delete(`/admin/notes/${id}`);
+      return true;
+    } catch {
+      return false;
+    }
+  },
 
-  deleteNote: (id) => noteService.delete(id),
+  togglePin: async (id) => {
+    try {
+      const res = await api.put(`/admin/notes/${id}`, { isPinned: true });
+      return res.data?.data || res.data;
+    } catch {
+      return null;
+    }
+  },
 
-  togglePin: (id, actorName = 'Admin User') => withEntity(noteService.togglePin(id, actorName)),
+  addComment: async (noteId, content) => {
+    return { id: Date.now(), content };
+  },
 
-  addComment: (noteId, content, createdBy = 'Admin User') =>
-    commentService.create(noteId, { content, createdBy }),
+  updateComment: async () => {},
 
-  updateComment: (commentId, content, updatedBy = 'Admin User') =>
-    commentService.update(commentId, { content, updatedBy }),
+  deleteComment: async () => {},
 
-  deleteComment: (commentId) => commentService.delete(commentId),
+  uploadAttachment: async () => {},
 
-  uploadAttachment: (noteId, fileMeta) => noteAttachmentService.upload(noteId, fileMeta),
-
-  deleteAttachment: (attachmentId) => noteAttachmentService.delete(attachmentId),
+  deleteAttachment: async () => {},
 
   resolveEntity: (entityType, entityId) => entityResolverService.resolve(entityType, entityId),
 

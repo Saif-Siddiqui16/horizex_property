@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card } from '../Card';
-import { TAL_CASE_STATUSES } from '../../mock/talCases';
+import { TAL_CASE_STATUSES } from '../../constants/talCases';
 
 export const CaseStatusChart = ({ statusBreakdown = [] }) => {
   const total = statusBreakdown.reduce((sum, item) => sum + item.count, 0) || 1;

@@ -9,8 +9,8 @@
  *   companyId   — optional, defaults to localStorage value
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { noteService } from '../../mock/mockServices';
-import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../../mock/notes';
+import api from '../../api/client';
+import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../../constants/notes';
 import {
   StickyNote, Plus, Pin, Trash2, Lock, X, ChevronDown, ChevronUp,
   Search, Tag, AlertCircle
@@ -141,8 +141,8 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
     isPinned: false, isPrivate: false, mentions: '',
   });
 
-  const load = useCallback(() => {
-    const all = noteService.getByEntity(entityType, entityId);
+  const load = useCallback(async () => {
+    const res = await api.get('/admin/notes', { params: { entityType, entityId } }).catch(() => ({ data: [] })); const all = res.data?.data || res.data || [];
     setNotes(all);
   }, [entityType, entityId]);
 
@@ -156,34 +156,22 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
     return matchSearch && matchCat && matchPri;
   });
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
-    noteService.create({
-      entityType,
-      entityId,
-      companyId,
-      title: form.title,
-      content: form.content,
-      category: form.category,
-      priority: form.priority,
-      isPinned: form.isPinned,
-      isPrivate: form.isPrivate,
-      mentions: form.mentions ? form.mentions.split(',').map(m => m.trim()).filter(Boolean) : [],
-      createdBy: JSON.parse(localStorage.getItem('user') || '{}').name || 'Admin User',
-    });
+    await api.post('/admin/notes', { entityType, entityId, title: newNote.title, content: newNote.content, category: newNote.category, priority: newNote.priority, isPrivate: newNote.isPrivate }).catch(() => {});
     setForm({ title: '', content: '', category: 'GENERAL', priority: 'MEDIUM', isPinned: false, isPrivate: false, mentions: '' });
     setShowForm(false);
     load();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (!window.confirm('Delete this note?')) return;
-    noteService.delete(id);
+    await api.delete(`/admin/notes/${id}`).catch(() => {});
     load();
   };
 
-  const handleTogglePin = (id) => {
-    noteService.togglePin(id);
+  const handleTogglePin = async (id) => {
+    await api.put(`/admin/notes/${id}`, { isPinned: true }).catch(() => {});
     load();
   };
 

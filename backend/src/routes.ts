@@ -1,0 +1,95 @@
+import { Router } from 'express';
+import authRouter from './modules/auth/auth.routes';
+import mediaRouter from './modules/media/media.routes';
+import companiesRouter from './modules/companies/companies.routes';
+import propertiesRouter from './modules/properties/properties.routes';
+import unitsRouter from './modules/units/units.routes';
+import tenantsRouter from './modules/tenants/tenants.routes';
+import leasesRouter from './modules/leases/leases.routes';
+import accountingRouter from './modules/accounting/accounting.routes';
+import maintenanceRouter from './modules/maintenance/maintenance.routes';
+import talCasesRouter from './modules/talCases/talCases.routes';
+import communicationsRouter from './modules/communications/communications.routes';
+import analyticsRouter from './modules/analytics/analytics.routes';
+import extraRouter from './modules/extra/extra.routes';
+import { getDashboardStats } from './modules/analytics/analytics.controller';
+import {
+  getReadinessDashboard,
+  getReadinessBuildings,
+  getReadinessStats,
+  updateUnitReadiness,
+} from './modules/units/units.controller';
+import { authenticate } from './middlewares/auth.middleware';
+import { authorizeRoles } from './middlewares/rbac.middleware';
+
+const router = Router();
+
+// Health Check
+router.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    system: 'Horizex Property Pro REST API',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Authentication
+router.use('/auth', authRouter);
+
+// Media Upload (Cloudinary Signed URLs & Base64 - No Multer)
+router.use('/media', mediaRouter);
+
+// Direct Dashboard & Readiness Aliases matching Frontend Client
+router.get(
+  '/admin/dashboard/stats',
+  authenticate,
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'ACCOUNTANT', 'OWNER'),
+  getDashboardStats
+);
+router.get(
+  '/admin/readiness/dashboard',
+  authenticate,
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'MAINTENANCE_STAFF'),
+  getReadinessDashboard
+);
+router.get(
+  '/admin/readiness/buildings',
+  authenticate,
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'MAINTENANCE_STAFF'),
+  getReadinessBuildings
+);
+router.get(
+  '/admin/readiness/stats',
+  authenticate,
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'MAINTENANCE_STAFF'),
+  getReadinessStats
+);
+router.put(
+  '/admin/readiness/update-step/:id',
+  authenticate,
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'MAINTENANCE_STAFF'),
+  updateUnitReadiness
+);
+router.put(
+  '/admin/readiness/units/:id',
+  authenticate,
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'MAINTENANCE_STAFF'),
+  updateUnitReadiness
+);
+
+// Administrative & Operations Modules
+router.use('/admin/companies', companiesRouter);
+router.use('/admin/properties', propertiesRouter);
+router.use('/admin/units', unitsRouter);
+router.use('/admin/tenants', tenantsRouter);
+router.use('/admin/leases', leasesRouter);
+router.use('/admin', accountingRouter); // Mounts /payments, /invoices, /accounts, /outstanding-dues
+router.use('/admin/tickets', maintenanceRouter);
+router.use('/admin/tal-cases', talCasesRouter);
+router.use('/admin/analytics', analyticsRouter);
+router.use('/admin', extraRouter); // Mounts /unit-types, /insurance, /notes, /clock-in, /clock-out
+
+// Communication
+router.use('/communication', communicationsRouter);
+
+export default router;

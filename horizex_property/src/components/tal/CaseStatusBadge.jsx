@@ -1,5 +1,5 @@
 import React from 'react';
-import { TAL_CASE_STATUSES } from '../../mock/talCases';
+import { TAL_CASE_STATUSES } from '../../constants/talCases';
 
 export const CaseStatusBadge = ({ status, size = 'md' }) => {
   const config = Object.values(TAL_CASE_STATUSES).find(
