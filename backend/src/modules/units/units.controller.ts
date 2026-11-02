@@ -4,13 +4,14 @@ import { sendSuccess } from '../../utils/apiResponse.util';
 
 export const listUnits = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
     const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
 
     const units = await UnitsService.listUnits({
       companyId,
       propertyId: req.query.propertyId as string | undefined,
       status: req.query.status,
+      showInactive: req.query.showInactive !== undefined ? req.query.showInactive === 'true' : undefined,
       bedrooms: req.query.bedrooms ? parseInt(req.query.bedrooms as string, 10) : undefined,
       minRent: req.query.minRent ? parseFloat(req.query.minRent as string) : undefined,
       maxRent: req.query.maxRent ? parseFloat(req.query.maxRent as string) : undefined,
@@ -48,11 +49,23 @@ export const createUnit = async (req: Request, res: Response, next: NextFunction
 
 export const updateUnit = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
     const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
 
     const updated = await UnitsService.updateUnit(req.params.id, companyId, req.body, req.user?.userId);
     return sendSuccess(res, updated, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const deleteUnit = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
+    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+
+    const result = await UnitsService.deleteUnit(req.params.id, companyId, req.user?.userId);
+    return sendSuccess(res, result, 200);
   } catch (err) {
     return next(err);
   }

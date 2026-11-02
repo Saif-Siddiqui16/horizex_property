@@ -6,6 +6,7 @@ import {
   createLease,
   renewLease,
   addMoveInspection,
+  deleteLease,
 } from './leases.controller';
 import { validateRequest } from '../../middlewares/validate.middleware';
 import {
@@ -57,6 +58,12 @@ router.post(
   authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'MAINTENANCE_STAFF'),
   validateRequest(createMoveInspectionSchema),
   addMoveInspection
+);
+
+router.delete(
+  '/:id',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'),
+  deleteLease
 );
 
 export default router;

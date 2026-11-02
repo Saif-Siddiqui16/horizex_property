@@ -9,7 +9,76 @@ export const listUnitTypes = async (req: Request, res: Response, next: NextFunct
     const unitTypes = await prisma.unitType.findMany({
       orderBy: { name: 'asc' },
     });
-    return sendSuccess(res, unitTypes, 200);
+    const mapped = unitTypes.map(ut => ({
+      ...ut,
+      typeName: ut.name,
+      fullUnitRate: ut.marketRent || 0,
+      singleBedroomRate: 0,
+    }));
+    return sendSuccess(res, mapped, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const createUnitType = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const name = req.body.name || req.body.typeName || 'Standard Unit';
+    const code = req.body.code || (name ? name.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase() : `TYPE_${Date.now()}`);
+    const marketRent = Number(req.body.marketRent || req.body.fullUnitRate) || 1200;
+    const created = await prisma.unitType.create({
+      data: {
+        name,
+        code,
+        marketRent,
+      },
+    });
+    return sendSuccess(res, {
+      ...created,
+      typeName: created.name,
+      fullUnitRate: created.marketRent,
+      singleBedroomRate: 0,
+    }, 201);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const updateUnitType = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const name = req.body.name || req.body.typeName;
+    const code = req.body.code;
+    const marketRent = req.body.marketRent !== undefined ? Number(req.body.marketRent) : (req.body.fullUnitRate !== undefined ? Number(req.body.fullUnitRate) : undefined);
+    const data: any = {};
+    if (name) data.name = name;
+    if (code) data.code = code;
+    if (marketRent !== undefined) data.marketRent = marketRent;
+
+    const updated = await prisma.unitType.update({
+      where: { id: req.params.id },
+      data,
+    });
+    return sendSuccess(res, {
+      ...updated,
+      typeName: updated.name,
+      fullUnitRate: updated.marketRent,
+      singleBedroomRate: 0,
+    }, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const deleteUnitType = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await prisma.unit.updateMany({
+      where: { unitTypeId: req.params.id },
+      data: { unitTypeId: null },
+    });
+    await prisma.unitType.delete({
+      where: { id: req.params.id },
+    });
+    return sendSuccess(res, { message: 'Unit type deleted successfully' }, 200);
   } catch (err) {
     return next(err);
   }

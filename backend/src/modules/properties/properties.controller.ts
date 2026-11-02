@@ -2,11 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { PropertiesService } from './properties.service';
 import { sendSuccess } from '../../utils/apiResponse.util';
 import { AppError } from '../../middlewares/errorHandler';
+import { prisma } from '../../config/db';
 
 export const listProperties = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
-    const effectiveCompanyId = isSuperAdmin ? (req.query.companyId as string) : req.user?.effectiveCompanyId;
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
+    const effectiveCompanyId = (req.query.companyId as string) || (req.user?.effectiveCompanyId || undefined);
     const search = req.query.search as string | undefined;
 
     const properties = await PropertiesService.listProperties(effectiveCompanyId, search);
@@ -18,7 +19,7 @@ export const listProperties = async (req: Request, res: Response, next: NextFunc
 
 export const getProperty = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
     const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
 
     const property = await PropertiesService.getPropertyById(req.params.id, companyId);
@@ -30,7 +31,12 @@ export const getProperty = async (req: Request, res: Response, next: NextFunctio
 
 export const createProperty = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const effectiveCompanyId = req.body.companyId || req.user?.effectiveCompanyId;
+    let effectiveCompanyId = req.body.companyId || req.user?.effectiveCompanyId || req.user?.companyId;
+    if (!effectiveCompanyId) {
+      const defaultCompany = await prisma.company.findFirst();
+      effectiveCompanyId = defaultCompany?.id;
+    }
+
     if (!effectiveCompanyId) {
       throw new AppError('companyId is required to associate property', 400, 'COMPANY_ID_REQUIRED');
     }
@@ -51,7 +57,7 @@ export const createProperty = async (req: Request, res: Response, next: NextFunc
 
 export const updateProperty = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
     const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
 
     const updated = await PropertiesService.updateProperty(
@@ -68,7 +74,7 @@ export const updateProperty = async (req: Request, res: Response, next: NextFunc
 
 export const deleteProperty = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
     const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
 
     const result = await PropertiesService.softDeleteProperty(req.params.id, companyId, req.user?.userId);

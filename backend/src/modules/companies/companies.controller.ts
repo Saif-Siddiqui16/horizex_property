@@ -4,7 +4,7 @@ import { sendSuccess } from '../../utils/apiResponse.util';
 
 export const listCompanies = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
     const companies = await CompaniesService.listCompanies(req.user?.effectiveCompanyId, isSuperAdmin);
     return sendSuccess(res, companies, 200);
   } catch (err) {

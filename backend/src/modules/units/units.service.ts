@@ -10,6 +10,7 @@ export class UnitsService {
     bedrooms?: number;
     minRent?: number;
     maxRent?: number;
+    showInactive?: boolean;
   }) {
     const where: any = { isActive: true };
 
@@ -33,10 +34,17 @@ export class UnitsService {
       if (filters.maxRent !== undefined) where.baseRent.lte = filters.maxRent;
     }
 
-    return prisma.unit.findMany({
+    const units = await prisma.unit.findMany({
       where,
       include: {
-        property: { select: { id: true, name: true, address: true } },
+        property: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            company: { select: { id: true, name: true } },
+          },
+        },
         unitType: { select: { id: true, name: true, code: true } },
         leases: {
           where: { status: 'ACTIVE', isActive: true },
@@ -46,6 +54,44 @@ export class UnitsService {
       },
       orderBy: [{ propertyId: 'asc' }, { unitNumber: 'asc' }],
     });
+
+    const result = units.map((u) => {
+      const activeLease = u.leases?.[0];
+      let meta: any = {};
+      try {
+        meta = JSON.parse(u.readiness?.notes || '{}');
+      } catch {}
+      const classification = meta.classification ||
+        (u.readiness?.stage === 'MAINTENANCE_REPAIRS' ? 'New Construction' : 'Completed');
+      const unit_status = meta.unit_status ||
+        (classification === 'New Construction' ? 'INACTIVE' : 'ACTIVE');
+
+      return {
+        ...u,
+        classification,
+        unit_status,
+        companyName: u.property?.company?.name || '',
+        buildingName: u.property?.name || '',
+        building: u.property?.name || '',
+        unitTypeName: u.unitType?.name || '',
+        unitType: u.unitType?.name || '',
+        unitTypeObj: u.unitType,
+        activeLease: activeLease
+          ? {
+              id: activeLease.id,
+              tenantName: activeLease.tenant
+                ? `${activeLease.tenant.firstName} ${activeLease.tenant.lastName}`
+                : 'Leased',
+            }
+          : null,
+      };
+    });
+
+    if (filters.showInactive === false) {
+      return result.filter((u: any) => u.unit_status !== 'INACTIVE' && u.classification !== 'New Construction');
+    }
+
+    return result;
   }
 
   static async getUnitById(id: string, companyId?: string | null) {
@@ -57,7 +103,9 @@ export class UnitsService {
     const unit = await prisma.unit.findFirst({
       where,
       include: {
-        property: true,
+        property: {
+          include: { company: true },
+        },
         unitType: true,
         readiness: true,
         leases: {
@@ -79,24 +127,55 @@ export class UnitsService {
       throw new AppError('Unit not found', 404, 'UNIT_NOT_FOUND');
     }
 
-    return unit;
+    const activeLease = unit.leases?.[0];
+    let meta: any = {};
+    try {
+      meta = JSON.parse(unit.readiness?.notes || '{}');
+    } catch {}
+    const classification = meta.classification ||
+      (unit.readiness?.stage === 'MAINTENANCE_REPAIRS' ? 'New Construction' : 'Completed');
+    const unit_status = meta.unit_status ||
+      (classification === 'New Construction' ? 'INACTIVE' : 'ACTIVE');
+
+    return {
+      ...unit,
+      classification,
+      unit_status,
+      companyName: (unit.property as any)?.company?.name || '',
+      buildingName: unit.property?.name || '',
+      building: unit.property?.name || '',
+      unitTypeName: unit.unitType?.name || '',
+      unitType: unit.unitType?.name || '',
+      unitTypeObj: unit.unitType,
+      activeLease: activeLease
+        ? {
+            id: activeLease.id,
+            tenantName: activeLease.tenant
+              ? `${activeLease.tenant.firstName} ${activeLease.tenant.lastName}`
+              : 'Leased',
+          }
+        : null,
+    };
   }
 
   static async createUnit(
     data: {
       propertyId: string;
-      unitTypeId?: string;
+      unitTypeId?: string | null;
+      unitType?: string | null;
       unitNumber: string;
-      floor?: number;
+      floor?: number | null;
       bedrooms?: number;
       bathrooms?: number;
-      squareFeet?: number;
-      baseRent: number;
+      squareFeet?: number | null;
+      baseRent?: number;
+      status?: string;
+      [key: string]: any;
     },
     companyId?: string | null,
     actorUserId?: string
   ) {
-    // Validate property belongs to company
+    // Validate property exists
     const property = await prisma.property.findFirst({
       where: {
         id: data.propertyId,
@@ -126,28 +205,80 @@ export class UnitsService {
       );
     }
 
+    let unitTypeId = data.unitTypeId || null;
+    let baseRent = data.baseRent ? Number(data.baseRent) : undefined;
+
+    // Resolve unitTypeId if type name was sent from frontend
+    if (!unitTypeId && data.unitType) {
+      const typeRecord = await prisma.unitType.findFirst({
+        where: {
+          OR: [
+            { name: { equals: data.unitType, mode: 'insensitive' } },
+            { code: { equals: data.unitType, mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (typeRecord) {
+        unitTypeId = typeRecord.id;
+        if (!baseRent) {
+          baseRent = Number(typeRecord.marketRent);
+        }
+      }
+    }
+
+    if (!baseRent || isNaN(baseRent)) {
+      baseRent = 1200;
+    }
+
+    const unitStatus =
+      data.status === 'Occupied' || data.status === 'OCCUPIED'
+        ? 'OCCUPIED'
+        : data.status === 'TURNOVER'
+        ? 'TURNOVER'
+        : 'VACANT';
+
     const unit = await prisma.unit.create({
       data: {
         propertyId: data.propertyId,
-        unitTypeId: data.unitTypeId,
+        unitTypeId: unitTypeId,
         unitNumber: data.unitNumber,
-        floor: data.floor ?? 1,
-        bedrooms: data.bedrooms ?? 1,
-        bathrooms: data.bathrooms ?? 1.0,
-        squareFeet: data.squareFeet,
-        baseRent: data.baseRent,
-        status: 'VACANT',
+        floor: Number(data.floor) || 1,
+        bedrooms: Number(data.bedrooms) || 1,
+        bathrooms: Number(data.bathrooms) || 1.0,
+        squareFeet: data.squareFeet ? Number(data.squareFeet) : null,
+        baseRent: baseRent,
+        status: unitStatus,
         readiness: {
           create: {
-            stage: 'READY_TO_LEASE',
-            cleaningComplete: true,
-            paintComplete: true,
-            repairComplete: true,
+            stage: data.classification === 'New Construction' ? 'MAINTENANCE_REPAIRS' : 'READY_TO_LEASE',
+            cleaningComplete: data.classification !== 'New Construction',
+            paintComplete: data.classification !== 'New Construction',
+            repairComplete: data.classification !== 'New Construction',
+            notes: JSON.stringify({
+              classification: data.classification || (data.unit_status === 'INACTIVE' ? 'New Construction' : 'Completed'),
+              unit_status: data.unit_status || (data.classification === 'New Construction' ? 'INACTIVE' : 'ACTIVE'),
+            }),
           },
         },
       },
-      include: { readiness: true },
+      include: { readiness: true, property: true, unitType: true },
     });
+
+    // Increment property totalUnits count
+    await prisma.property.update({
+      where: { id: data.propertyId },
+      data: { totalUnits: { increment: 1 } },
+    });
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'CREATE_UNIT',
+      entityType: 'Unit',
+      entityId: unit.id,
+      newData: unit,
+    });
+
+    return unit;
 
     await createAuditLog({
       userId: actorUserId,
@@ -168,10 +299,82 @@ export class UnitsService {
   ) {
     const oldUnit = await this.getUnitById(id, companyId);
 
+    // 1. Resolve unitTypeId if a string name was passed or unitTypeId provided
+    let unitTypeId = data.unitTypeId;
+    if (unitTypeId === undefined && data.unitType) {
+      if (typeof data.unitType === 'string') {
+        const foundType = await prisma.unitType.findFirst({
+          where: {
+            OR: [
+              { name: { equals: data.unitType, mode: 'insensitive' } },
+              { code: { equals: data.unitType, mode: 'insensitive' } },
+            ],
+          },
+        });
+        if (foundType) {
+          unitTypeId = foundType.id;
+        }
+      } else if (data.unitType && typeof data.unitType === 'object' && data.unitType.id) {
+        unitTypeId = data.unitType.id;
+      }
+    }
+
+    // 2. Normalize status enum
+    let unitStatus: any = undefined;
+    if (data.status) {
+      const s = String(data.status).toUpperCase();
+      if (['VACANT', 'OCCUPIED', 'TURNOVER', 'RESERVED', 'MAINTENANCE'].includes(s)) {
+        unitStatus = s;
+      }
+    }
+
+    // 3. Prepare clean data for Prisma
+    const updateData: any = {};
+    if (data.unitNumber !== undefined) updateData.unitNumber = data.unitNumber;
+    if (unitTypeId !== undefined) updateData.unitTypeId = unitTypeId;
+    if (data.floor !== undefined) updateData.floor = data.floor !== null ? Number(data.floor) : null;
+    if (data.bedrooms !== undefined) updateData.bedrooms = Number(data.bedrooms);
+    if (data.bathrooms !== undefined) updateData.bathrooms = Number(data.bathrooms);
+    if (data.squareFeet !== undefined) updateData.squareFeet = data.squareFeet !== null ? Number(data.squareFeet) : null;
+    if (data.baseRent !== undefined) updateData.baseRent = Number(data.baseRent);
+    if (unitStatus !== undefined) updateData.status = unitStatus;
+    if (data.propertyId !== undefined && data.propertyId !== oldUnit.propertyId) {
+      updateData.propertyId = data.propertyId;
+    }
+
     const updated = await prisma.unit.update({
       where: { id: oldUnit.id },
-      data,
+      data: updateData,
+      include: {
+        property: { include: { company: true } },
+        unitType: true,
+        readiness: true,
+      },
     });
+
+    if (data.classification || data.unit_status) {
+      let currentMeta: any = {};
+      try {
+        currentMeta = JSON.parse(oldUnit.readiness?.notes || '{}');
+      } catch {}
+      const newMeta = {
+        ...currentMeta,
+        ...(data.classification ? { classification: data.classification } : {}),
+        ...(data.unit_status ? { unit_status: data.unit_status } : {}),
+      };
+      await prisma.unitReadiness.upsert({
+        where: { unitId: oldUnit.id },
+        create: {
+          unitId: oldUnit.id,
+          stage: data.classification === 'New Construction' ? 'MAINTENANCE_REPAIRS' : 'READY_TO_LEASE',
+          notes: JSON.stringify(newMeta),
+        },
+        update: {
+          notes: JSON.stringify(newMeta),
+          ...(data.classification === 'New Construction' ? { stage: 'MAINTENANCE_REPAIRS' } : {}),
+        },
+      });
+    }
 
     await createAuditLog({
       userId: actorUserId,
@@ -182,7 +385,65 @@ export class UnitsService {
       newData: updated,
     });
 
-    return updated;
+    const finalClassification = data.classification ||
+      (oldUnit as any).classification ||
+      (data.unit_status === 'INACTIVE' ? 'New Construction' : 'Completed');
+    const finalUnitStatus = data.unit_status ||
+      (oldUnit as any).unit_status ||
+      (finalClassification === 'New Construction' ? 'INACTIVE' : 'ACTIVE');
+
+    return {
+      ...updated,
+      classification: finalClassification,
+      unit_status: finalUnitStatus,
+      companyName: (updated.property as any)?.company?.name || '',
+      buildingName: updated.property?.name || '',
+      building: updated.property?.name || '',
+      unitTypeName: updated.unitType?.name || '',
+      unitType: updated.unitType?.name || '',
+    };
+  }
+
+  static async deleteUnit(id: string, companyId?: string | null, actorUserId?: string) {
+    const unit = await this.getUnitById(id, companyId);
+
+    // 1. Terminate/deactivate active leases for this unit
+    await prisma.lease.updateMany({
+      where: { unitId: unit.id },
+      data: { status: 'TERMINATED', isActive: false },
+    });
+
+    // 2. Decrement property totalUnits
+    try {
+      await prisma.property.update({
+        where: { id: unit.propertyId },
+        data: { totalUnits: { decrement: 1 } },
+      });
+    } catch (e) {}
+
+    // 3. Delete or soft delete unit
+    let deleted;
+    try {
+      deleted = await prisma.unit.delete({
+        where: { id: unit.id },
+      });
+    } catch (e) {
+      deleted = await prisma.unit.update({
+        where: { id: unit.id },
+        data: { isActive: false },
+      });
+    }
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'DELETE_UNIT',
+      entityType: 'Unit',
+      entityId: id,
+      oldData: unit,
+      newData: deleted,
+    });
+
+    return { message: 'Unit deleted successfully' };
   }
 
   static async getReadinessDashboard(companyId?: string | null) {

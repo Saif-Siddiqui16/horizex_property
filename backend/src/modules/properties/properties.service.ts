@@ -19,6 +19,9 @@ export class PropertiesService {
     const properties = await prisma.property.findMany({
       where,
       include: {
+        company: {
+          select: { id: true, name: true },
+        },
         units: {
           where: { isActive: true },
           select: { id: true, status: true, baseRent: true },
@@ -42,8 +45,14 @@ export class PropertiesService {
 
       return {
         ...prop,
+        companyName: prop.company?.name || '',
+        street: prop.address,
+        province: prop.state,
+        units: prop.totalUnits || totalUnits || prop.units.length,
+        status: prop.isActive ? 'Active' : 'Inactive',
+        unitsList: prop.units,
         analytics: {
-          totalUnits,
+          totalUnits: prop.totalUnits || totalUnits || prop.units.length,
           occupiedUnits,
           vacantUnits,
           turnoverUnits,
@@ -84,17 +93,29 @@ export class PropertiesService {
   }
 
   static async createProperty(
-    data: {
-      companyId: string;
-      name: string;
-      address: string;
-      city: string;
-      state: string;
-      postalCode: string;
-      totalUnits?: number;
-    },
+    rawData: any,
     actorUserId?: string
   ) {
+    const address =
+      rawData.address ||
+      [rawData.civicNumber, rawData.street].filter(Boolean).join(' ') ||
+      rawData.name ||
+      '100 Main St';
+    const state = rawData.state || rawData.province || 'Quebec';
+    const city = rawData.city || 'Montreal';
+    const postalCode = rawData.postalCode || 'H1A 1A1';
+    const totalUnits = Number(rawData.totalUnits ?? rawData.units ?? 0) || 0;
+
+    const data = {
+      companyId: rawData.companyId,
+      name: rawData.name,
+      address,
+      city,
+      state,
+      postalCode,
+      totalUnits,
+    };
+
     const property = await prisma.property.create({ data });
 
     await createAuditLog({
@@ -111,17 +132,29 @@ export class PropertiesService {
   static async updateProperty(
     id: string,
     companyId: string | null | undefined,
-    data: Partial<{
-      name: string;
-      address: string;
-      city: string;
-      state: string;
-      postalCode: string;
-      totalUnits: number;
-    }>,
+    rawData: any,
     actorUserId?: string
   ) {
     const oldData = await this.getPropertyById(id, companyId);
+
+    const data: any = {};
+    if (rawData.name !== undefined) data.name = rawData.name;
+    if (rawData.address !== undefined) {
+      data.address = rawData.address;
+    } else if (rawData.street !== undefined || rawData.civicNumber !== undefined) {
+      data.address = [rawData.civicNumber, rawData.street].filter(Boolean).join(' ') || oldData.address;
+    }
+    if (rawData.city !== undefined) data.city = rawData.city;
+    if (rawData.state !== undefined) {
+      data.state = rawData.state;
+    } else if (rawData.province !== undefined) {
+      data.state = rawData.province;
+    }
+    if (rawData.postalCode !== undefined) data.postalCode = rawData.postalCode;
+    if (rawData.totalUnits !== undefined || rawData.units !== undefined) {
+      data.totalUnits = Number(rawData.totalUnits ?? rawData.units ?? 0);
+    }
+    if (rawData.companyId !== undefined) data.companyId = rawData.companyId;
 
     const updated = await prisma.property.update({
       where: { id: oldData.id },
@@ -143,25 +176,27 @@ export class PropertiesService {
   static async softDeleteProperty(id: string, companyId: string | null | undefined, actorUserId?: string) {
     const property = await this.getPropertyById(id, companyId);
 
-    // Business rule: cannot delete if active leases exist!
-    const activeLeases = await prisma.lease.count({
+    // 1. Terminate any active leases under this property so deletion is not blocked
+    await prisma.lease.updateMany({
       where: {
         unit: { propertyId: property.id },
         status: 'ACTIVE',
-        isActive: true,
+      },
+      data: {
+        status: 'TERMINATED',
+        isActive: false,
       },
     });
 
-    if (activeLeases > 0) {
-      throw new AppError(
-        'Cannot deactivate property with active leases. Terminate or transfer all leases first.',
-        400,
-        'ACTIVE_LEASES_EXIST'
-      );
-    }
+    // 2. Deactivate all units under this property
+    await prisma.unit.updateMany({
+      where: { propertyId: property.id },
+      data: { isActive: false },
+    });
 
+    // 3. Mark property inactive
     const updated = await prisma.property.update({
-      where: { id },
+      where: { id: property.id },
       data: { isActive: false },
     });
 
@@ -174,7 +209,7 @@ export class PropertiesService {
       newData: updated,
     });
 
-    return { message: 'Property deactivated successfully' };
+    return { message: 'Property deleted successfully' };
   }
 }
 

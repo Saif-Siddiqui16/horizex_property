@@ -50,7 +50,7 @@ export class LeasesService {
       where.endDate = { gte: now, lte: future };
     }
 
-    return prisma.lease.findMany({
+    const leases = await prisma.lease.findMany({
       where,
       include: {
         tenant: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
@@ -58,12 +58,45 @@ export class LeasesService {
           select: {
             id: true,
             unitNumber: true,
+            bedrooms: true,
             property: { select: { id: true, name: true, address: true } },
           },
         },
         renewals: { orderBy: { noticeSentDate: 'desc' }, take: 1 },
       },
       orderBy: { startDate: 'desc' },
+    });
+
+    const formatDate = (d: Date | string) => {
+      const date = new Date(d);
+      return date.toLocaleDateString('en-CA', { month: 'short', day: '2-digit', year: 'numeric' });
+    };
+
+    return leases.map((l) => {
+      const tenantName = l.tenant ? `${l.tenant.firstName} ${l.tenant.lastName}`.trim() : 'Unknown';
+      const buildingName = l.unit?.property?.name || 'Unknown';
+      const unitNumber = l.unit?.unitNumber || '-';
+      const term = `${formatDate(l.startDate)} - ${formatDate(l.endDate)}`;
+      const status = l.status === 'ACTIVE' ? 'Active' : 'Expired';
+
+      return {
+        ...l,
+        tenantObj: l.tenant,
+        unitObj: l.unit,
+        tenant: tenantName,
+        tenantName,
+        buildingName,
+        building: buildingName,
+        unit: unitNumber,
+        unitNumber,
+        bedroom: l.unit?.bedrooms ? `${l.unit.bedrooms} Bed` : '-',
+        term,
+        monthlyRent: Number(l.rentAmount),
+        rentAmount: Number(l.rentAmount),
+        status,
+        leaseType: 'Full Unit Lease',
+        isCredentialsSent: true,
+      };
     });
   }
 
@@ -249,6 +282,42 @@ export class LeasesService {
     });
 
     return inspection;
+  }
+
+  static async deleteLease(id: string, companyId?: string | null, actorUserId?: string) {
+    const lease = await this.getLeaseById(id, companyId);
+
+    // 1. If unit was occupied by this lease, free the unit
+    try {
+      await prisma.unit.update({
+        where: { id: lease.unitId },
+        data: { status: 'VACANT' },
+      });
+    } catch (e) {}
+
+    // 2. Soft delete or delete lease
+    let deleted;
+    try {
+      deleted = await prisma.lease.delete({
+        where: { id: lease.id },
+      });
+    } catch (e) {
+      deleted = await prisma.lease.update({
+        where: { id: lease.id },
+        data: { status: 'TERMINATED', isActive: false },
+      });
+    }
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'DELETE_LEASE',
+      entityType: 'Lease',
+      entityId: id,
+      oldData: lease,
+      newData: deleted,
+    });
+
+    return { message: 'Lease deleted successfully' };
   }
 }
 

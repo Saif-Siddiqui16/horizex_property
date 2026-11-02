@@ -54,7 +54,36 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
       setLoading(true);
       const url = ownerId ? `/api/admin/analytics/vacancy?ownerId=${ownerId}` : '/api/admin/analytics/vacancy';
       const res = await api.get(url);
-      setStats(res.data);
+      if (res.data && typeof res.data === 'object' && !Array.isArray(res.data)) {
+        setStats(prev => ({
+          ...prev,
+          ...res.data,
+          vacancyByBuilding: res.data.vacancyByBuilding || [],
+          vacantUnitsList: res.data.vacantUnitsList || [],
+          upcomingVacancies: res.data.upcomingVacancies || []
+        }));
+      } else if (Array.isArray(res.data)) {
+        const list = res.data;
+        const total = list.reduce((acc, curr) => acc + (curr.totalUnits || 0), 0);
+        const vacant = list.reduce((acc, curr) => acc + (curr.vacantUnits || 0), 0);
+        const occupied = total - vacant;
+        const bList = list.map(item => ({
+          name: item.propertyName || 'Building',
+          total: item.totalUnits || 0,
+          occupied: (item.totalUnits || 0) - (item.vacantUnits || 0),
+          vacant: item.vacantUnits || 0,
+          hasBedroomWise: false
+        }));
+        setStats(prev => ({
+          ...prev,
+          total,
+          vacant,
+          occupied,
+          vacancyByBuilding: bList,
+          vacantUnitsList: prev.vacantUnitsList || [],
+          upcomingVacancies: prev.upcomingVacancies || []
+        }));
+      }
     } catch (e) {
       console.error('Vacancy Fetch Error:', e);
       setStats({
@@ -367,7 +396,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               {/* Vacancy by Building */}
               <Card title="Vacancy by Building">
                 <ul className="p-0 list-none">
-                  {stats.vacancyByBuilding.map((b, index) => (
+                  {(stats.vacancyByBuilding || []).map((b, index) => (
                     <li key={index} className="flex flex-col py-4 border-b border-slate-100 last:border-0">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                         <div className="flex flex-col gap-2.5">
@@ -394,7 +423,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                       </div>
                     </li>
                   ))}
-                  {stats.vacancyByBuilding.length === 0 && <li className="text-gray-400 italic">No buildings found for this owner</li>}
+                  {(!stats.vacancyByBuilding || stats.vacancyByBuilding.length === 0) && <li className="text-gray-400 italic">No buildings found for this owner</li>}
                 </ul>
               </Card>
 

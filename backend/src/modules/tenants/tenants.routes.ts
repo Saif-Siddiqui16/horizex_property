@@ -4,6 +4,8 @@ import {
   getTenant,
   createTenant,
   updateTenant,
+  deleteTenant,
+  sendTenantInvite,
   listVehicles,
   createVehicle,
 } from './tenants.controller';
@@ -54,6 +56,12 @@ router.get(
   getTenant
 );
 
+router.post(
+  '/:id/send-invite',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'),
+  sendTenantInvite
+);
+
 router.put(
   '/:id',
   authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'),
@@ -61,5 +69,10 @@ router.put(
   updateTenant
 );
 
-export default router;
+router.delete(
+  '/:id',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'),
+  deleteTenant
+);
 
+export default router;

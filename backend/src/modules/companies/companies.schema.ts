@@ -4,10 +4,10 @@ export const createCompanySchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Company name is required'),
     code: z.string().min(2, 'Company code is required').toUpperCase(),
-    contactEmail: z.string().email('Valid email is required'),
+    contactEmail: z.string().email('Valid email is required').optional(),
     contactPhone: z.string().optional(),
     taxNumber: z.string().optional(),
-  }),
+  }).passthrough(),
 });
 
 export const updateCompanySchema = z.object({

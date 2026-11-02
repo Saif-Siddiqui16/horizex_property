@@ -11,6 +11,7 @@ generator client {
 // ENUMS
 // ----------------------------------------------------
 enum Role {
+  ADMIN
   SUPER_ADMIN
   COMPANY_ADMIN
   PROPERTY_MANAGER

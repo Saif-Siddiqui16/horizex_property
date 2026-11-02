@@ -125,10 +125,11 @@ export const Login = () => {
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-blue-400 transition-colors" size={16} />
                   <input
                     type="email"
-                    placeholder="admin@horizex.com"
+                    placeholder="name@horizex.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full h-[48px] pl-11 pr-4 bg-black/20 border border-white/10 rounded-2xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400/50 focus:bg-black/40 focus:ring-4 focus:ring-blue-400/10 transition-all"
+                    autoComplete="off"
+                    className="w-full h-[48px] pl-11 pr-4 bg-black/20 border border-white/10 rounded-2xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400/50 focus:bg-black/40 focus:ring-4 focus:ring-blue-400/10 transition-all [color-scheme:dark]"
                     required
                   />
                 </div>
@@ -144,7 +145,8 @@ export const Login = () => {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-[48px] pl-11 pr-11 bg-black/20 border border-white/10 rounded-2xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400/50 focus:bg-black/40 focus:ring-4 focus:ring-blue-400/10 transition-all tracking-widest"
+                    autoComplete="new-password"
+                    className="w-full h-[48px] pl-11 pr-11 bg-black/20 border border-white/10 rounded-2xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400/50 focus:bg-black/40 focus:ring-4 focus:ring-blue-400/10 transition-all tracking-widest [color-scheme:dark]"
                     required
                   />
                   <button
@@ -187,7 +189,23 @@ export const Login = () => {
                   className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-200 hover:bg-white/10 hover:border-blue-400/30 transition-all flex items-center gap-1.5 backdrop-blur-sm"
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]"></div>
-                  Admin (Super)
+                  Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => autofillDemo('tenant')}
+                  className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-200 hover:bg-white/10 hover:border-emerald-400/30 transition-all flex items-center gap-1.5 backdrop-blur-sm"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
+                  Tenant
+                </button>
+                <button
+                  type="button"
+                  onClick={() => autofillDemo('owner')}
+                  className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-200 hover:bg-white/10 hover:border-purple-400/30 transition-all flex items-center gap-1.5 backdrop-blur-sm"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.8)]"></div>
+                  Owner
                 </button>
               </div>
             </div>

@@ -4,6 +4,7 @@ import {
   getUnit,
   createUnit,
   updateUnit,
+  deleteUnit,
   getReadinessDashboard,
   updateUnitReadiness,
 } from './units.controller';
@@ -55,6 +56,12 @@ router.put(
   authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'),
   validateRequest(updateUnitSchema),
   updateUnit
+);
+
+router.delete(
+  '/:id',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'),
+  deleteUnit
 );
 
 export default router;

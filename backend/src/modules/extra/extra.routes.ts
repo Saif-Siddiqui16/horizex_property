@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import {
   listUnitTypes,
+  createUnitType,
+  updateUnitType,
+  deleteUnitType,
   listInsurance,
   createInsurance,
   listNotes,
@@ -18,6 +21,9 @@ router.use(authenticate);
 
 // Unit Types
 router.get('/unit-types', listUnitTypes);
+router.post('/unit-types', authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'), createUnitType);
+router.put('/unit-types/:id', authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'), updateUnitType);
+router.delete('/unit-types/:id', authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'), deleteUnitType);
 
 // Insurance Policies
 router.get('/insurance', listInsurance);

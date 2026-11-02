@@ -41,7 +41,7 @@ export class CompaniesService {
   }
 
   static async createCompany(
-    data: { name: string; code: string; contactEmail: string; contactPhone?: string; taxNumber?: string },
+    data: { name: string; code: string; contactEmail?: string; contactPhone?: string; taxNumber?: string },
     actorUserId?: string
   ) {
     const existing = await prisma.company.findUnique({
@@ -52,7 +52,17 @@ export class CompaniesService {
       throw new AppError('Company code is already taken', 409, 'DUPLICATE_COMPANY_CODE');
     }
 
-    const company = await prisma.company.create({ data });
+    const email = data.contactEmail || `info@${data.code.toLowerCase().replace(/[^a-z0-9]/g, '') || 'company'}.com`;
+
+    const company = await prisma.company.create({
+      data: {
+        name: data.name,
+        code: data.code,
+        contactEmail: email,
+        contactPhone: data.contactPhone,
+        taxNumber: data.taxNumber,
+      },
+    });
 
     await createAuditLog({
       userId: actorUserId,

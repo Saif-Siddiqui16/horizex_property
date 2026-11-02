@@ -11,7 +11,7 @@ export const CompanySelector = () => {
         const fetchCompanies = async () => {
             try {
                 const res = await api.get('/api/admin/companies');
-                const list = res.data || [];
+                const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
                 setCompanies(list);
                 
                 // Initialize default selection
@@ -21,19 +21,24 @@ export const CompanySelector = () => {
                     const exists = list.some(c => c.id.toString() === saved.toString());
                     if (exists) {
                         setSelectedId(saved);
+                        localStorage.setItem('companyContext', saved);
                     } else if (list.length === 1) {
                         // Lock to the only assigned company
                         localStorage.setItem('global_selected_company_id', list[0].id.toString());
+                        localStorage.setItem('companyContext', list[0].id.toString());
                         setSelectedId(list[0].id.toString());
                     } else {
                         localStorage.setItem('global_selected_company_id', '');
+                        localStorage.setItem('companyContext', '');
                         setSelectedId('');
                     }
                 } else if (list.length === 1) {
                     localStorage.setItem('global_selected_company_id', list[0].id.toString());
+                    localStorage.setItem('companyContext', list[0].id.toString());
                     setSelectedId(list[0].id.toString());
                 } else {
                     localStorage.setItem('global_selected_company_id', '');
+                    localStorage.setItem('companyContext', '');
                     setSelectedId('');
                 }
             } catch (error) {
@@ -65,6 +70,7 @@ export const CompanySelector = () => {
     const handleChange = (e) => {
         const val = e.target.value;
         localStorage.setItem('global_selected_company_id', val);
+        localStorage.setItem('companyContext', val);
         setSelectedId(val);
         // Reset building selection when switching company
         localStorage.setItem('global_selected_building_id', '');

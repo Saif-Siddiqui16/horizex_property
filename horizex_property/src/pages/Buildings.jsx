@@ -58,9 +58,9 @@ export const Buildings = () => {
 
   const getCompanyBankAccounts = (companyId) => {
     if (!companyId) return [];
-    const compId = parseInt(companyId);
+    const compId = String(companyId);
     const dynamicAccounts = getDynamicBankAccounts();
-    return dynamicAccounts.filter(a => a.companyId === compId);
+    return dynamicAccounts.filter(a => String(a.companyId) === compId);
   };
 
   const getAccountLabel = (acc) => {
@@ -78,9 +78,22 @@ export const Buildings = () => {
   const [availableCompanies, setAvailableCompanies] = useState(getDynamicCompanies);
   const [availableBankAccounts, setAvailableBankAccounts] = useState(getDynamicBankAccounts);
 
+  const fetchCompanies = async () => {
+    try {
+      const res = await api.get('/api/admin/companies');
+      const list = res.data?.data || res.data || [];
+      if (Array.isArray(list) && list.length > 0) {
+        setAvailableCompanies(list);
+        setFormCompanyId(prev => prev || String(list[0].id));
+      }
+    } catch (e) {
+      console.error('Failed to fetch companies in Buildings.jsx', e);
+    }
+  };
+
   useEffect(() => {
     const handleSync = () => {
-      setAvailableCompanies(getDynamicCompanies());
+      fetchCompanies();
       setAvailableBankAccounts(getDynamicBankAccounts());
     };
     window.addEventListener('companyChanged', handleSync);
@@ -95,6 +108,7 @@ export const Buildings = () => {
   useEffect(() => {
     fetchBuildings(currentPage, search);
     fetchOwners();
+    fetchCompanies();
   }, [currentPage, itemsPerPage]);
 
   useEffect(() => {
@@ -161,7 +175,7 @@ export const Buildings = () => {
     e.preventDefault();
     const form = e.target;
     const currentCompanies = availableCompanies.length > 0 ? availableCompanies : mockCompanies;
-    const selectedComp = currentCompanies.find(c => c.id === parseInt(form.companyId?.value || formCompanyId)) || currentCompanies[0];
+    const selectedComp = currentCompanies.find(c => String(c.id) === String(form.companyId?.value || formCompanyId)) || currentCompanies[0];
     
     // Resolve owner names from selectedOwnerIds or direct ownerName input
     const selectedOwnerObjs = owners.filter(o => selectedOwnerIds.includes(o.id));
@@ -169,33 +183,42 @@ export const Buildings = () => {
     const manualOwnerName = form.ownerName?.value?.trim() || '';
     const finalOwnerNames = manualOwnerName || ownerNamesFromSelection || 'David Miller';
 
-    // Note: Backend handles unit generation based on 'units' count
+    const civic = form.civicNumber?.value?.trim() || '';
+    const street = form.street?.value?.trim() || '';
+    const fullAddress = [civic, street].filter(Boolean).join(' ') || form.name.value;
+    const totalUnitsCount = parseInt(form.units.value) || 0;
+
     const newBuilding = {
       name: form.name.value,
       companyId: selectedComp?.id || null,
       companyName: selectedComp?.name || '',
       bankAccount: form.bankAccount?.value || formBankAccount || '',
-      units: parseInt(form.units.value),
+      units: totalUnitsCount,
+      totalUnits: totalUnitsCount,
       status: form.status.value,
-      civicNumber: form.civicNumber.value,
-      street: form.street.value,
-      city: form.city.value,
-      province: form.province.value,
-      postalCode: form.postalCode.value,
+      civicNumber: civic,
+      street: street,
+      address: fullAddress,
+      city: form.city.value || 'Montreal',
+      province: form.province.value || 'Quebec',
+      state: form.province.value || 'Quebec',
+      postalCode: form.postalCode.value || 'H1A 1A1',
       ownerIds: selectedOwnerIds.length > 0 ? selectedOwnerIds : [3],
       ownerNames: finalOwnerNames
     };
 
     try {
-      const response = await api.post('/api/admin/properties', newBuilding);
+      await api.post('/api/admin/properties', newBuilding);
       setCurrentPage(1); // Reset to page 1 so new building (at top) is visible
       await fetchBuildings(1, search);
+      window.dispatchEvent(new Event('buildingChanged'));
       setShowModal(false);
       form.reset();
       setSelectedOwnerIds([]);
     } catch (error) {
       console.error('Error adding building:', error);
-      alert('Error adding building');
+      const errMsg = error.response?.data?.error?.message || error.response?.data?.message || 'Error adding building';
+      alert(errMsg);
     }
   };
 
@@ -204,11 +227,15 @@ export const Buildings = () => {
     if (window.confirm('Are you sure you want to delete this building?')) {
       try {
         await api.delete(`/api/admin/properties/${id}`);
-        // Refresh list
-        fetchBuildings(currentPage, search);
+        // Optimistically remove from UI list immediately
+        setBuildings(prev => prev.filter(b => b.id !== id));
+        // Refresh list from API
+        await fetchBuildings(currentPage, search);
+        window.dispatchEvent(new Event('buildingChanged'));
       } catch (error) {
         console.error('Error deleting building:', error);
-        alert('Error deleting building');
+        const errMsg = error.response?.data?.error?.message || error.response?.data?.message || 'Error deleting building';
+        alert(errMsg);
       }
     }
   };
@@ -229,6 +256,7 @@ export const Buildings = () => {
     setEditBankAccount(building.bankAccount || autoBank || '');
     setAvailableCompanies(getDynamicCompanies());
     setAvailableBankAccounts(getDynamicBankAccounts());
+    fetchCompanies();
     setShowEditModal(true);
   };
 
@@ -237,45 +265,57 @@ export const Buildings = () => {
     e.preventDefault();
     const form = e.target;
     const currentCompanies = availableCompanies.length > 0 ? availableCompanies : mockCompanies;
-    const compId = parseInt(form.companyId?.value || editCompanyId);
-    const selectedComp = currentCompanies.find(c => c.id === compId);
+    const compId = form.companyId?.value || editCompanyId;
+    const selectedComp = currentCompanies.find(c => String(c.id) === String(compId));
 
     const selectedOwnerObjs = owners.filter(o => selectedOwnerIds.includes(o.id));
     const ownerNamesFromSelection = selectedOwnerObjs.map(o => o.name).join(', ');
     const manualOwnerName = form.ownerName?.value?.trim() || '';
     const finalOwnerNames = manualOwnerName || ownerNamesFromSelection || currentBuilding.ownerNames || 'David Miller';
 
+    const civic = form.civicNumber?.value?.trim() || '';
+    const street = form.street?.value?.trim() || '';
+    const fullAddress = [civic, street].filter(Boolean).join(' ') || currentBuilding.address || form.name.value;
+    const totalUnitsCount = parseInt(form.units.value) || 0;
+
     const updatedData = {
       name: form.name.value,
       companyId: selectedComp ? selectedComp.id : (currentBuilding.companyId || null),
       companyName: selectedComp ? selectedComp.name : (currentBuilding.companyName || ''),
       bankAccount: form.bankAccount?.value || editBankAccount || currentBuilding.bankAccount || '',
-      units: parseInt(form.units.value),
+      units: totalUnitsCount,
+      totalUnits: totalUnitsCount,
       status: form.status.value,
-      civicNumber: form.civicNumber.value,
-      street: form.street.value,
-      city: form.city.value,
-      province: form.province.value,
-      postalCode: form.postalCode.value,
+      civicNumber: civic,
+      street: street,
+      address: fullAddress,
+      city: form.city.value || 'Montreal',
+      province: form.province.value || 'Quebec',
+      state: form.province.value || 'Quebec',
+      postalCode: form.postalCode.value || 'H1A 1A1',
       ownerIds: selectedOwnerIds,
       ownerNames: finalOwnerNames
     };
 
     try {
-      const response = await api.put(`/api/admin/properties/${currentBuilding.id}`, updatedData);
+      await api.put(`/api/admin/properties/${currentBuilding.id}`, updatedData);
       fetchBuildings(currentPage, search);
       setShowEditModal(false);
       form.reset();
       setSelectedOwnerIds([]);
     } catch (error) {
       console.error('Error updating building:', error);
-      alert('Error updating building');
+      const errMsg = error.response?.data?.error?.message || error.response?.data?.message || 'Error updating building';
+      alert(errMsg);
     }
   };
 
   // Calculate stats from the fetched buildings data
-  const calculatedTotalUnits = buildings.reduce((acc, curr) => acc + (parseInt(curr.units) || 0), 0);
-  const calculatedActiveBuildings = buildings.filter(b => b.status === 'Active').length;
+  const calculatedTotalUnits = buildings.reduce((acc, curr) => {
+    const count = Array.isArray(curr.units) ? curr.units.length : (parseInt(curr.units) || 0);
+    return acc + count;
+  }, 0);
+  const calculatedActiveBuildings = buildings.filter(b => b.status === 'Active' || b.isActive === true).length;
 
   return (
     <>
@@ -328,10 +368,11 @@ export const Buildings = () => {
           {hasPermission('Buildings', 'add') && (
             <Button variant="primary" onClick={() => {
               setSelectedOwnerIds([]);
-              setFormCompanyId('');
               setFormBankAccount('');
-              setAvailableCompanies(getDynamicCompanies());
-              setAvailableBankAccounts(getDynamicBankAccounts());
+              fetchCompanies();
+              if (availableCompanies.length > 0) {
+                setFormCompanyId(String(availableCompanies[0].id));
+              }
               setShowModal(true);
             }} className="whitespace-nowrap">
               <Plus size={16} />
@@ -425,13 +466,15 @@ export const Buildings = () => {
                         </span>
                       </td>
                       <td className="text-center">
-                        <span className="text-[1rem] font-black text-[#667eea]">{building.units}</span>
+                        <span className="text-[1rem] font-black text-[#667eea]">
+                          {Array.isArray(building.units) ? building.units.length : (building.units ?? 0)}
+                        </span>
                       </td>
                       <td className="text-center">
                         <div className="flex justify-center">
-                          <span className={`saas-badge ${building.status === 'Active' ? 'saas-badge-success' : 'saas-badge-danger'}`}>
-                            <span className={`w-1 h-1 rounded-full ${building.status === 'Active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                            {building.status}
+                          <span className={`saas-badge ${(building.status === 'Active' || building.isActive === true) ? 'saas-badge-success' : 'saas-badge-danger'}`}>
+                            <span className={`w-1 h-1 rounded-full ${(building.status === 'Active' || building.isActive === true) ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                            {building.status || (building.isActive ? 'Active' : 'Inactive')}
                           </span>
                         </div>
                       </td>
@@ -569,34 +612,24 @@ export const Buildings = () => {
 
                   <div>
                     <label htmlFor="bankAccount" className="block mb-2 font-medium text-slate-600">
-                      Bank Account <span className="text-red-500">*</span>
+                      Bank Account
                     </label>
                     <select
                       id="bankAccount"
                       name="bankAccount"
                       value={formBankAccount}
-                      required
-                      disabled={!formCompanyId || getCompanyBankAccounts(formCompanyId).length === 0}
                       onChange={(e) => setFormBankAccount(e.target.value)}
-                      className={`w-full p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 appearance-none bg-white font-medium cursor-pointer ${!formBankAccount ? 'text-slate-400' : 'text-slate-800'} ${(!formCompanyId || getCompanyBankAccounts(formCompanyId).length === 0) ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                      className={`w-full p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 appearance-none bg-white font-medium cursor-pointer ${!formBankAccount ? 'text-slate-400' : 'text-slate-800'}`}
                     >
-                      {!formCompanyId ? (
-                        <option value="" disabled>Select company first</option>
-                      ) : getCompanyBankAccounts(formCompanyId).length === 0 ? (
-                        <option value="" disabled>No bank account linked for this company</option>
-                      ) : (
-                        <>
-                          <option value="" disabled>Select Bank Account</option>
-                          {getCompanyBankAccounts(formCompanyId).map(acc => {
-                            const label = getAccountLabel(acc);
-                            return (
-                              <option key={acc.id} value={label} className="text-slate-800">
-                                {label}
-                              </option>
-                            );
-                          })}
-                        </>
-                      )}
+                      <option value="">Default Operating Account</option>
+                      {getCompanyBankAccounts(formCompanyId).map(acc => {
+                        const label = getAccountLabel(acc);
+                        return (
+                          <option key={acc.id} value={label} className="text-slate-800">
+                            {label}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>
@@ -802,19 +835,21 @@ export const Buildings = () => {
                 </div>
                 <div className="flex items-center pb-3 border-b border-slate-100">
                   <span className="font-medium w-[140px] text-slate-500">Total Units:</span>
-                  <span className="flex-1 font-semibold text-slate-800">{currentBuilding.units}</span>
+                  <span className="flex-1 font-semibold text-slate-800">
+                    {Array.isArray(currentBuilding.units) ? currentBuilding.units.length : (currentBuilding.units ?? 0)}
+                  </span>
                 </div>
                 <div className="flex items-center pb-3 border-b border-slate-100">
                   <span className="font-medium w-[140px] text-slate-500">Status:</span>
                   <span className="flex-1">
                     <span
-                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${currentBuilding.status === 'Active'
+                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${(currentBuilding.status === 'Active' || currentBuilding.isActive === true)
                         ? 'bg-emerald-100 text-emerald-800'
                         : 'bg-red-100 text-red-800'
                         }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${currentBuilding.status === 'Active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                      {currentBuilding.status}
+                      <span className={`w-2 h-2 rounded-full ${(currentBuilding.status === 'Active' || currentBuilding.isActive === true) ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                      {currentBuilding.status || (currentBuilding.isActive ? 'Active' : 'Inactive')}
                     </span>
                   </span>
                 </div>
@@ -899,36 +934,26 @@ export const Buildings = () => {
 
                   <div>
                     <label htmlFor="edit-bankAccount" className="block mb-2 font-medium text-slate-600">
-                      Bank Account <span className="text-red-500">*</span>
+                      Bank Account
                     </label>
                     <select
                       id="edit-bankAccount"
                       name="bankAccount"
                       value={editBankAccount}
-                      required
-                      disabled={!editCompanyId || getCompanyBankAccounts(editCompanyId).length === 0}
                       onChange={(e) => setEditBankAccount(e.target.value)}
-                      className={`w-full p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 appearance-none bg-white font-medium cursor-pointer ${!editBankAccount ? 'text-slate-400' : 'text-slate-800'} ${(!editCompanyId || getCompanyBankAccounts(editCompanyId).length === 0) ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                      className={`w-full p-3 border-2 border-slate-200 rounded-xl text-sm transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 appearance-none bg-white font-medium cursor-pointer ${!editBankAccount ? 'text-slate-400' : 'text-slate-800'}`}
                     >
-                      {!editCompanyId ? (
-                        <option value="" disabled>Select company first</option>
-                      ) : getCompanyBankAccounts(editCompanyId).length === 0 ? (
-                        <option value="" disabled>No bank account linked for this company</option>
-                      ) : (
-                        <>
-                          <option value="" disabled>Select Bank Account</option>
-                          {getCompanyBankAccounts(editCompanyId).map(acc => {
-                            const label = getAccountLabel(acc);
-                            return (
-                              <option key={acc.id} value={label} className="text-slate-800">
-                                {label}
-                              </option>
-                            );
-                          })}
-                          {editBankAccount && !getCompanyBankAccounts(editCompanyId).some(acc => getAccountLabel(acc) === editBankAccount || acc.shortAccount === editBankAccount) && (
-                            <option value={editBankAccount} className="text-slate-800">{editBankAccount} (Current)</option>
-                          )}
-                        </>
+                      <option value="">Default Operating Account</option>
+                      {getCompanyBankAccounts(editCompanyId).map(acc => {
+                        const label = getAccountLabel(acc);
+                        return (
+                          <option key={acc.id} value={label} className="text-slate-800">
+                            {label}
+                          </option>
+                        );
+                      })}
+                      {editBankAccount && !getCompanyBankAccounts(editCompanyId).some(acc => getAccountLabel(acc) === editBankAccount || acc.shortAccount === editBankAccount) && (
+                        <option value={editBankAccount} className="text-slate-800">{editBankAccount} (Current)</option>
                       )}
                     </select>
                   </div>
@@ -1046,7 +1071,7 @@ export const Buildings = () => {
                       type="number"
                       id="edit-units"
                       name="units"
-                      defaultValue={currentBuilding.units}
+                      defaultValue={Array.isArray(currentBuilding.units) ? currentBuilding.units.length : (currentBuilding.units ?? 0)}
                       min="0"
                       className="w-full p-3 border-2 border-slate-200 rounded-xl text-base transition-all outline-none focus:border-[#667eea] focus:ring-4 focus:ring-[#667eea]/10 bg-white"
                     />

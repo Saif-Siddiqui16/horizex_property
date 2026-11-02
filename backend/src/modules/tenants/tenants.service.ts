@@ -14,12 +14,16 @@ export class TenantsService {
         { lastName: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search, mode: 'insensitive' } },
+        { emergencyContact: { contains: search, mode: 'insensitive' } },
       ];
     }
 
     const tenants = await prisma.tenant.findMany({
       where,
       include: {
+        company: {
+          select: { id: true, name: true, code: true },
+        },
         leases: {
           where: { status: 'ACTIVE', isActive: true },
           include: {
@@ -45,17 +49,55 @@ export class TenantsService {
         0
       );
 
+      let meta: any = {};
+      if (tenant.emergencyContact) {
+        try {
+          meta = JSON.parse(tenant.emergencyContact);
+        } catch {
+          meta = { emergencyContact: tenant.emergencyContact };
+        }
+      }
+
+      const type = meta.type || 'Individual';
+      const isInternalEmail = tenant.email.includes('@occupant.internal');
+      const displayEmail = isInternalEmail ? '' : tenant.email;
+
       return {
         id: tenant.id,
         firstName: tenant.firstName,
         lastName: tenant.lastName,
-        email: tenant.email,
+        name: `${tenant.firstName} ${tenant.lastName}`.trim(),
+        email: displayEmail,
         phone: tenant.phone,
-        emergencyContact: tenant.emergencyContact,
-        activeUnit: activeLease ? `${activeLease.unit.property.name} - Unit ${activeLease.unit.unitNumber}` : 'No Active Lease',
+        type,
+        companyId: tenant.companyId,
+        companyName: meta.companyName || tenant.company?.name || '',
+        companyCode: tenant.company?.code || '',
+        company: tenant.company,
+        property: activeLease?.unit?.property?.name || meta.propertyName || '-',
+        propertyName: activeLease?.unit?.property?.name || meta.propertyName || '-',
+        unit: activeLease?.unit?.unitNumber || meta.unitNumber || '-',
+        unitNumber: activeLease?.unit?.unitNumber || meta.unitNumber || '-',
+        activeUnit: activeLease
+          ? `${activeLease.unit.property.name} - Unit ${activeLease.unit.unitNumber}`
+          : (meta.unitNumber ? `Unit ${meta.unitNumber}` : 'No Active Lease'),
         activeLeaseId: activeLease?.id || null,
+        leaseStatus: activeLease ? 'Active' : (type === 'Resident' || type === 'RESIDENT' ? 'Resident' : 'None'),
         balanceDue: Math.round(totalBalanceDue * 100) / 100,
         createdAt: tenant.createdAt,
+        parentId: meta.parentId || null,
+        propertyId: meta.propertyId || activeLease?.unit?.property?.id || null,
+        unitId: meta.unitId || activeLease?.unit?.id || null,
+        bedroomId: meta.bedroomId || null,
+        street: meta.street || '',
+        city: meta.city || '',
+        state: meta.state || '',
+        postalCode: meta.postalCode || '',
+        country: meta.country || '',
+        companyDetails: meta.companyDetails || '',
+        companyContacts: meta.companyContacts || [],
+        residents: meta.residents || [],
+        emergencyContact: meta.emergencyContact || null,
       };
     });
   }
@@ -69,6 +111,9 @@ export class TenantsService {
     const tenant = await prisma.tenant.findFirst({
       where,
       include: {
+        company: {
+          select: { id: true, name: true, code: true },
+        },
         leases: {
           where: { isActive: true },
           include: {
@@ -94,29 +139,156 @@ export class TenantsService {
       throw new AppError('Tenant not found', 404, 'TENANT_NOT_FOUND');
     }
 
-    return tenant;
+    let meta: any = {};
+    if (tenant.emergencyContact) {
+      try {
+        meta = JSON.parse(tenant.emergencyContact);
+      } catch {
+        meta = { emergencyContact: tenant.emergencyContact };
+      }
+    }
+
+    // Resolve parent tenant if resident
+    let parent = null;
+    if (meta.parentId) {
+      const parentTenant = await prisma.tenant.findUnique({
+        where: { id: meta.parentId },
+        include: { company: true },
+      });
+      if (parentTenant) {
+        let parentMeta: any = {};
+        if (parentTenant.emergencyContact) {
+          try {
+            parentMeta = JSON.parse(parentTenant.emergencyContact);
+          } catch {
+            parentMeta = {};
+          }
+        }
+        parent = {
+          id: parentTenant.id,
+          name: `${parentTenant.firstName} ${parentTenant.lastName}`.trim(),
+          firstName: parentTenant.firstName,
+          lastName: parentTenant.lastName,
+          type: parentMeta.type || 'Individual',
+        };
+      }
+    }
+
+    // Find any occupants / residents that have this tenant as parentId
+    let residents: any[] = [];
+    try {
+      const occupantTenants = await prisma.tenant.findMany({
+        where: {
+          emergencyContact: { contains: `"parentId":"${tenant.id}"` },
+          isActive: true,
+        },
+      });
+      residents = occupantTenants.map((occ) => ({
+        id: occ.id,
+        firstName: occ.firstName,
+        lastName: occ.lastName,
+        email: occ.email.includes('@occupant.internal') ? '' : occ.email,
+        phone: occ.phone,
+      }));
+    } catch {
+      residents = [];
+    }
+
+    const type = meta.type || 'Individual';
+    const isInternalEmail = tenant.email.includes('@occupant.internal');
+    const displayEmail = isInternalEmail ? '' : tenant.email;
+
+    return {
+      ...tenant,
+      name: `${tenant.firstName} ${tenant.lastName}`.trim(),
+      email: displayEmail,
+      type,
+      companyName: meta.companyName || tenant.company?.name || '',
+      companyCode: tenant.company?.code || '',
+      company: tenant.company,
+      parentId: meta.parentId || null,
+      parent,
+      propertyId: meta.propertyId || null,
+      propertyName: meta.propertyName || null,
+      unitId: meta.unitId || null,
+      unitNumber: meta.unitNumber || null,
+      bedroomId: meta.bedroomId || null,
+      street: meta.street || '',
+      city: meta.city || '',
+      state: meta.state || '',
+      postalCode: meta.postalCode || '',
+      country: meta.country || '',
+      companyDetails: meta.companyDetails || '',
+      companyContacts: meta.companyContacts || [],
+      residents: residents.length > 0 ? residents : (meta.residents || []),
+      emergencyContact: meta.emergencyContact || null,
+    };
   }
 
   static async createTenant(
-    data: {
-      companyId: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-      phone: string;
-      emergencyContact?: string;
-    },
+    data: any,
     actorUserId?: string
   ) {
+    const type = data.type || 'Individual';
+    const companyId = data.companyId;
+
+    // First & Last name resolution
+    const firstName = (data.firstName || '').trim() || (type === 'Company' ? (data.companyName || 'Company') : 'Resident');
+    const lastName = (data.lastName || '').trim() || (type === 'Company' ? 'Tenant' : 'Occupant');
+
+    // Email resolution (Resident might not provide an email)
+    let email = (data.email || '').trim().toLowerCase();
+    if (!email) {
+      email = `resident_${Date.now()}_${Math.random().toString(36).substring(2, 7)}@occupant.internal`;
+    }
+
     const existing = await prisma.tenant.findUnique({
-      where: { email: data.email },
+      where: { email },
     });
 
     if (existing && existing.isActive) {
       throw new AppError('Tenant with this email already exists', 409, 'DUPLICATE_TENANT_EMAIL');
     }
 
-    const tenant = await prisma.tenant.create({ data });
+    const phone = (data.phone || '').trim() || '+10000000000';
+
+    // Store rich metadata in emergencyContact
+    const metadata = {
+      type,
+      companyName: data.companyName || null,
+      companyDetails: data.companyDetails || null,
+      street: data.street || null,
+      city: data.city || null,
+      state: data.state || null,
+      postalCode: data.postalCode || null,
+      country: data.country || null,
+      companyContacts: Array.isArray(data.companyContacts) ? data.companyContacts : [],
+      parentId: data.parentId || null,
+      propertyId: data.propertyId || null,
+      propertyName: data.propertyName || null,
+      unitId: data.unitId || null,
+      unitNumber: data.unitNumber || null,
+      bedroomId: data.bedroomId || null,
+      residents: Array.isArray(data.residents) ? data.residents : [],
+      emergencyContact: data.emergencyContact || null,
+    };
+
+    // Filter to ONLY valid Prisma fields for tenant creation
+    const tenant = await prisma.tenant.create({
+      data: {
+        companyId,
+        firstName,
+        lastName,
+        email,
+        phone,
+        emergencyContact: JSON.stringify(metadata),
+      },
+      include: {
+        company: {
+          select: { id: true, name: true, code: true },
+        },
+      },
+    });
 
     await createAuditLog({
       userId: actorUserId,
@@ -126,7 +298,14 @@ export class TenantsService {
       newData: tenant,
     });
 
-    return tenant;
+    const isInternalEmail = tenant.email.includes('@occupant.internal');
+    return {
+      ...tenant,
+      ...metadata,
+      name: `${tenant.firstName} ${tenant.lastName}`.trim(),
+      email: isInternalEmail ? '' : tenant.email,
+      companyCode: tenant.company?.code || '',
+    };
   }
 
   static async updateTenant(
@@ -137,9 +316,55 @@ export class TenantsService {
   ) {
     const oldTenant = await this.getTenantById(id, companyId);
 
+    // Parse existing meta
+    let existingMeta: any = {};
+    if (oldTenant.emergencyContact) {
+      try {
+        existingMeta = JSON.parse(oldTenant.emergencyContact);
+      } catch {
+        existingMeta = { emergencyContact: oldTenant.emergencyContact };
+      }
+    }
+
+    const mergedMeta = {
+      ...existingMeta,
+      ...(data.type !== undefined ? { type: data.type } : {}),
+      ...(data.companyName !== undefined ? { companyName: data.companyName } : {}),
+      ...(data.companyDetails !== undefined ? { companyDetails: data.companyDetails } : {}),
+      ...(data.street !== undefined ? { street: data.street } : {}),
+      ...(data.city !== undefined ? { city: data.city } : {}),
+      ...(data.state !== undefined ? { state: data.state } : {}),
+      ...(data.postalCode !== undefined ? { postalCode: data.postalCode } : {}),
+      ...(data.country !== undefined ? { country: data.country } : {}),
+      ...(data.companyContacts !== undefined ? { companyContacts: data.companyContacts } : {}),
+      ...(data.parentId !== undefined ? { parentId: data.parentId } : {}),
+      ...(data.propertyId !== undefined ? { propertyId: data.propertyId } : {}),
+      ...(data.propertyName !== undefined ? { propertyName: data.propertyName } : {}),
+      ...(data.unitId !== undefined ? { unitId: data.unitId } : {}),
+      ...(data.unitNumber !== undefined ? { unitNumber: data.unitNumber } : {}),
+      ...(data.bedroomId !== undefined ? { bedroomId: data.bedroomId } : {}),
+      ...(data.residents !== undefined ? { residents: data.residents } : {}),
+      ...(data.emergencyContact !== undefined ? { emergencyContact: data.emergencyContact } : {}),
+    };
+
+    const prismaUpdateData: any = {
+      emergencyContact: JSON.stringify(mergedMeta),
+    };
+    if (data.firstName) prismaUpdateData.firstName = data.firstName;
+    if (data.lastName) prismaUpdateData.lastName = data.lastName;
+    if (data.phone) prismaUpdateData.phone = data.phone;
+    if (data.email && !data.email.includes('@occupant.internal')) {
+      prismaUpdateData.email = data.email;
+    }
+
     const updated = await prisma.tenant.update({
       where: { id: oldTenant.id },
-      data,
+      data: prismaUpdateData,
+      include: {
+        company: {
+          select: { id: true, name: true, code: true },
+        },
+      },
     });
 
     await createAuditLog({
@@ -151,7 +376,47 @@ export class TenantsService {
       newData: updated,
     });
 
-    return updated;
+    const isInternalEmail = updated.email.includes('@occupant.internal');
+    return {
+      ...updated,
+      ...mergedMeta,
+      name: `${updated.firstName} ${updated.lastName}`.trim(),
+      email: isInternalEmail ? '' : updated.email,
+    };
+  }
+
+  static async deleteTenant(id: string, companyId?: string | null, actorUserId?: string) {
+    const tenant = await this.getTenantById(id, companyId);
+
+    // 1. Deactivate/terminate active leases
+    await prisma.lease.updateMany({
+      where: { tenantId: tenant.id },
+      data: { status: 'TERMINATED', isActive: false },
+    });
+
+    // 2. Soft delete or hard delete tenant
+    let deleted;
+    try {
+      deleted = await prisma.tenant.delete({
+        where: { id: tenant.id },
+      });
+    } catch (e) {
+      deleted = await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: { isActive: false },
+      });
+    }
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'DELETE_TENANT',
+      entityType: 'Tenant',
+      entityId: id,
+      oldData: tenant,
+      newData: deleted,
+    });
+
+    return { message: 'Tenant deleted successfully' };
   }
 
   static async listVehicles(companyId?: string | null) {
@@ -208,4 +473,3 @@ export class TenantsService {
     return vehicle;
   }
 }
-

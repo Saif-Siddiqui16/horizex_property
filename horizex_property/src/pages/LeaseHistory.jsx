@@ -41,15 +41,21 @@ const navigate = useNavigate();
                     search: search || undefined
                 }
             });
-            // Handle new paginated response structure
-            if (res.data.status === 'success') {
-                setLeases(res.data.data);
-                setPagination(res.data.pagination);
-            } else {
-                setLeases(res.data);
+            // Handle response data safely
+            const leaseList = Array.isArray(res.data?.data)
+                ? res.data.data
+                : (Array.isArray(res.data) ? res.data : []);
+            setLeases(leaseList);
+            if (res.data?.meta || res.data?.pagination) {
+                setPagination({
+                    page: res.data.meta?.page || res.data.pagination?.page || 1,
+                    totalPages: res.data.meta?.totalPages || res.data.pagination?.totalPages || 1,
+                    total: res.data.meta?.total || res.data.pagination?.total || leaseList.length,
+                });
             }
         } catch (error) {
             console.error('Failed to fetch leases', error);
+            setLeases([]);
         } finally {
             setIsLoading(false);
         }
@@ -81,9 +87,11 @@ const navigate = useNavigate();
         const fetchBuildings = async () => {
             try {
                 const res = await api.get('/api/admin/properties');
-                setBuildings(res.data);
+                const bList = res.data?.data || (Array.isArray(res.data) ? res.data : []);
+                setBuildings(bList);
             } catch (error) {
                 console.error('Failed to fetch buildings', error);
+                setBuildings([]);
             }
         };
         fetchBuildings();
@@ -139,7 +147,7 @@ const navigate = useNavigate();
         }
     };
 
-    const displayLeases = leases;
+    const displayLeases = Array.isArray(leases) ? leases : [];
 
     return (
         <>
@@ -260,21 +268,23 @@ const navigate = useNavigate();
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-bold">{lease.ownerName || lease.owner || '-'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">{lease.buildingName}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">{lease.buildingName || lease.building || '-'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="font-semibold text-slate-800">{lease.unit}</div>
+                                            <div className="font-semibold text-slate-800">{typeof lease.unit === 'object' ? (lease.unit?.unitNumber || '-') : (lease.unit || '-')}</div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lease.bedroom}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{lease.tenant}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-mono text-[13px]">{lease.term}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">${(lease.monthlyRent || 0).toLocaleString('en-CA')}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lease.bedroom || '-'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">
+                                            {typeof lease.tenant === 'object' ? `${lease.tenant?.firstName || ''} ${lease.tenant?.lastName || ''}`.trim() : (lease.tenant || '-')}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-mono text-[13px]">{lease.term || '-'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">${(Number(lease.monthlyRent || lease.rentAmount) || 0).toLocaleString('en-CA')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${lease.status.toLowerCase() === 'active'
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${(lease.status || '').toLowerCase() === 'active'
                                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                                 : 'bg-slate-100 text-slate-600 border-slate-200'
                                                 }`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${lease.status.toLowerCase() === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                                                {lease.status.charAt(0).toUpperCase() + lease.status.slice(1).toLowerCase()}
+                                                <span className={`w-1.5 h-1.5 rounded-full ${(lease.status || '').toLowerCase() === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                                                {lease.status ? (lease.status.charAt(0).toUpperCase() + lease.status.slice(1).toLowerCase()) : 'Active'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -384,39 +394,39 @@ const navigate = useNavigate();
                             <div className="space-y-4 mb-8">
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Lease Type</span>
-                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.leaseType}</span>
+                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.leaseType || 'Full Unit Lease'}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Building</span>
-                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.buildingName}</span>
+                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.buildingName || selectedLease.building || '-'}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Unit</span>
-                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.unit}</span>
+                                    <span className="text-sm font-semibold text-slate-900">{typeof selectedLease.unit === 'object' ? (selectedLease.unit?.unitNumber || '-') : (selectedLease.unit || '-')}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Bedroom</span>
-                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.bedroom}</span>
+                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.bedroom || '-'}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Tenant</span>
-                                    <span className="text-sm font-medium text-slate-900">{selectedLease.tenant}</span>
+                                    <span className="text-sm font-medium text-slate-900">{typeof selectedLease.tenant === 'object' ? `${selectedLease.tenant?.firstName || ''} ${selectedLease.tenant?.lastName || ''}`.trim() : (selectedLease.tenant || '-')}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Term</span>
-                                    <span className="text-sm font-medium text-slate-900">{selectedLease.term}</span>
+                                    <span className="text-sm font-medium text-slate-900">{selectedLease.term || '-'}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Monthly Rent</span>
-                                    <span className="text-sm font-semibold text-slate-900">${(selectedLease.monthlyRent || 0).toLocaleString('en-CA')}</span>
+                                    <span className="text-sm font-semibold text-slate-900">${(Number(selectedLease.monthlyRent || selectedLease.rentAmount) || 0).toLocaleString('en-CA')}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Status</span>
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${selectedLease.status.toLowerCase() === 'active'
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${(selectedLease.status || '').toLowerCase() === 'active'
                                         ? 'bg-emerald-100 text-emerald-800'
                                         : 'bg-slate-100 text-slate-600'
                                         }`}>
-                                        {selectedLease.status.charAt(0).toUpperCase() + selectedLease.status.slice(1).toLowerCase()}
+                                        {selectedLease.status ? (selectedLease.status.charAt(0).toUpperCase() + selectedLease.status.slice(1).toLowerCase()) : 'Active'}
                                     </span>
                                 </div>
                             </div>

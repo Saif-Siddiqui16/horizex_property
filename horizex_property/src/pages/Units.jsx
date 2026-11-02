@@ -6,7 +6,7 @@ import { Plus, Search, Filter, Eye, Edit2, Trash2, X, ChevronDown, Loader2, Chec
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
 export const Units = () => {
-const [__forceUpdate, __setForceUpdate] = useState(0);
+  const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -55,7 +55,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const [quickAddFormStep, setQuickAddFormStep] = useState(1);
   const [quickAddErrors, setQuickAddErrors] = useState({});
   const [isSavingQuickAdd, setIsSavingQuickAdd] = useState(false);
-  
+
   const [billableTenants, setBillableTenants] = useState([]);
   const [selectedParentId, setSelectedParentId] = useState('');
 
@@ -146,21 +146,21 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         setBillableTenants([]);
       }
 
-      if (buildingsRes.data && buildingsRes.data.length > 0 && !formData.propertyId) {
-        setFormData(prev => ({ ...prev, propertyId: buildingsRes.data[0].id.toString() }));
+      const buildingsList = buildingsRes.data?.data || (Array.isArray(buildingsRes.data) ? buildingsRes.data : []);
+      setBuildings(buildingsList);
+
+      if (buildingsList.length > 0 && !formData.propertyId) {
+        setFormData(prev => ({ ...prev, propertyId: String(buildingsList[0].id) }));
       }
 
       if (unitsRes.data) {
-        setUnits(unitsRes.data.data || []);
+        setUnits(unitsRes.data.data || (Array.isArray(unitsRes.data) ? unitsRes.data : []));
         setPagination(prev => ({
           ...prev,
-          total: unitsRes.data.pagination?.total || 0,
-          totalPages: unitsRes.data.pagination?.totalPages || 0,
-          page: unitsRes.data.pagination?.page || 1
+          total: unitsRes.data.pagination?.total || unitsRes.data.meta?.total || (Array.isArray(unitsRes.data.data) ? unitsRes.data.data.length : 0),
+          totalPages: unitsRes.data.pagination?.totalPages || unitsRes.data.meta?.totalPages || 1,
+          page: unitsRes.data.pagination?.page || unitsRes.data.meta?.page || 1
         }));
-      }
-      if (buildingsRes.data) {
-        setBuildings(buildingsRes.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -195,42 +195,47 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
   const openAddModal = async () => {
     resetForm();
-    if (buildings.length > 0) {
-      setFormData(prev => ({ 
-        ...prev, 
-        propertyId: buildings[0].id.toString() 
+    let currentB = Array.isArray(buildings) ? buildings : [];
+    if (currentB.length === 0) {
+      try {
+        const res = await api.get('/api/admin/properties');
+        currentB = res.data?.data || (Array.isArray(res.data) ? res.data : []);
+        setBuildings(currentB);
+      } catch (error) {
+        console.error('Error refreshing buildings:', error);
+      }
+    }
+    if (currentB.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        propertyId: String(currentB[0].id)
       }));
     }
     setEditUnit(null);
     setShowModal(true);
-    // Refresh buildings when opening modal to ensure new buildings appear
-    try {
-      const res = await api.get('/api/admin/properties');
-      setBuildings(res.data);
-    } catch (error) {
-      console.error('Error refreshing buildings:', error);
-    }
   };
 
   const openEditModal = async (unit) => {
     try {
       // Fetch full details to get bedrooms
       const res = await api.get(`/api/admin/units/${unit.id}`);
-      const fullUnit = res.data;
+      const fullUnit = res.data?.data || res.data;
 
       const activeLease = fullUnit.leases?.[0]; // Get latest lease
       const reservedUser = fullUnit.reserved_by_user;
+      const unitTypeName = typeof fullUnit.unitType === 'object' ? (fullUnit.unitType?.name || '') : (fullUnit.unitType || fullUnit.unitTypeName || '');
 
       setFormData({
         propertyId: fullUnit.propertyId?.toString() || '',
         unitNumber: fullUnit.unitNumber || '',
-        unitType: fullUnit.unitType || '',
+        unitType: unitTypeName,
         floor: fullUnit.floor?.toString() || '',
         rentalMode: fullUnit.rentalMode || 'FULL_UNIT',
         bedrooms: fullUnit.bedrooms?.toString() || '1',
+        baseRent: fullUnit.baseRent ? String(fullUnit.baseRent) : '1200',
         status: fullUnit.status || 'Vacant',
         bedroomIdentifiers: fullUnit.bedroomsList?.map(b => b.bedroomNumber) || [],
-        unit_status: fullUnit.unit_status || 'INACTIVE',
+        unit_status: fullUnit.unit_status || (fullUnit.classification === 'New Construction' ? 'INACTIVE' : 'ACTIVE'),
         gc_delivered_target_date: fullUnit.gc_delivered_target_date ? new Date(fullUnit.gc_delivered_target_date).toISOString().split('T')[0] : '',
         reserved_flag: fullUnit.reserved_flag || !!activeLease,
         reserved_by_id: reservedUser?.id?.toString() || activeLease?.tenantId?.toString() || '',
@@ -239,7 +244,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         reserve_email: reservedUser?.email || activeLease?.tenant?.email || '',
         reserve_phone: reservedUser?.phone || activeLease?.tenant?.phone || '',
         tentative_move_in_date: (fullUnit.tentative_move_in_date || activeLease?.startDate) ? new Date(fullUnit.tentative_move_in_date || activeLease?.startDate).toISOString().split('T')[0] : '',
-        classification: fullUnit.unit_status === 'INACTIVE' ? 'New Construction' : (fullUnit.classification || 'Completed')
+        classification: fullUnit.classification || (fullUnit.unit_status === 'INACTIVE' ? 'New Construction' : 'Completed')
       });
       setEditUnit(fullUnit);
       setShowModal(true);
@@ -259,6 +264,11 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     const { name, value } = e.target;
     setFormData(prev => {
       const newData = { ...prev, [name]: value };
+
+      // Sync unit_status with classification
+      if (name === 'classification') {
+        newData.unit_status = value === 'New Construction' ? 'INACTIVE' : 'ACTIVE';
+      }
 
       // Auto-generate bedroom identifiers logic
       if (name === 'bedrooms' || name === 'unitNumber') {
@@ -306,19 +316,20 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     setSubmitting(true);
 
     try {
-      const selectedProperty = buildings.find(b => b.id === parseInt(formData.propertyId));
+      const selectedProperty = (Array.isArray(buildings) ? buildings : []).find(b => String(b.id) === String(formData.propertyId));
 
       const payload = {
         unitNumber: formData.unitNumber,
         unit: formData.unitNumber, // Map to backend expected field
         unitType: formData.unitType || null,
-        floor: formData.floor ? parseInt(formData.floor) : null,
+        floor: formData.floor ? parseInt(formData.floor) : 1,
         bedrooms: parseInt(formData.bedrooms) || 1,
         propertyId: formData.propertyId,
         building: selectedProperty ? selectedProperty.name : 'Unknown',
         rentalMode: formData.rentalMode,
         status: formData.status,
         bedroomIdentifiers: formData.bedroomIdentifiers,
+        baseRent: formData.baseRent ? parseFloat(formData.baseRent) : 1200,
         // readiness fields
         unit_status: formData.unit_status,
         gc_delivered_target_date: formData.gc_delivered_target_date || null,
@@ -336,7 +347,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
       if (editUnit) {
         // Update existing unit
-        await api.put(`/api/admin/units/${editUnit.id}`, payload);
+        const unitId = editUnit.id || editUnit._id || (editUnit.data && editUnit.data.id);
+        await api.put(`/api/admin/units/${unitId}`, payload);
         showToast('Unit updated successfully');
       } else {
         // Create new unit
@@ -370,7 +382,13 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
       setSubmitting(false);
     }
   };
-  const filteredUnits = units;
+  const filteredUnits = units.filter(unit => {
+    if (!showInactive) {
+      const isConstruction = unit.unit_status === 'INACTIVE' || unit.classification === 'New Construction';
+      if (isConstruction) return false;
+    }
+    return true;
+  });
 
   const getPageNumbers = () => {
     const total = Math.max(1, pagination.totalPages || 1);
@@ -459,22 +477,22 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               />
             </div>
 
-             <label className="flex items-center gap-2 cursor-pointer group bg-white py-2 px-3 rounded-xl shadow-sm border border-slate-200 w-fit">
-               <div className="relative flex items-center shrink-0">
-                 <input 
-                    type="checkbox" 
-                    className="sr-only" 
-                    checked={showInactive}
-                    onChange={() => {
-                      const newValue = !showInactive;
-                      setShowInactive(newValue);
-                      localStorage.setItem('showUnitsInConstruction', newValue.toString());
-                    }} 
-                 />
-                 <div className={`w-[36px] min-w-[36px] h-[20px] rounded-full transition-colors ${showInactive ? 'bg-indigo-600' : 'bg-slate-200'}`}></div>
-                 <div className={`absolute left-[2px] bg-white w-[16px] h-[16px] rounded-full shadow transition-transform ${showInactive ? 'translate-x-[16px]' : 'translate-x-0'}`}></div>
-               </div>
-               <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Show units in construction</span>
+            <label className="flex items-center gap-2 cursor-pointer group bg-white py-2 px-3 rounded-xl shadow-sm border border-slate-200 w-fit">
+              <div className="relative flex items-center shrink-0">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={showInactive}
+                  onChange={() => {
+                    const newValue = !showInactive;
+                    setShowInactive(newValue);
+                    localStorage.setItem('showUnitsInConstruction', newValue.toString());
+                  }}
+                />
+                <div className={`w-[36px] min-w-[36px] h-[20px] rounded-full transition-colors ${showInactive ? 'bg-indigo-600' : 'bg-slate-200'}`}></div>
+                <div className={`absolute left-[2px] bg-white w-[16px] h-[16px] rounded-full shadow transition-transform ${showInactive ? 'translate-x-[16px]' : 'translate-x-0'}`}></div>
+              </div>
+              <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Show units in construction</span>
             </label>
           </div>
 
@@ -525,19 +543,20 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                       <Link to={`/units/${unit.id}`} className="font-medium text-indigo-600 hover:text-indigo-800 hover:underline transition-all">
                         {unit.unitNumber}
                       </Link>
-                      <span className="text-slate-600 font-bold">{unit.companyName || '-'}</span>
-                      <span className="font-bold text-indigo-600">{unit.buildingName || unit.civicNumber}</span>
-                      <span className="text-slate-600">{unit.unitType || '-'}</span>
+                      <span className="text-slate-600 font-bold">{unit.companyName || unit.property?.company?.name || '-'}</span>
+                      <span className="font-bold text-indigo-600">{unit.buildingName || unit.building || unit.property?.name || unit.civicNumber || '-'}</span>
+                      <span className="text-slate-600">
+                        {typeof unit.unitType === 'object' ? (unit.unitType?.name || '-') : (unit.unitType || unit.unitTypeName || '-')}
+                      </span>
                       <span className="text-slate-600">{unit.floor || '-'}</span>
                       <span className="text-slate-600">{unit.bedrooms || '-'}</span>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${
-                        unit.unit_status === 'INACTIVE' ? (unit.reserved_flag ? 'bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-tighter' : 'bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-tighter') :
-                        unit.status === 'Occupied' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                        unit.status === 'Fully Booked' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
-                        'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                      }`}>
-                        {unit.unit_status === 'INACTIVE' 
-                          ? (unit.reserved_flag ? 'Reserved - Not Ready' : 'In Construction') 
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${unit.unit_status === 'INACTIVE' ? (unit.reserved_flag ? 'bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-tighter' : 'bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-tighter') :
+                          unit.status === 'Occupied' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                            unit.status === 'Fully Booked' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                              'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                        }`}>
+                        {unit.unit_status === 'INACTIVE'
+                          ? (unit.reserved_flag ? 'Reserved - Not Ready' : 'In Construction')
                           : (unit.reserved_flag ? 'Reserved - Ready for Move-In' : unit.status)
                         }
                       </span>
@@ -653,11 +672,11 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                           className="w-full p-3.5 rounded-xl border-2 border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 bg-white text-sm appearance-none pr-10 transition-all"
                         >
                           <option value="" disabled>Select Building</option>
-                          {buildings
-                            .filter(b => b.status === 'Active')
+                          {(Array.isArray(buildings) ? buildings : [])
+                            .filter(b => b.status === 'Active' || b.isActive !== false)
                             .map((b, idx) => (
                               <option key={b.id || `modal-bldg-${idx}`} value={b.id}>
-                                {b.name} - {b.civicNumber}
+                                {b.name} {b.address ? `(${b.address})` : ''}
                               </option>
                             ))}
                         </select>
@@ -797,37 +816,36 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     {/* 9.2 Activation Control */}
                     <div className="pt-4 border-t border-slate-100">
                       <div className="flex items-center justify-between mb-4">
-                         <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                           <CheckCircle size={16} /> Activation Control
-                         </h4>
+                        <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                          <CheckCircle size={16} /> Activation Control
+                        </h4>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                           <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Unit Classification</label>
-                           <select 
-                              name="classification"
-                              value={formData.classification}
-                              onChange={handleInputChange}
-                              className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white font-bold"
-                           >
-                              <option value="Completed">Completed Unit</option>
-                              <option value="New Construction">New Construction</option>
-                           </select>
+                          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Unit Classification</label>
+                          <select
+                            name="classification"
+                            value={formData.classification}
+                            onChange={handleInputChange}
+                            className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white font-bold"
+                          >
+                            <option value="Completed">Completed Unit</option>
+                            <option value="New Construction">New Construction</option>
+                          </select>
                         </div>
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                           <div className="flex items-center justify-between">
-                             <div>
-                                <p className="text-sm font-bold text-slate-800">Unit Status</p>
-                                <p className="text-[10px] text-slate-500">Currently: {formData.unit_status || 'INACTIVE'}</p>
-                             </div>
-                             <span className={`px-3 py-1 rounded-full text-xs font-black border ${
-                                formData.unit_status === 'ACTIVE' 
-                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
-                                  : 'bg-amber-100 text-amber-700 border-amber-200'
-                             }`}>
-                               {formData.unit_status || 'INACTIVE'}
-                             </span>
+                            <div>
+                              <p className="text-sm font-bold text-slate-800">Unit Status</p>
+                              <p className="text-[10px] text-slate-500">Currently: {formData.unit_status || 'INACTIVE'}</p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-black border ${formData.unit_status === 'ACTIVE'
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-100 text-amber-700 border-amber-200'
+                              }`}>
+                              {formData.unit_status || 'INACTIVE'}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -835,55 +853,55 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
                     {/* 9.3 Construction Workflow Setup */}
                     <div className="pt-4 border-t border-slate-100">
-                       <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2 mb-4">
-                         <Settings size={16} /> Construction Setup
-                       </h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">GC Delivered Date</label>
-                             <input 
-                                type="date"
-                                name="gc_delivered_target_date"
-                                value={formData.gc_delivered_target_date}
-                                onChange={handleInputChange}
-                                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none"
-                             />
-                          </div>
-                          <div className="flex items-end pb-3">
-                             <p className="text-[10px] text-slate-400 font-medium italic">
-                               💡 Once entered, future dates will auto-calculate based on PMS settings.
-                             </p>
-                          </div>
-                       </div>
+                      <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2 mb-4">
+                        <Settings size={16} /> Construction Setup
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">GC Delivered Date</label>
+                          <input
+                            type="date"
+                            name="gc_delivered_target_date"
+                            value={formData.gc_delivered_target_date}
+                            onChange={handleInputChange}
+                            className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none"
+                          />
+                        </div>
+                        <div className="flex items-end pb-3">
+                          <p className="text-[10px] text-slate-400 font-medium italic">
+                            💡 Once entered, future dates will auto-calculate based on PMS settings.
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
                     {/* 9.5 Reservation */}
                     <div className="pt-4 border-t border-slate-100">
                       <div className="flex items-center justify-between mb-4">
-                         <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                           <AlertCircle size={16} /> Unit Reservation
-                         </h4>
-                         <label className={`flex items-center gap-2 ${editUnit?.activeLease ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                            <span className="text-xs font-bold text-slate-500 uppercase">
-                              {editUnit?.activeLease ? 'Unit Occupied (Locked)' : 'Reserve Unit'}
-                            </span>
-                            <div className="relative">
-                               <input 
-                                  type="checkbox" 
-                                  className="sr-only" 
-                                  disabled={!!editUnit?.activeLease}
-                                  checked={formData.reserved_flag}
-                                  onChange={() => setFormData(p => ({ ...p, reserved_flag: !p.reserved_flag }))}
-                               />
-                               <div className={`w-8 h-5 rounded-full transition-colors ${formData.reserved_flag ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
-                               <div className={`absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${formData.reserved_flag ? 'translate-x-3' : ''}`}></div>
-                            </div>
-                         </label>
+                        <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                          <AlertCircle size={16} /> Unit Reservation
+                        </h4>
+                        <label className={`flex items-center gap-2 ${editUnit?.activeLease ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                          <span className="text-xs font-bold text-slate-500 uppercase">
+                            {editUnit?.activeLease ? 'Unit Occupied (Locked)' : 'Reserve Unit'}
+                          </span>
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              disabled={!!editUnit?.activeLease}
+                              checked={formData.reserved_flag}
+                              onChange={() => setFormData(p => ({ ...p, reserved_flag: !p.reserved_flag }))}
+                            />
+                            <div className={`w-8 h-5 rounded-full transition-colors ${formData.reserved_flag ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
+                            <div className={`absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${formData.reserved_flag ? 'translate-x-3' : ''}`}></div>
+                          </div>
+                        </label>
                       </div>
 
                       {editUnit?.activeLease && (
                         <p className="text-[10px] text-amber-600 font-bold bg-amber-50 p-2 rounded-lg border border-amber-100 flex items-center gap-2 mb-2">
-                           <AlertCircle size={14} /> Unit is leased to {editUnit.activeLease.tenantName}. Reservation is disabled.
+                          <AlertCircle size={14} /> Unit is leased to {editUnit.activeLease.tenantName}. Reservation is disabled.
                         </p>
                       )}
 
@@ -893,14 +911,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             <div className="col-span-full">
                               <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reserved Prospect (Quick Entry)</label>
                               <div className="grid grid-cols-2 gap-3 mb-3">
-                                <input 
+                                <input
                                   name="reserve_firstName"
                                   value={formData.reserve_firstName}
                                   onChange={handleInputChange}
                                   placeholder="First Name"
                                   className="w-full p-2.5 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white"
                                 />
-                                <input 
+                                <input
                                   name="reserve_lastName"
                                   value={formData.reserve_lastName}
                                   onChange={handleInputChange}
@@ -909,7 +927,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 />
                               </div>
                               <div className="grid grid-cols-2 gap-3">
-                                <input 
+                                <input
                                   name="reserve_email"
                                   value={formData.reserve_email}
                                   onChange={handleInputChange}
@@ -918,7 +936,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 />
                                 <div className="relative">
                                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">+1</span>
-                                  <input 
+                                  <input
                                     name="reserve_phone"
                                     value={formData.reserve_phone}
                                     onChange={handleInputChange}
@@ -929,18 +947,18 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                               </div>
                             </div>
                             <div>
-                               <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tentative Move-In</label>
-                               <input 
-                                  type="date"
-                                  name="tentative_move_in_date"
-                                  value={formData.tentative_move_in_date}
-                                  onChange={handleInputChange}
-                                  className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none"
-                               />
+                              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tentative Move-In</label>
+                              <input
+                                type="date"
+                                name="tentative_move_in_date"
+                                value={formData.tentative_move_in_date}
+                                onChange={handleInputChange}
+                                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none"
+                              />
                             </div>
                           </div>
                           <p className="text-[10px] text-blue-500 font-bold bg-blue-50 p-2 rounded-lg border border-blue-100">
-                             ⚠️ HARD LOCK ENABLED: This unit will be blocked from other lease assignments until the reservation is cleared.
+                            ⚠️ HARD LOCK ENABLED: This unit will be blocked from other lease assignments until the reservation is cleared.
                           </p>
                         </div>
                       )}
@@ -992,14 +1010,18 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     </div>
                     <div>
                       <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Unit Type</p>
-                      <p className="text-sm font-medium text-slate-900">{viewUnit.unitType || '-'}</p>
+                      <p className="text-sm font-medium text-slate-900">
+                        {typeof viewUnit.unitType === 'object' ? (viewUnit.unitType?.name || '-') : (viewUnit.unitType || viewUnit.unitTypeName || '-')}
+                      </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Building Name</p>
-                      <p className="text-sm font-bold text-indigo-600">{viewUnit.building || viewUnit.civicNumber}</p>
+                      <p className="text-sm font-bold text-indigo-600">
+                        {viewUnit.building || viewUnit.buildingName || viewUnit.property?.name || viewUnit.civicNumber || '-'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Floor</p>
@@ -1091,9 +1113,9 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <div>
                 <h3 className="text-2xl font-black text-slate-800 tracking-tight">
-                  {quickAddFormStep === 1 ? 'Select Tenant Type' : 
-                   quickAddTenantType === 'Individual' ? 'Individual Tenant' : 
-                   quickAddTenantType === 'Company' ? 'Company Tenant' : 'Resident Participant'}
+                  {quickAddFormStep === 1 ? 'Select Tenant Type' :
+                    quickAddTenantType === 'Individual' ? 'Individual Tenant' :
+                      quickAddTenantType === 'Company' ? 'Company Tenant' : 'Resident Participant'}
                 </h3>
                 <p className="text-slate-500 font-medium text-sm mt-1">
                   {quickAddFormStep === 1 ? 'Step 1 of 2: Classification' : 'Step 2 of 2: Information'}
@@ -1161,7 +1183,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   e.preventDefault();
                   setIsSavingQuickAdd(true);
                   setQuickAddErrors({});
-                  
+
                   const fData = new FormData(e.target);
                   const getVal = (n) => fData.get(n) || '';
 
@@ -1186,21 +1208,21 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   try {
                     const res = await api.post('/api/admin/tenants', payload);
                     const newTenant = res.data?.data || res.data;
-                    
+
                     // Show success
                     alert(`${quickAddTenantType} created successfully!`);
-                    
+
                     // 1. Update tenants list so it appears in dropdown
                     const updatedTenants = await api.get('/api/admin/tenants?limit=1000');
                     const allTenants = updatedTenants.data?.data || updatedTenants.data || [];
                     setTenants(allTenants);
-                    
+
                     // 2. Auto-Select this new tenant in the Unit Form
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      reserved_by_id: (newTenant.id || newTenant).toString() 
+                    setFormData(prev => ({
+                      ...prev,
+                      reserved_by_id: (newTenant.id || newTenant).toString()
                     }));
-                    
+
                     // 3. Close modal
                     setShowQuickAddTenant(false);
                   } catch (error) {
@@ -1230,13 +1252,13 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                       <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-slate-700 ml-1">Email Address</label>
                         <input name="email" type="email" required={quickAddTenantType !== 'Resident'} className="px-5 py-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all" placeholder="email@example.com" />
-                         {quickAddErrors.email && <p className="text-red-500 text-xs ml-1">{quickAddErrors.email}</p>}
+                        {quickAddErrors.email && <p className="text-red-500 text-xs ml-1">{quickAddErrors.email}</p>}
                       </div>
                       <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-slate-700 ml-1">Mobile Number</label>
                         <div className="relative">
-                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">+1</span>
-                           <input name="phone" required className="pl-10 pr-5 py-3.5 w-full rounded-2xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all" placeholder="514-123-4567" />
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">+1</span>
+                          <input name="phone" required className="pl-10 pr-5 py-3.5 w-full rounded-2xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all" placeholder="514-123-4567" />
                         </div>
                         {quickAddErrors.phone && <p className="text-red-500 text-xs ml-1">{quickAddErrors.phone}</p>}
                       </div>
@@ -1246,17 +1268,17 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                       <div className="flex flex-col gap-2 p-6 bg-purple-50 rounded-2xl border border-purple-100">
                         <label className="text-sm font-bold text-purple-700">Company Legal Name</label>
                         <input name="companyName" required className="px-4 py-3 rounded-xl border border-purple-200 bg-white" placeholder="Corp / LLC" />
-                         {quickAddErrors.companyName && <p className="text-red-500 text-xs ml-1">{quickAddErrors.companyName}</p>}
+                        {quickAddErrors.companyName && <p className="text-red-500 text-xs ml-1">{quickAddErrors.companyName}</p>}
                       </div>
                     )}
 
                     {quickAddTenantType === 'Resident' && (
                       <div className="flex flex-col gap-2 p-6 bg-amber-50 rounded-2xl border border-amber-100">
                         <label className="text-sm font-bold text-amber-700">Responsible Tenant</label>
-                        <select 
-                          value={selectedParentId} 
+                        <select
+                          value={selectedParentId}
                           onChange={(e) => setSelectedParentId(e.target.value)}
-                          required 
+                          required
                           className="px-4 py-3 rounded-xl border border-amber-200 bg-white"
                         >
                           <option value="">Select Primary Tenant...</option>
@@ -1264,7 +1286,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             <option key={t.id || `tenant-${idx}`} value={t.id}>{t.name}</option>
                           ))}
                         </select>
-                         {quickAddErrors.parentId && <p className="text-red-500 text-xs ml-1">{quickAddErrors.parentId}</p>}
+                        {quickAddErrors.parentId && <p className="text-red-500 text-xs ml-1">{quickAddErrors.parentId}</p>}
                       </div>
                     )}
                   </div>
@@ -1294,12 +1316,15 @@ const ManageTypesModal = ({ types, onClose, onRefresh }) => {
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!newType.typeName.trim()) return;
+    const typeNameStr = (newType?.typeName || newType?.name || '').trim();
+    if (!typeNameStr) return;
 
     setLoading(true);
     try {
       const payload = {
-        typeName: newType.typeName.trim(),
+        name: typeNameStr,
+        typeName: typeNameStr,
+        marketRent: parseFloat(newType.fullUnitRate) || 0,
         fullUnitRate: parseFloat(newType.fullUnitRate) || 0,
         singleBedroomRate: parseFloat(newType.singleBedroomRate) || 0
       };
@@ -1340,8 +1365,8 @@ const ManageTypesModal = ({ types, onClose, onRefresh }) => {
 
   const handleEdit = (type) => {
     setNewType({
-      typeName: type.typeName,
-      fullUnitRate: type.fullUnitRate || '',
+      typeName: type.typeName || type.name || '',
+      fullUnitRate: type.fullUnitRate || type.marketRent || '',
       singleBedroomRate: type.singleBedroomRate || ''
     });
     setEditingId(type.id);
@@ -1367,15 +1392,15 @@ const ManageTypesModal = ({ types, onClose, onRefresh }) => {
                 {editingId ? '✏️ Edit Preset' : '➕ Add New Preset'}
               </span>
               {editingId && (
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => { setEditingId(null); setNewType({ typeName: '', fullUnitRate: '', singleBedroomRate: '' }); }}
                   className="text-xs text-rose-500 hover:underline"
                 >Cancel</button>
               )}
             </div>
             <input
-              value={newType.typeName}
+              value={newType?.typeName || ''}
               onChange={(e) => setNewType({ ...newType, typeName: e.target.value })}
               placeholder="Type Name (e.g. Makenzie)"
               className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-bold"
@@ -1403,9 +1428,9 @@ const ManageTypesModal = ({ types, onClose, onRefresh }) => {
                 />
               </div>
             </div>
-            <Button variant="primary" disabled={loading || !newType.typeName.trim()} className="mt-1 shadow-sm">
-              {editingId ? 'Update Preset Rule' : 'Add Preset Rates'}
-            </Button>
+              <Button variant="primary" disabled={loading || !(newType?.typeName || '').trim()} className="mt-1 shadow-sm">
+                {editingId ? 'Update Preset Rule' : 'Add Preset Rates'}
+              </Button>
           </form>
 
           <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
@@ -1417,7 +1442,7 @@ const ManageTypesModal = ({ types, onClose, onRefresh }) => {
                   <div>
                     <p className="font-bold text-slate-800 text-sm">{type.typeName || type.name}</p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Full: <span className="font-bold text-slate-700">${parseFloat(type.fullUnitRate || 0).toLocaleString()}</span> | 
+                      Full: <span className="font-bold text-slate-700">${parseFloat(type.fullUnitRate || 0).toLocaleString()}</span> |
                       Bed: <span className="font-bold text-slate-700">${parseFloat(type.singleBedroomRate || 0).toLocaleString()}</span>
                     </p>
                   </div>

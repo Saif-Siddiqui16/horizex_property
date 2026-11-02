@@ -31,6 +31,12 @@ router.get(
 );
 
 router.get(
+  '/payments',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'ACCOUNTANT', 'OWNER'),
+  listPaymentsReceived
+);
+
+router.get(
   '/invoices',
   authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'ACCOUNTANT', 'TENANT', 'OWNER'),
   listInvoices

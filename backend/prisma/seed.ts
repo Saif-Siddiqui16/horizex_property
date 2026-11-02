@@ -24,7 +24,9 @@ async function main() {
   const passwordHash = await bcrypt.hash('Admin@123456', 10);
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@horizex.com' },
-    update: {},
+    update: {
+      role: Role.ADMIN,
+    },
     create: {
       companyId: company.id,
       email: 'admin@horizex.com',
@@ -32,7 +34,7 @@ async function main() {
       firstName: 'Admin',
       lastName: 'Administrator',
       phone: '+1 (514) 555-0100',
-      role: Role.SUPER_ADMIN,
+      role: Role.ADMIN,
     },
   });
   console.log(`✅ Super Admin created: ${superAdmin.email} (Password: Admin@123456)`);
@@ -134,6 +136,53 @@ async function main() {
   });
 
   console.log('✅ Demo Units initialized (Unit 101: Vacant, Unit 102: Turnover Pipeline).');
+  // 7. Seed Demo Tenant & Owner Users
+  const userPasswordHash = await bcrypt.hash('123456', 10);
+  const tenantUser = await prisma.user.upsert({
+    where: { email: 'tenant@property.com' },
+    update: { passwordHash: userPasswordHash, role: Role.TENANT, isActive: true },
+    create: {
+      email: 'tenant@property.com',
+      passwordHash: userPasswordHash,
+      firstName: 'Demo',
+      lastName: 'Tenant',
+      role: Role.TENANT,
+      phone: '+1 (514) 555-0191',
+      companyId: company.id,
+      isActive: true,
+    },
+  });
+
+  const tenantRecord = await prisma.tenant.upsert({
+    where: { email: 'tenant@property.com' },
+    update: { isActive: true },
+    create: {
+      id: tenantUser.id,
+      companyId: company.id,
+      firstName: 'Demo',
+      lastName: 'Tenant',
+      email: 'tenant@property.com',
+      phone: '+1 (514) 555-0191',
+      isActive: true,
+    },
+  });
+
+  const ownerUser = await prisma.user.upsert({
+    where: { email: 'owner@property.com' },
+    update: { passwordHash: userPasswordHash, role: Role.OWNER, isActive: true },
+    create: {
+      email: 'owner@property.com',
+      passwordHash: userPasswordHash,
+      firstName: 'Demo',
+      lastName: 'Owner',
+      role: Role.OWNER,
+      phone: '+1 (514) 555-0192',
+      companyId: company.id,
+      isActive: true,
+    },
+  });
+  console.log('✅ Demo Tenant & Owner seeded (tenant@property.com, owner@property.com / 123456).');
+
   console.log('🎉 Seeding successfully completed!');
 }
 

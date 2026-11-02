@@ -24,12 +24,18 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   try {
     const payload = verifyAccessToken(token);
 
-    // Super Admin can switch company context via X-Company-Context header
+    // Super Admin / Admin can switch company context via X-Company-Context header
     let effectiveCompanyId = payload.companyId;
     const contextHeader = req.headers['x-company-context'] as string | undefined;
 
-    if (payload.role === 'SUPER_ADMIN' && contextHeader) {
-      effectiveCompanyId = contextHeader;
+    if (payload.role === 'SUPER_ADMIN' || payload.role === 'ADMIN') {
+      if (contextHeader === '' || contextHeader === 'all') {
+        effectiveCompanyId = null;
+      } else if (contextHeader) {
+        effectiveCompanyId = contextHeader;
+      } else {
+        effectiveCompanyId = null;
+      }
     }
 
     req.user = {

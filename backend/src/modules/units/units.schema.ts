@@ -1,31 +1,40 @@
 import { z } from 'zod';
 
 export const createUnitSchema = z.object({
-  body: z.object({
-    propertyId: z.string().uuid('Invalid property ID'),
-    unitTypeId: z.string().uuid().optional(),
-    unitNumber: z.string().min(1, 'Unit number is required'),
-    floor: z.number().int().optional().default(1),
-    bedrooms: z.number().int().nonnegative().optional().default(1),
-    bathrooms: z.number().positive().optional().default(1.0),
-    squareFeet: z.number().int().positive().optional(),
-    baseRent: z.number().positive('Base rent must be a positive number'),
-  }),
+  body: z
+    .object({
+      propertyId: z.string().min(1, 'Property ID is required'),
+      unitTypeId: z.string().optional().nullable(),
+      unitType: z.string().optional().nullable(),
+      unitNumber: z.string().min(1, 'Unit number is required'),
+      floor: z.coerce.number().int().optional().nullable().default(1),
+      bedrooms: z.coerce.number().int().nonnegative().optional().default(1),
+      bathrooms: z.coerce.number().positive().optional().default(1.0),
+      squareFeet: z.coerce.number().int().positive().optional().nullable(),
+      baseRent: z.coerce.number().positive().optional().default(1200),
+      status: z.string().optional(),
+      rentalMode: z.string().optional(),
+    })
+    .passthrough(),
 });
 
 export const updateUnitSchema = z.object({
   params: z.object({
-    id: z.string().uuid(),
+    id: z.string(),
   }),
-  body: z.object({
-    unitTypeId: z.string().uuid().optional(),
-    floor: z.number().int().optional(),
-    bedrooms: z.number().int().nonnegative().optional(),
-    bathrooms: z.number().positive().optional(),
-    squareFeet: z.number().int().positive().optional(),
-    baseRent: z.number().positive().optional(),
-    status: z.enum(['OCCUPIED', 'VACANT', 'MAINTENANCE', 'TURNOVER']).optional(),
-  }),
+  body: z
+    .object({
+      unitTypeId: z.string().optional().nullable(),
+      unitType: z.string().optional().nullable(),
+      unitNumber: z.string().optional(),
+      floor: z.coerce.number().int().optional().nullable(),
+      bedrooms: z.coerce.number().int().nonnegative().optional(),
+      bathrooms: z.coerce.number().positive().optional(),
+      squareFeet: z.coerce.number().int().positive().optional().nullable(),
+      baseRent: z.coerce.number().positive().optional(),
+      status: z.string().optional(),
+    })
+    .passthrough(),
 });
 
 export const updateReadinessSchema = z.object({

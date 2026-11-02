@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import api from '../api/client';
 import { AccessControl } from '../components/AccessControl';
 // talCaseService removed
-import { EntityNotesPanel } from '../components/notes/EntityNotesPanel';
+import { EntityNotesPanel } from '../components/notes/EntityNotesPanel';
 const initialTenants = [];
 
 export const Tenants = () => {
@@ -232,7 +232,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
           // Edit Tenant Consistency: If editing, ensure the unit stays selected if found in result
           if (editingTenant && editingTenant.unitId) {
-            const found = units.find(u => u.id === parseInt(editingTenant.unitId));
+            const found = units.find(u => String(u.id) === String(editingTenant.unitId));
             if (found) {
               setSelectedUnitId(editingTenant.unitId.toString());
             }
@@ -258,7 +258,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   // Handle unit selection to check if it's bedroom-wise
   useEffect(() => {
     if (selectedUnitId) {
-      const unit = availableUnits.find(u => u.id === parseInt(selectedUnitId));
+      const unit = availableUnits.find(u => String(u.id) === String(selectedUnitId));
       setIsBedroomWise(unit?.rentalMode === 'BEDROOM_WISE');
     } else {
       setIsBedroomWise(false);
@@ -289,14 +289,26 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   /* 🔗 HANDLE URL PARAMS */
   useEffect(() => {
     if (id) {
-      const tenantId = parseInt(id);
-      const found = tenants.find(t => t.id === tenantId);
+      const found = tenants.find(t => String(t.id) === String(id));
       if (found) {
         setViewingTenant(found);
         setErrorNotFound(false);
       } else {
-        setViewingTenant(null);
-        setErrorNotFound(true);
+        api.get('/api/admin/tenants/' + id)
+          .then(res => {
+            const data = res.data?.data || res.data;
+            if (data && data.id) {
+              setViewingTenant(data);
+              setErrorNotFound(false);
+            } else {
+              setViewingTenant(null);
+              setErrorNotFound(true);
+            }
+          })
+          .catch(() => {
+            setViewingTenant(null);
+            setErrorNotFound(true);
+          });
       }
     } else {
       setViewingTenant(null);
@@ -349,7 +361,13 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     const formData = new FormData(form);
     const getVal = (name) => formData.get(name) || '';
 
+    const activeCompanyId = localStorage.getItem('global_selected_company_id');
+
+    const selectedPropObj = properties.find(p => String(p.id) === String(selectedPropertyId));
+    const selectedUnitObj = availableUnits.find(u => String(u.id) === String(selectedUnitId));
+
     const payload = {
+      companyId: activeCompanyId || undefined,
       firstName: getVal('firstName'),
       lastName: getVal('lastName'),
       type: tenantType,
@@ -357,7 +375,9 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
       phone: cleanPhone,
       parentId: tenantType === 'Resident' ? selectedParentId : null,
       propertyId: selectedPropertyId || null,
+      propertyName: selectedPropObj?.name || null,
       unitId: selectedUnitId || null,
+      unitNumber: selectedUnitObj?.unitNumber || selectedUnitObj?.name || null,
       bedroomId: selectedBedroomId || null,
       companyName: (tenantType === 'Company' || tenantType === 'COMPANY') ? getVal('companyName') : null,
       companyDetails: (tenantType === 'Company' || tenantType === 'COMPANY') ? getVal('street2') : null,
@@ -634,7 +654,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         </span>
 
                         <span className="text-sm text-slate-600 truncate">
-                          {tenant.companyName || 'Horizex Group'}
+                          {tenant.companyName || tenant.company?.name || '-'}
                         </span>
 
                         <span className="text-sm text-slate-600">
@@ -847,13 +867,13 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                           <div className="flex items-center gap-2">
                             <Building2 size={12} className="text-slate-400 shrink-0" />
                             <span className="text-slate-600 font-bold uppercase tracking-wider text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded-md">
-                              {tenant.companyName || 'Horizex Group'}
+                              {tenant.companyName || tenant.company?.name || '-'}
                             </span>
                           </div>
                           {true && (
                             <div className="flex items-center gap-2">
                               <Building2 size={12} className="text-slate-400" />
-                              <span className="text-slate-600 font-medium">{tenant.companyName || 'Horizex Group'}</span>
+                              <span className="text-slate-600 font-medium">{tenant.companyName || tenant.company?.name || '-'}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-2">
@@ -1220,7 +1240,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         >
                           <option value="">Choose a billable tenant...</option>
                           {billableTenants.map(t => (
-                            <option key={t.id} value={t.id}>{t.name} ({t.type === 'COMPANY' || t.type === 'Company' ? 'Company' : 'Individual'})</option>
+                            <option key={t.id} value={t.id}>{t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.companyName || 'Tenant'} ({t.type === 'COMPANY' || t.type === 'Company' ? 'Company' : 'Individual'})</option>
                           ))}
                         </select>
                         {errors.parentId && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.parentId}</p>}
@@ -1797,7 +1817,7 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
     try {
       const payload = {
         tenantId: tenantData.id,
-        unitId: parseInt(formData.get('unitId')),
+        unitId: formData.get('unitId'),
         startDate: formData.get('startDate'),
         endDate: formData.get('endDate'),
         monthlyRent: parseFloat(formData.get('rent')),

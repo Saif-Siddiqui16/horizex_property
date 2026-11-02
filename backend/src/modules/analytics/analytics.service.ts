@@ -132,10 +132,44 @@ export class AnalyticsService {
       }
     }
 
-    return Object.entries(monthlyRevenueMap).map(([month, revenue]) => ({
+    const monthlyRevenue = Object.entries(monthlyRevenueMap).map(([month, revenue]) => ({
       month,
       revenue: Math.round(revenue * 100) / 100,
+      amount: Math.round(revenue * 100) / 100,
+      rent: Math.round(revenue * 100) / 100,
+      deposit: 0,
+      serviceFees: 0,
     }));
+
+    const propWhere: any = { isActive: true };
+    if (companyId) propWhere.companyId = companyId;
+    const properties = await prisma.property.findMany({
+      where: propWhere,
+      select: { id: true, name: true },
+    });
+
+    const revenueByProperty = properties.map((p) => ({
+      id: p.id,
+      name: p.name,
+      amount: 0,
+      rent: 0,
+      deposit: 0,
+      serviceFees: 0,
+      monthly: monthlyRevenue.map((m) => ({ ...m, amount: 0, rent: 0, deposit: 0, serviceFees: 0 })),
+    }));
+
+    const totalRevenue = monthlyRevenue.reduce((acc, curr) => acc + curr.revenue, 0);
+
+    return {
+      actualRevenue: totalRevenue,
+      actualRent: totalRevenue,
+      actualDeposit: 0,
+      actualServiceFees: 0,
+      projectedRevenue: totalRevenue,
+      totalRevenue,
+      monthlyRevenue,
+      revenueByProperty,
+    };
   }
 
   static async getVacancyAnalytics(companyId?: string | null) {
@@ -149,24 +183,64 @@ export class AnalyticsService {
       include: {
         units: {
           where: { isActive: true },
-          select: { status: true },
+          include: {
+            unitType: true,
+          },
         },
       },
     });
 
-    return properties.map((prop) => {
-      const total = prop.units.length;
-      const vacant = prop.units.filter((u) => u.status === 'VACANT' || u.status === 'TURNOVER').length;
-      const vacancyRate = total > 0 ? (vacant / total) * 100 : 0;
+    let total = 0;
+    let vacant = 0;
+    let occupied = 0;
+    const vacancyByBuilding: any[] = [];
+    const vacantUnitsList: any[] = [];
 
-      return {
-        propertyId: prop.id,
-        propertyName: prop.name,
-        totalUnits: total,
-        vacantUnits: vacant,
-        vacancyRate: Math.round(vacancyRate * 10) / 10,
-      };
-    });
+    for (const prop of properties) {
+      const propTotal = prop.units.length;
+      const propVacant = prop.units.filter((u) => u.status === 'VACANT' || u.status === 'TURNOVER').length;
+      const propOccupied = propTotal - propVacant;
+
+      total += propTotal;
+      vacant += propVacant;
+      occupied += propOccupied;
+
+      vacancyByBuilding.push({
+        name: prop.name,
+        total: propTotal,
+        occupied: propOccupied,
+        vacant: propVacant,
+        hasBedroomWise: false,
+      });
+
+      for (const u of prop.units) {
+        if (u.status === 'VACANT' || u.status === 'TURNOVER') {
+          vacantUnitsList.push({
+            id: u.id,
+            unitNumber: u.unitNumber,
+            building: prop.name,
+            rent: Number(u.baseRent),
+            listingAgent: 'Horizex Leasing',
+            rentalStatus: u.status === 'VACANT' ? 'Ready to rent out' : 'Under renovations',
+            listingStatus: 'Already listed',
+            parking: 'Yes',
+          });
+        }
+      }
+    }
+
+    return {
+      total,
+      vacant,
+      occupied,
+      totalVacantBedrooms: 0,
+      fullUnitCount: total,
+      bedroomWiseCount: 0,
+      willBeVacant: 0,
+      upcomingVacancies: [],
+      vacancyByBuilding,
+      vacantUnitsList,
+    };
   }
 }
 

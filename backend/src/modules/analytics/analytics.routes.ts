@@ -18,6 +18,12 @@ router.get(
 );
 
 router.get(
+  '/stats',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'ACCOUNTANT', 'OWNER'),
+  getDashboardStats
+);
+
+router.get(
   '/revenue',
   authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'ACCOUNTANT', 'OWNER'),
   getRevenueTrajectory

@@ -56,7 +56,23 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         api.get(`/api/admin/analytics/revenue${ownerParam}`),
         api.get(`/api/admin/dashboard/stats${ownerParam}`)
       ]);
-      const data = res.data;
+      const rawData = res.data;
+      const data = Array.isArray(rawData)
+        ? {
+            actualRevenue: rawData.reduce((acc, c) => acc + (c.revenue || c.amount || 0), 0),
+            projectedRevenue: 0,
+            totalRevenue: rawData.reduce((acc, c) => acc + (c.revenue || c.amount || 0), 0),
+            monthlyRevenue: rawData.map(c => ({
+              month: c.month,
+              revenue: c.revenue || c.amount || 0,
+              amount: c.revenue || c.amount || 0,
+              rent: c.rent || c.revenue || 0,
+              deposit: c.deposit || 0,
+              serviceFees: c.serviceFees || 0
+            })),
+            revenueByProperty: []
+          }
+        : (rawData || {});
 
       // Ensure chronological sorting of monthlyRevenue (instead of alphabetical)
       const parseMonth = (s) => {
@@ -89,8 +105,15 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
       }
 
       setStats({
-        ...data,
-        recentActivity: dashRes.data.recentActivity || []
+        actualRevenue: data.actualRevenue || 0,
+        actualRent: data.actualRent || data.actualRevenue || 0,
+        actualDeposit: data.actualDeposit || 0,
+        actualServiceFees: data.actualServiceFees || 0,
+        projectedRevenue: data.projectedRevenue || 0,
+        totalRevenue: data.totalRevenue || data.actualRevenue || 0,
+        monthlyRevenue: data.monthlyRevenue || [],
+        revenueByProperty: data.revenueByProperty || [],
+        recentActivity: dashRes?.data?.recentActivity || []
       });
       setSelectedMonth('all'); // reset month filter on owner change
     } catch (e) {
@@ -202,10 +225,10 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   };
 
   // Available months for filter (from monthlyRevenue)
-  const availableMonths = stats.monthlyRevenue.map(m => m.month);
+  const availableMonths = (stats.monthlyRevenue || []).map(m => m.month);
 
   // Revenue by property — filtered by selected month if one is chosen
-  const filteredRevenueByProperty = stats.revenueByProperty.map(p => {
+  const filteredRevenueByProperty = (stats.revenueByProperty || []).map(p => {
     if (selectedMonth === 'all') {
       return p; // cumulative
     }

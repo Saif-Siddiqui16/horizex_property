@@ -12,6 +12,8 @@ import talCasesRouter from './modules/talCases/talCases.routes';
 import communicationsRouter from './modules/communications/communications.routes';
 import analyticsRouter from './modules/analytics/analytics.routes';
 import extraRouter from './modules/extra/extra.routes';
+import tenantPortalRouter from './modules/tenantPortal/tenantPortal.routes';
+import ownerPortalRouter from './modules/ownerPortal/ownerPortal.routes';
 import { getDashboardStats } from './modules/analytics/analytics.controller';
 import {
   getReadinessDashboard,
@@ -91,5 +93,9 @@ router.use('/admin', extraRouter); // Mounts /unit-types, /insurance, /notes, /c
 
 // Communication
 router.use('/communication', communicationsRouter);
+
+// Portals
+router.use('/tenant', tenantPortalRouter);
+router.use('/owner', ownerPortalRouter);
 
 export default router;

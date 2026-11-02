@@ -69,7 +69,7 @@ export const Properties = () => {
                                 )}
                             </div>
                         </td>
-                        <td className="text-slate-700">{property.units} Units</td>
+                        <td className="text-slate-700">{Array.isArray(property.units) ? property.units.length : (property.units ?? 0)} Units</td>
                         <td>
                             <span className={`font-medium ${parseInt(property.occupancy) >= 90 ? 'text-green-600' : 'text-amber-600'}`}>
                                 {property.occupancy}

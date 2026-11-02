@@ -3,12 +3,12 @@ import { z } from 'zod';
 export const createTenantSchema = z.object({
   body: z.object({
     companyId: z.string().uuid().optional(),
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
-    email: z.string().email('Valid email is required'),
-    phone: z.string().min(10, 'Valid phone number is required'),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    email: z.string().email('Valid email is required').or(z.literal('')).optional(),
+    phone: z.string().optional(),
     emergencyContact: z.string().optional(),
-  }),
+  }).passthrough(),
 });
 
 export const updateTenantSchema = z.object({
@@ -16,11 +16,12 @@ export const updateTenantSchema = z.object({
     id: z.string().uuid(),
   }),
   body: z.object({
-    firstName: z.string().min(1).optional(),
-    lastName: z.string().min(1).optional(),
-    phone: z.string().min(10).optional(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    email: z.string().email('Valid email is required').or(z.literal('')).optional(),
+    phone: z.string().optional(),
     emergencyContact: z.string().optional(),
-  }),
+  }).passthrough(),
 });
 
 export const createVehicleSchema = z.object({
@@ -33,4 +34,3 @@ export const createVehicleSchema = z.object({
     permitNumber: z.string().optional(),
   }),
 });
-

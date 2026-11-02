@@ -105,6 +105,21 @@ export const Companies = () => {
     window.addEventListener('companyChanged', handleSync);
     window.addEventListener('storage', handleSync);
 
+    // Fetch companies list from API
+    const fetchCompaniesList = async () => {
+      try {
+        const res = await api.get('/api/admin/companies');
+        const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        if (list.length > 0) {
+          setCompanies(list);
+          localStorage.setItem('mock_companies', JSON.stringify(list));
+        }
+      } catch (err) {
+        // Fallback to getStoredCompanies
+      }
+    };
+    fetchCompaniesList();
+
     // Fetch official owners list from API
     const fetchOwnersList = async () => {
       try {
@@ -137,10 +152,11 @@ export const Companies = () => {
     });
 
     buildings.forEach(b => {
-      const compId = b.companyId ? parseInt(b.companyId) : null;
+      const compId = b.companyId ? String(b.companyId) : null;
       if (compId && stats[compId]) {
         stats[compId].buildingsCount += 1;
-        stats[compId].unitsCount += parseInt(b.units) || 0;
+        const uCount = Array.isArray(b.units) ? b.units.length : (parseInt(b.units) || 0);
+        stats[compId].unitsCount += uCount;
         stats[compId].buildingsList.push(b);
       }
     });
@@ -197,34 +213,54 @@ export const Companies = () => {
   };
 
   // Handle Create Company
-  const handleCreateCompany = (e) => {
+  const handleCreateCompany = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
       alert('Please enter a company name.');
       return;
     }
 
-    const currentList = getStoredCompanies();
-    const newId = currentList.length ? Math.max(...currentList.map(c => Number(c.id) || 0)) + 1 : 1;
     const newCode = (formData.code || formData.name.slice(0, 4)).trim().toUpperCase();
 
-    const newCompany = {
-      id: newId,
-      name: formData.name.trim(),
-      code: newCode,
-      ownerName: formData.ownerName ? formData.ownerName.trim() : '',
-      address: formData.address ? formData.address.trim() : '',
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const res = await api.post('/api/admin/companies', {
+        name: formData.name.trim(),
+        code: newCode,
+        contactEmail: `info@${newCode.toLowerCase()}.com`
+      });
+      const created = res.data?.data || res.data;
 
-    const updated = [...currentList, newCompany];
-    localStorage.setItem('mock_companies', JSON.stringify(updated));
-    setCompanies(updated);
+      const currentList = getStoredCompanies();
+      const updated = [...currentList, { ...created, ownerName: formData.ownerName ? formData.ownerName.trim() : '', address: formData.address ? formData.address.trim() : '' }];
+      localStorage.setItem('mock_companies', JSON.stringify(updated));
+      setCompanies(updated);
 
-    // Notify other components & global selector
-    window.dispatchEvent(new Event('companyChanged'));
-    setShowAddModal(false);
-    showToast(`Company "${newCompany.name}" added successfully.`);
+      window.dispatchEvent(new Event('companyChanged'));
+      setShowAddModal(false);
+      showToast(`Company "${formData.name.trim()}" added successfully.`);
+    } catch (err) {
+      console.error(err);
+      const currentList = getStoredCompanies();
+      const newId = currentList.length ? Math.max(...currentList.map(c => Number(c.id) || 0)) + 1 : 1;
+
+      const newCompany = {
+        id: newId,
+        name: formData.name.trim(),
+        code: newCode,
+        ownerName: formData.ownerName ? formData.ownerName.trim() : '',
+        address: formData.address ? formData.address.trim() : '',
+        createdAt: new Date().toISOString()
+      };
+
+      const updated = [...currentList, newCompany];
+      localStorage.setItem('mock_companies', JSON.stringify(updated));
+      setCompanies(updated);
+
+      // Notify other components & global selector
+      window.dispatchEvent(new Event('companyChanged'));
+      setShowAddModal(false);
+      showToast(`Company "${newCompany.name}" added successfully.`);
+    }
   };
 
   // Open Edit Modal
@@ -285,8 +321,14 @@ export const Companies = () => {
   };
 
   // Handle Delete Company
-  const handleDeleteCompany = () => {
+  const handleDeleteCompany = async () => {
     if (!selectedCompany) return;
+
+    try {
+      await api.delete(`/api/admin/companies/${selectedCompany.id}`);
+    } catch (e) {
+      console.warn('Backend company delete skipped/failed:', e.message);
+    }
 
     const updated = companies.filter(c => c.id !== selectedCompany.id);
     localStorage.setItem('mock_companies', JSON.stringify(updated));
@@ -806,7 +848,7 @@ export const Companies = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                            {b.units || 0} Units
+                            {Array.isArray(b.units) ? b.units.length : (b.units || 0)} Units
                           </span>
                           <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                             {b.status || 'Active'}

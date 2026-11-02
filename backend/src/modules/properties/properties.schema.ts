@@ -1,28 +1,42 @@
 import { z } from 'zod';
 
 export const createPropertySchema = z.object({
-  body: z.object({
-    companyId: z.string().uuid().optional(), // Injected from token if omitted
-    name: z.string().min(2, 'Property name is required'),
-    address: z.string().min(1, 'Address is required'),
-    city: z.string().min(1, 'City is required'),
-    state: z.string().min(1, 'State is required'),
-    postalCode: z.string().min(1, 'Postal code is required'),
-    totalUnits: z.number().int().nonnegative().optional().default(0),
-  }),
+  body: z
+    .object({
+      companyId: z.string().optional(),
+      name: z.string().min(1, 'Property name is required'),
+      address: z.string().optional(),
+      street: z.string().optional(),
+      civicNumber: z.string().optional(),
+      city: z.string().optional().default('Montreal'),
+      state: z.string().optional(),
+      province: z.string().optional(),
+      postalCode: z.string().optional().default('H1A 1A1'),
+      totalUnits: z.union([z.number(), z.string()]).optional().default(0),
+      units: z.union([z.number(), z.string()]).optional(),
+    })
+    .passthrough(),
 });
 
 export const updatePropertySchema = z.object({
   params: z.object({
-    id: z.string().uuid(),
+    id: z.string(),
   }),
-  body: z.object({
-    name: z.string().min(2).optional(),
-    address: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    postalCode: z.string().optional(),
-    totalUnits: z.number().int().nonnegative().optional(),
-  }),
+  body: z
+    .object({
+      companyId: z.string().optional(),
+      name: z.string().min(1).optional(),
+      address: z.string().optional(),
+      street: z.string().optional(),
+      civicNumber: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      province: z.string().optional(),
+      postalCode: z.string().optional(),
+      totalUnits: z.union([z.number(), z.string()]).optional(),
+      units: z.union([z.number(), z.string()]).optional(),
+    })
+    .passthrough(),
 });
+
 

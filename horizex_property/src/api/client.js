@@ -11,6 +11,11 @@ const api = axios.create({
 // Request interceptor: Attach JWT Bearer token and company context
 api.interceptors.request.use(
   (config) => {
+    // Normalize URL: Strip extra leading /api so calls like api.post('/api/auth/login') don't become /api/api/auth/login
+    if (config.url && config.url.startsWith('/api/')) {
+      config.url = config.url.replace(/^\/api/, '');
+    }
+
     const token = localStorage.getItem('accessToken');
     if (token) {
       if (config.headers && typeof config.headers.set === 'function') {

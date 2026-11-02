@@ -7,7 +7,12 @@ export const authorizeRoles = (...allowedRoles: string[]) => {
       return sendError(res, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const effectiveAllowed = [...allowedRoles];
+    if (effectiveAllowed.includes('SUPER_ADMIN') && !effectiveAllowed.includes('ADMIN')) {
+      effectiveAllowed.push('ADMIN');
+    }
+
+    if (!effectiveAllowed.includes(req.user.role)) {
       return sendError(
         res,
         'FORBIDDEN',

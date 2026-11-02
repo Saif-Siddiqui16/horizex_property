@@ -9,27 +9,28 @@ export const BuildingSelector = () => {
 
     const fetchBuildings = async () => {
         try {
-            // Read properties
+            // Read properties from API first to be fresh and accurate
             let allProps = [];
             try {
+                const res = await api.get('/api/admin/properties');
+                allProps = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+                if (allProps.length > 0) {
+                    localStorage.setItem('mock_properties', JSON.stringify(allProps));
+                }
+            } catch (apiErr) {
                 const stored = localStorage.getItem('mock_properties');
                 if (stored) {
-                    allProps = JSON.parse(stored);
+                    try {
+                        allProps = JSON.parse(stored);
+                    } catch (e) {}
                 }
-            } catch (e) {
-                console.error('Failed reading mock_properties:', e);
-            }
-
-            if (!allProps || allProps.length === 0) {
-                const res = await api.get('/api/admin/properties');
-                allProps = res.data?.data || res.data || [];
             }
 
             // Filter buildings by current active company if one is selected
             const activeCompanyId = localStorage.getItem('global_selected_company_id');
             let filtered = allProps;
             if (activeCompanyId && activeCompanyId !== 'all' && activeCompanyId !== '') {
-                filtered = allProps.filter(p => p.companyId === parseInt(activeCompanyId));
+                filtered = allProps.filter(p => String(p.companyId) === String(activeCompanyId));
             }
 
             setBuildings(filtered);
@@ -82,6 +83,7 @@ export const BuildingSelector = () => {
                 const currentComp = localStorage.getItem('global_selected_company_id');
                 if (currentComp !== foundBuilding.companyId.toString()) {
                     localStorage.setItem('global_selected_company_id', foundBuilding.companyId.toString());
+                    localStorage.setItem('companyContext', foundBuilding.companyId.toString());
                 }
             }
         }

@@ -16,7 +16,7 @@ export const listRenewals = async (req: Request, res: Response, next: NextFuncti
 
 export const listLeases = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
     const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
 
     const leases = await LeasesService.listLeases({
@@ -24,7 +24,7 @@ export const listLeases = async (req: Request, res: Response, next: NextFunction
       status: req.query.status,
       expiringWithinDays: req.query.expiringWithinDays ? parseInt(req.query.expiringWithinDays as string, 10) : undefined,
     });
-    return sendSuccess(res, leases, 200);
+    return sendSuccess(res, leases, 200, { total: leases.length, page: 1, totalPages: 1 });
   } catch (err) {
     return next(err);
   }
@@ -78,6 +78,18 @@ export const addMoveInspection = async (req: Request, res: Response, next: NextF
       req.user?.userId
     );
     return sendSuccess(res, inspection, 201);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const deleteLease = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
+    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+
+    const result = await LeasesService.deleteLease(req.params.id, companyId, req.user?.userId);
+    return sendSuccess(res, result, 200);
   } catch (err) {
     return next(err);
   }
