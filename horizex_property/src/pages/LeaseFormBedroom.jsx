@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { Button } from '../components/Button';
-import { BedDouble, Calendar, DollarSign, Home, User, Shield, ChevronDown, CheckCircle, Bed } from 'lucide-react';
+import { BedDouble, Calendar, DollarSign, Home, User, Shield, ChevronDown, CheckCircle, Bed } from 'lucide-react';
 export const LeaseFormBedroom = () => {
 const navigate = useNavigate();
     const [buildings, setBuildings] = useState([]);
@@ -167,13 +167,16 @@ const navigate = useNavigate();
         try {
             const payload = {
                 ...form,
-                unitId: parseInt(form.unitId),
-                bedroomId: parseInt(form.bedroomId),
-                tenantId: parseInt(form.tenantId),
-                coTenantIds: form.coTenantIds.map(id => parseInt(id)),
+                unitId: form.unitId,
+                bedroomId: form.bedroomId || undefined,
+                tenantId: form.tenantId,
+                coTenantIds: form.coTenantIds || [],
                 monthlyRent: parseFloat(form.monthlyRent) || 0,
                 rentAmount: parseFloat(form.monthlyRent) || 0,
                 securityDeposit: parseFloat(form.securityDeposit) || 0,
+                depositAmount: parseFloat(form.securityDeposit) || 0,
+                startDate: form.startDate,
+                endDate: form.endDate,
                 isFullUnitLease: false,
                 sendCredentials: form.sendCredentials // Explicitly send flag
             };

@@ -44,7 +44,7 @@ export const getLease = async (req: Request, res: Response, next: NextFunction) 
 
 export const createLease = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
     const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
 
     const lease = await LeasesService.createLease(req.body, companyId, req.user?.userId);

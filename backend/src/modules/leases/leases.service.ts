@@ -130,8 +130,11 @@ export class LeasesService {
       tenantId: string;
       startDate: string;
       endDate: string;
-      rentAmount: number;
+      rentAmount?: number;
+      monthlyRent?: number;
       depositAmount?: number;
+      securityDeposit?: number;
+      [key: string]: any;
     },
     companyId?: string | null,
     actorUserId?: string
@@ -151,6 +154,9 @@ export class LeasesService {
       throw new AppError('Unit not found or access denied', 404, 'UNIT_NOT_FOUND');
     }
 
+    const rentAmount = Number(data.rentAmount ?? data.monthlyRent) || 0;
+    const depositAmount = Number(data.depositAmount ?? data.securityDeposit) || 0;
+
     // BUSINESS RULE: Check unit status and split-bedroom lease limit
     if (unit.status === 'OCCUPIED' && unit.leases.length >= unit.bedrooms) {
       throw new AppError(
@@ -163,13 +169,17 @@ export class LeasesService {
     const start = new Date(data.startDate);
     const end = new Date(data.endDate);
 
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new AppError('Invalid start or end date format', 400, 'INVALID_LEASE_DATES');
+    }
+
     if (end <= start) {
       throw new AppError('Lease end date must be after start date', 400, 'INVALID_LEASE_DATES');
     }
 
     // ATOMIC TRANSACTION:
     // 1. Create Lease
-    // 2. Set Unit.status to OCCUPIED
+    // 2. Set Unit.status to OCCUPIED if all bedrooms filled
     // 3. Generate initial month Invoice
     const result = await prisma.$transaction(async (tx) => {
       const lease = await tx.lease.create({
@@ -178,16 +188,19 @@ export class LeasesService {
           tenantId: data.tenantId,
           startDate: start,
           endDate: end,
-          rentAmount: data.rentAmount,
-          depositAmount: data.depositAmount ?? 0,
+          rentAmount: rentAmount,
+          depositAmount: depositAmount,
           status: 'ACTIVE',
         },
       });
 
-      await tx.unit.update({
-        where: { id: unit.id },
-        data: { status: 'OCCUPIED' },
-      });
+      const newActiveCount = unit.leases.length + 1;
+      if (newActiveCount >= (unit.bedrooms || 1)) {
+        await tx.unit.update({
+          where: { id: unit.id },
+          data: { status: 'OCCUPIED' },
+        });
+      }
 
       // Generate invoice number e.g. INV-202610-UUID
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}-${unit.unitNumber}`;
@@ -197,7 +210,7 @@ export class LeasesService {
           leaseId: lease.id,
           tenantId: data.tenantId,
           invoiceNumber,
-          amountDue: data.rentAmount,
+          amountDue: rentAmount,
           amountPaid: 0,
           dueDate: start,
           status: 'UNPAID',

@@ -2,13 +2,15 @@ import { z } from 'zod';
 
 export const createLeaseSchema = z.object({
   body: z.object({
-    unitId: z.string().uuid('Invalid unit ID'),
-    tenantId: z.string().uuid('Invalid tenant ID'),
-    startDate: z.string().datetime('Valid start date is required'),
-    endDate: z.string().datetime('Valid end date is required'),
-    rentAmount: z.number().positive('Rent amount must be greater than 0'),
-    depositAmount: z.number().nonnegative().optional().default(0),
-  }),
+    unitId: z.string().min(1, 'Unit ID is required'),
+    tenantId: z.string().min(1, 'Tenant ID is required'),
+    startDate: z.string().min(1, 'Valid start date is required'),
+    endDate: z.string().min(1, 'Valid end date is required'),
+    rentAmount: z.coerce.number().nonnegative().optional(),
+    monthlyRent: z.coerce.number().nonnegative().optional(),
+    depositAmount: z.coerce.number().nonnegative().optional().default(0),
+    securityDeposit: z.coerce.number().nonnegative().optional().default(0),
+  }).passthrough(),
 });
 
 export const renewLeaseSchema = z.object({
@@ -33,4 +35,3 @@ export const createMoveInspectionSchema = z.object({
     signedByTenant: z.boolean().optional().default(false),
   }),
 });
-

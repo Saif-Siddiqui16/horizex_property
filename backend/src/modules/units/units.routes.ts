@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   listUnits,
   getUnit,
+  getVacantBedrooms,
   createUnit,
   updateUnit,
   deleteUnit,
@@ -43,6 +44,12 @@ router.post(
   authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER'),
   validateRequest(createUnitSchema),
   createUnit
+);
+
+router.get(
+  '/bedrooms/vacant',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPERTY_MANAGER', 'ACCOUNTANT', 'MAINTENANCE_STAFF', 'OWNER', 'TENANT'),
+  getVacantBedrooms
 );
 
 router.get(

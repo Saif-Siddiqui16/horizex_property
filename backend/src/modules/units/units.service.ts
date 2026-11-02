@@ -94,6 +94,55 @@ export class UnitsService {
     return result;
   }
 
+  static async getVacantBedrooms(unitId?: string, companyId?: string | null, includeId?: string) {
+    const where: any = { isActive: true };
+    if (unitId) {
+      where.id = unitId;
+    }
+    if (companyId) {
+      where.property = { companyId };
+    }
+
+    const units = await prisma.unit.findMany({
+      where,
+      include: {
+        readiness: true,
+        leases: {
+          where: { status: 'ACTIVE', isActive: true },
+        },
+      },
+    });
+
+    const allBedrooms: any[] = [];
+
+    for (const unit of units) {
+      const count = Math.max(1, Number(unit.bedrooms) || 1);
+      let meta: any = {};
+      try {
+        meta = JSON.parse(unit.readiness?.notes || '{}');
+      } catch {}
+
+      const identifiers: string[] = Array.isArray(meta.bedroomIdentifiers) ? meta.bedroomIdentifiers : [];
+
+      for (let i = 0; i < count; i++) {
+        const bedId = i + 1;
+        const bedName = identifiers[i] || `${unit.unitNumber}-${i + 1}`;
+        allBedrooms.push({
+          id: bedId,
+          bedroomId: bedId,
+          bedroomNumber: bedName,
+          displayName: bedName,
+          roomNumber: bedName,
+          unitId: unit.id,
+          unitNumber: unit.unitNumber,
+          status: 'VACANT',
+        });
+      }
+    }
+
+    return allBedrooms;
+  }
+
   static async getUnitById(id: string, companyId?: string | null) {
     const where: any = { id, isActive: true };
     if (companyId) {
@@ -137,10 +186,26 @@ export class UnitsService {
     const unit_status = meta.unit_status ||
       (classification === 'New Construction' ? 'INACTIVE' : 'ACTIVE');
 
+    const count = Math.max(1, Number(unit.bedrooms) || 1);
+    const identifiers: string[] = Array.isArray(meta.bedroomIdentifiers) ? meta.bedroomIdentifiers : [];
+    const bedroomsList = [];
+    for (let i = 0; i < count; i++) {
+      const name = identifiers[i] || `${unit.unitNumber}-${i + 1}`;
+      bedroomsList.push({
+        id: i + 1,
+        bedroomNumber: name,
+        displayName: name,
+        roomNumber: name,
+        unitId: unit.id,
+      });
+    }
+
     return {
       ...unit,
       classification,
       unit_status,
+      bedroomIdentifiers: identifiers,
+      bedroomsList,
       companyName: (unit.property as any)?.company?.name || '',
       buildingName: unit.property?.name || '',
       building: unit.property?.name || '',
@@ -257,6 +322,7 @@ export class UnitsService {
             notes: JSON.stringify({
               classification: data.classification || (data.unit_status === 'INACTIVE' ? 'New Construction' : 'Completed'),
               unit_status: data.unit_status || (data.classification === 'New Construction' ? 'INACTIVE' : 'ACTIVE'),
+              ...(Array.isArray(data.bedroomIdentifiers) ? { bedroomIdentifiers: data.bedroomIdentifiers } : {}),
             }),
           },
         },
@@ -352,7 +418,7 @@ export class UnitsService {
       },
     });
 
-    if (data.classification || data.unit_status) {
+    if (data.classification || data.unit_status || data.bedroomIdentifiers) {
       let currentMeta: any = {};
       try {
         currentMeta = JSON.parse(oldUnit.readiness?.notes || '{}');
@@ -361,6 +427,7 @@ export class UnitsService {
         ...currentMeta,
         ...(data.classification ? { classification: data.classification } : {}),
         ...(data.unit_status ? { unit_status: data.unit_status } : {}),
+        ...(Array.isArray(data.bedroomIdentifiers) ? { bedroomIdentifiers: data.bedroomIdentifiers } : {}),
       };
       await prisma.unitReadiness.upsert({
         where: { unitId: oldUnit.id },

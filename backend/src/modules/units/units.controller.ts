@@ -23,6 +23,20 @@ export const listUnits = async (req: Request, res: Response, next: NextFunction)
   }
 };
 
+export const getVacantBedrooms = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const unitId = (req.query.unitId || req.query.unit_id) as string | undefined;
+    const includeId = req.query.includeId as string | undefined;
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
+    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+
+    const bedrooms = await UnitsService.getVacantBedrooms(unitId, companyId, includeId);
+    return sendSuccess(res, bedrooms, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
 export const getUnit = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
