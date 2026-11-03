@@ -106,6 +106,65 @@ export const payrollApi = masterApi.injectEndpoints({
       }),
       invalidatesTags: ['Overtime'],
     }),
+
+    // -------------------------------------------------------------
+    // PAYROLL RUNS
+    // -------------------------------------------------------------
+    getPayrollRuns: builder.query({
+      query: (params) => ({
+        url: '/admin/payroll/runs',
+        params,
+      }),
+      transformResponse: (response) => response?.data || response || [],
+      providesTags: ['Payroll'],
+    }),
+    generatePayroll: builder.mutation({
+      query: (body) => ({
+        url: '/admin/payroll/runs/generate',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Payroll', 'Overtime', 'Leaves'],
+    }),
+    createPayrollRun: builder.mutation({
+      query: (body) => ({
+        url: '/admin/payroll/runs',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Payroll'],
+    }),
+    approvePayroll: builder.mutation({
+      query: ({ id, level = 1 }) => ({
+        url: `/admin/payroll/runs/${id}/approve`,
+        method: 'PATCH',
+        body: { level },
+      }),
+      invalidatesTags: ['Payroll', 'Overtime'],
+    }),
+    rejectPayroll: builder.mutation({
+      query: ({ id, reason = '' }) => ({
+        url: `/admin/payroll/runs/${id}/reject`,
+        method: 'PATCH',
+        body: { reason },
+      }),
+      invalidatesTags: ['Payroll'],
+    }),
+    markPaidPayroll: builder.mutation({
+      query: (id) => ({
+        url: `/admin/payroll/runs/${id}/pay`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Payroll'],
+    }),
+    uploadPayrollReceipt: builder.mutation({
+      query: ({ id, receiptFile }) => ({
+        url: `/admin/payroll/runs/${id}/receipt`,
+        method: 'POST',
+        body: { receiptFile },
+      }),
+      invalidatesTags: ['Payroll'],
+    }),
   }),
 });
 
@@ -122,5 +181,12 @@ export const {
   useCreateOvertimeMutation,
   useUpdateOvertimeStatusMutation,
   useDeleteOvertimeMutation,
+  useGetPayrollRunsQuery,
+  useGeneratePayrollMutation,
+  useCreatePayrollRunMutation,
+  useApprovePayrollMutation,
+  useRejectPayrollMutation,
+  useMarkPaidPayrollMutation,
+  useUploadPayrollReceiptMutation,
 } = payrollApi;
 

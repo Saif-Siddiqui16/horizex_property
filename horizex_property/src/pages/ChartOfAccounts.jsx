@@ -13,7 +13,13 @@ import {
   FiArrowDownLeft,
   FiRefreshCw
 } from 'react-icons/fi';
-import api from '../api/client';
+import {
+  useGetBankAccountsQuery,
+  useCreateBankAccountMutation,
+  useUpdateBankAccountMutation,
+  useDeleteBankAccountMutation,
+} from '../store/api/accountingApi';
+import { useGetCompaniesQuery } from '../store/api/companiesApi';
 import { hasPermission } from '../utils/permissions';
 import { AccessControl } from '../components/AccessControl';
 
@@ -47,7 +53,31 @@ export const ChartOfAccounts = () => {
     balance: '',
   });
 
-  const [accounts, setAccounts] = useState([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(
+    () => localStorage.getItem('global_selected_company_id') || ''
+  );
+
+  useEffect(() => {
+    const handleSync = () => {
+      setSelectedCompanyId(localStorage.getItem('global_selected_company_id') || '');
+    };
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
+
+  const { data: realCompanies = [] } = useGetCompaniesQuery();
+  const { data: accounts = [], isLoading: isLoadingAccounts, refetch: fetchAccounts } = useGetBankAccountsQuery(
+    selectedCompanyId ? { companyId: selectedCompanyId } : {},
+    { refetchOnMountOrArgChange: true }
+  );
+
+  const [createAccountApi] = useCreateBankAccountMutation();
+  const [updateAccountApi] = useUpdateBankAccountMutation();
+  const [deleteAccountApi] = useDeleteBankAccountMutation();
 
   // Report Modal & Customization States
   const [reportAccount, setReportAccount] = useState(null);
@@ -59,19 +89,6 @@ export const ChartOfAccounts = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('NEWEST'); // NEWEST, OLDEST
 
-  useEffect(() => {
-    fetchAccounts();
-  }, []);
-
-  const fetchAccounts = async () => {
-    try {
-      const res = await api.get('/api/admin/accounts');
-      setAccounts(res.data || []);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const openAddModal = () => {
     setEditIndex(null);
     setForm({ name: '', type: 'Bank', balance: '', accountNumber: '' });
@@ -80,9 +97,11 @@ export const ChartOfAccounts = () => {
 
   const openEditModal = (acc, index) => {
     setEditIndex(index);
+    const accType = acc.assetType || acc.routingNumber || acc.type || acc.bankName || 'Bank';
     setForm({
+      id: acc.id,
       name: acc.accountName || acc.name || '',
-      type: acc.assetType || acc.type || 'Bank',
+      type: accType,
       balance: acc.openingBalance ?? acc.balance ?? '',
       accountNumber: acc.accountNumber || '',
     });
@@ -90,39 +109,53 @@ export const ChartOfAccounts = () => {
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.balance) {
+    if (!form.name || form.balance === undefined || form.balance === '') {
       alert('Please fill all fields');
       return;
     }
 
     try {
-      const payload = {
-        accountName: form.name,
-        assetType: form.type,
-        openingBalance: form.balance,
-        accountNumber: form.accountNumber || ''
-      };
+      const targetCompanyId = selectedCompanyId || (realCompanies[0]?.id ? String(realCompanies[0].id) : undefined);
+      const accType = form.type || 'Bank';
+      const balNum = parseFloat(form.balance) || 0;
 
       if (editIndex !== null) {
-        const accountId = accounts[editIndex].id;
-        await api.patch(`/api/admin/accounts/${accountId}`, payload);
+        const targetAcc = filteredAccounts[editIndex] || accounts[editIndex];
+        const accountId = targetAcc?.id || form.id;
+        await updateAccountApi({
+          id: String(accountId),
+          accountName: form.name.trim(),
+          bankName: accType,
+          routingNumber: accType,
+          balance: balNum,
+          accountNumber: form.accountNumber || targetAcc?.accountNumber || '0001',
+          companyId: targetCompanyId ? String(targetCompanyId) : undefined,
+        }).unwrap();
       } else {
-        await api.post('/api/admin/accounts', payload);
+        await createAccountApi({
+          accountName: form.name.trim(),
+          bankName: accType,
+          routingNumber: accType,
+          accountNumber: form.accountNumber || `${Date.now().toString().slice(-6)}`,
+          initialBalance: balNum,
+          companyId: targetCompanyId ? String(targetCompanyId) : undefined,
+        }).unwrap();
       }
 
-      fetchAccounts();
       setShowModal(false);
     } catch (e) {
-      alert('Error saving account');
+      console.error('Error saving account:', e);
+      const errMsg = e?.data?.message || e?.message || 'Error saving account';
+      alert(`Error saving account: ${errMsg}`);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this account?')) return;
     try {
-      await api.delete(`/api/admin/accounts/${id}`);
-      fetchAccounts();
+      await deleteAccountApi(String(id)).unwrap();
     } catch (e) {
+      console.error('Error deleting account:', e);
       alert('Error deleting account');
     }
   };
@@ -449,15 +482,26 @@ export const ChartOfAccounts = () => {
     printWindow.document.close();
   };
 
-  const filteredAccounts =
-    filter === 'All'
-      ? accounts
-      : accounts.filter((a) => {
-          let type = a.assetType || a.type || 'Asset';
-          if (type.toLowerCase() === 'revenue') type = 'Income';
-          if (type.toLowerCase() === 'bank') type = 'Bank';
-          return type.toLowerCase() === filter.toLowerCase();
-        });
+  const getAccountType = (acc) => {
+    let t = acc.assetType || acc.routingNumber || acc.bankName || acc.type || 'Asset';
+    const lower = String(t).toLowerCase();
+    if (lower === 'bank' || lower.includes('bank') || lower.includes('checking') || lower.includes('saving')) return 'Bank';
+    if (lower === 'income' || lower === 'revenue') return 'Income';
+    if (lower === 'expense') return 'Expense';
+    if (lower === 'asset') return 'Asset';
+    return t;
+  };
+
+  const filteredAccounts = useMemo(() => {
+    return (accounts || []).filter((a) => {
+      if (selectedCompanyId && a.companyId && String(a.companyId) !== String(selectedCompanyId)) {
+        return false;
+      }
+      if (filter === 'All') return true;
+      const accType = getAccountType(a);
+      return accType.toLowerCase() === filter.toLowerCase();
+    });
+  }, [accounts, filter, selectedCompanyId]);
 
   return (
     <>
@@ -504,9 +548,7 @@ export const ChartOfAccounts = () => {
             filteredAccounts.map((acc, index) => {
               const rawBalance = acc.openingBalance ?? acc.balance ?? acc.currentBalance ?? 0;
               const numBalance = parseFloat(rawBalance) || 0;
-              let accType = acc.assetType || acc.type || 'Asset';
-              if (accType.toLowerCase() === 'revenue') accType = 'Income';
-
+              const accType = getAccountType(acc);
               const accName = acc.accountName || acc.name || 'Unnamed Account';
 
               return (
@@ -536,8 +578,9 @@ export const ChartOfAccounts = () => {
                               e.stopPropagation();
                               openEditModal(
                                 {
-                                  name: acc.accountName,
-                                  type: accType,
+                                  id: acc.id,
+                                  accountName: accName,
+                                  assetType: accType,
                                   accountNumber: acc.accountNumber,
                                   balance: rawBalance
                                 },

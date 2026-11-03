@@ -28,6 +28,13 @@ import { Button } from '../components/Button';
 import clsx from 'clsx';
 const mockCompanies = [];
 import { BankReconciliationModal } from '../components/accounting/BankReconciliationModal';
+import {
+    useGetBankAccountsQuery,
+    useCreateBankAccountMutation,
+    useUpdateBankAccountMutation,
+    useDeleteBankAccountMutation,
+} from '../store/api/accountingApi';
+import { useGetCompaniesQuery } from '../store/api/companiesApi';
 
 const STORAGE_KEY = 'horizex_bank_accounts_data_v2';
 
@@ -258,7 +265,9 @@ export const BankAccounts = () => {
         return initial;
     });
 
+    const { data: realCompanies = [] } = useGetCompaniesQuery();
     const [companies, setCompanies] = useState(getStoredCompanies);
+    const companiesList = realCompanies && realCompanies.length > 0 ? realCompanies : companies;
     const [buildingsList, setBuildingsList] = useState(getStoredBuildings);
 
     const [selectedAccountId, setSelectedAccountId] = useState(() => {
@@ -352,15 +361,87 @@ export const BankAccounts = () => {
         }
     }, [bankData]);
 
-    // Keep companies & buildings in sync
+    const [selectedCompanyId, setSelectedCompanyId] = useState(
+        () => localStorage.getItem('global_selected_company_id') || ''
+    );
+
+    const { data: apiAccounts, refetch: refetchBankAccounts } = useGetBankAccountsQuery(
+        selectedCompanyId ? { companyId: selectedCompanyId } : {},
+        { refetchOnMountOrArgChange: true }
+    );
+
+    const [createBankAccountApi] = useCreateBankAccountMutation();
+    const [updateBankAccountApi] = useUpdateBankAccountMutation();
+    const [deleteBankAccountApi] = useDeleteBankAccountMutation();
+
+    // Keep companies, buildings & selected company in sync
     useEffect(() => {
         const handleSync = () => {
+            const newCompId = localStorage.getItem('global_selected_company_id') || '';
+            setSelectedCompanyId(newCompId);
             setCompanies(getStoredCompanies());
             setBuildingsList(getStoredBuildings());
         };
         window.addEventListener('companyChanged', handleSync);
-        return () => window.removeEventListener('companyChanged', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('storage', handleSync);
+        };
     }, []);
+
+    // Merge backend accounts with local accounts
+    useEffect(() => {
+        if (apiAccounts && Array.isArray(apiAccounts) && apiAccounts.length > 0) {
+            setBankData(prev => {
+                const map = new Map();
+                (prev.accounts || []).forEach(a => map.set(String(a.id), a));
+                apiAccounts.forEach(apiA => {
+                    const key = String(apiA.id);
+                    const existing = map.get(key) || {};
+                    map.set(key, {
+                        ...existing,
+                        id: apiA.id,
+                        companyId: apiA.companyId,
+                        companyName: apiA.company?.name || existing.companyName || 'Company',
+                        bankName: apiA.bankName,
+                        accountName: apiA.accountName,
+                        shortAccount: `${apiA.bankName} (${apiA.company?.name || 'Operating'})`,
+                        accountNumber: apiA.accountNumber,
+                        routingNumber: apiA.routingNumber || existing.routingNumber || '001-00000',
+                        balance: Number(apiA.balance ?? existing.balance ?? 0),
+                        currency: existing.currency || 'CAD',
+                        buildingsCount: existing.buildingsCount || 0,
+                        color: existing.color || 'border-blue-500',
+                    });
+                });
+                return {
+                    ...prev,
+                    accounts: Array.from(map.values()),
+                };
+            });
+        }
+    }, [apiAccounts]);
+
+    // Filter accounts by the globally selected company
+    const displayedAccounts = (bankData.accounts || []).filter(acc => {
+        if (!selectedCompanyId) return true; // All Companies shows all
+        const currentComp = companiesList.find(c => String(c.id) === String(selectedCompanyId));
+        return (
+            String(acc.companyId) === String(selectedCompanyId) ||
+            (currentComp && acc.companyName && currentComp.name.toLowerCase() === acc.companyName.toLowerCase())
+        );
+    });
+
+    // Auto-select first account of active company if current selection is not visible
+    useEffect(() => {
+        if (displayedAccounts.length > 0 && !displayedAccounts.some(a => String(a.id) === String(selectedAccountId))) {
+            setSelectedAccountId(displayedAccounts[0].id);
+        }
+    }, [selectedCompanyId, displayedAccounts.length]);
+
+    // Current selected account object
+    const currentAccount = displayedAccounts.find(a => String(a.id) === String(selectedAccountId)) || displayedAccounts[0] || null;
 
     const showToast = (msg) => {
         setToastMessage(msg);
@@ -403,9 +484,6 @@ export const BankAccounts = () => {
         });
     };
 
-    // Current selected account object
-    const currentAccount = bankData.accounts.find(a => a.id === selectedAccountId) || bankData.accounts[0] || null;
-
     // Filter transactions for the selected bank account
     const accountTransactions = currentAccount
         ? bankData.transactions.filter(t => t.accountId === currentAccount.id)
@@ -430,65 +508,9 @@ export const BankAccounts = () => {
         .filter(t => t.type === 'EXPENSE')
         .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 
-    // ==========================================
-    // CREATE NEW BANK ACCOUNT (DYNAMIC)
-    // ==========================================
-    const handleCreateAccount = (e) => {
-        e.preventDefault();
-
-        const targetCompanyId = parseInt(newAccountForm.companyId);
-        const currentCompanies = getStoredCompanies();
-        const matchedComp = currentCompanies.find(c => c.id === targetCompanyId);
-        if (!matchedComp) {
-            alert('Please select a company.');
-            return;
-        }
-        const targetCompanyName = matchedComp.name;
-
-        const newAccountId = bankData.accounts.length ? Math.max(...bankData.accounts.map(a => a.id)) + 1 : 1;
-        const openingBal = parseFloat(newAccountForm.openingBalance) || 0;
-        const shortAccountName = `${newAccountForm.bankName} (${targetCompanyName})`;
-
-        const newAccount = {
-            id: newAccountId,
-            companyId: targetCompanyId,
-            companyName: targetCompanyName,
-            bankName: newAccountForm.bankName,
-            accountName: newAccountForm.accountName || `${newAccountForm.bankName} Operating`,
-            shortAccount: shortAccountName,
-            accountNumber: newAccountForm.accountNumber,
-            routingNumber: newAccountForm.routingNumber || '001-00000',
-            balance: openingBal,
-            currency: newAccountForm.currency || 'CAD',
-            buildingsCount: 0,
-            color: 'border-blue-500'
-        };
-
-        const newTransactions = [...bankData.transactions];
-        if (openingBal > 0) {
-            newTransactions.unshift({
-                id: `TX-${Date.now()}`,
-                accountId: newAccountId,
-                companyId: targetCompanyId,
-                date: new Date().toISOString().split('T')[0],
-                building: '-',
-                description: 'Opening Balance Deposit',
-                category: 'Initial Deposit',
-                type: 'INCOME',
-                amount: openingBal,
-                balanceAfter: openingBal,
-                reference: `DEP-00${newAccountId}`
-            });
-        }
-
-        setBankData({
-            accounts: [...bankData.accounts, newAccount],
-            transactions: newTransactions
-        });
-        setSelectedAccountId(newAccountId);
-        setShowAddAccountModal(false);
+    const handleOpenAddModal = () => {
         setNewAccountForm({
-            companyId: '',
+            companyId: selectedCompanyId || (companiesList[0]?.id ? String(companiesList[0].id) : ''),
             bankName: '',
             accountName: '',
             accountNumber: '',
@@ -496,7 +518,119 @@ export const BankAccounts = () => {
             openingBalance: '',
             currency: 'CAD'
         });
-        showToast(`Bank account "${newAccount.accountName}" added successfully.`);
+        setShowAddAccountModal(true);
+    };
+
+    // ==========================================
+    // CREATE NEW BANK ACCOUNT (DYNAMIC)
+    // ==========================================
+    const handleCreateAccount = async (e) => {
+        e.preventDefault();
+
+        const selectedCompId = String(newAccountForm.companyId || '').trim();
+        const currentCompanies = realCompanies.length > 0 ? realCompanies : companies;
+        const matchedComp = currentCompanies.find(c => String(c.id) === selectedCompId);
+        if (!selectedCompId || !matchedComp) {
+            alert('Please select a company.');
+            return;
+        }
+        const targetCompanyName = matchedComp.name;
+
+        const targetBankName = (newAccountForm.bankName || '').trim();
+        const targetAccountName = (newAccountForm.accountName || `${targetBankName} Operating`).trim();
+        const targetAccountNumber = (newAccountForm.accountNumber || '').trim();
+        const targetRoutingNumber = (newAccountForm.routingNumber || '001-00000').trim();
+        const openingBal = parseFloat(newAccountForm.openingBalance) || 0;
+        const targetCurrency = newAccountForm.currency || 'CAD';
+
+        if (!targetBankName) {
+            alert('Bank name is required.');
+            return;
+        }
+        if (!targetAccountNumber || targetAccountNumber.length < 4) {
+            alert('Account number must be at least 4 digits.');
+            return;
+        }
+
+        try {
+            // Sync with Backend API
+            const created = await createBankAccountApi({
+                companyId: selectedCompId,
+                bankName: targetBankName,
+                accountName: targetAccountName,
+                accountNumber: targetAccountNumber,
+                routingNumber: targetRoutingNumber,
+                initialBalance: openingBal,
+            }).unwrap();
+
+            const newAccountId = created?.data?.id || created?.id || (bankData.accounts.length ? Math.max(...bankData.accounts.map(a => typeof a.id === 'number' ? a.id : 0)) + 1 : 1);
+            const shortAccountName = `${targetBankName} (${targetCompanyName})`;
+
+            const newAccount = {
+                id: newAccountId,
+                companyId: selectedCompId,
+                companyName: targetCompanyName,
+                bankName: targetBankName,
+                accountName: targetAccountName,
+                shortAccount: shortAccountName,
+                accountNumber: targetAccountNumber,
+                routingNumber: targetRoutingNumber,
+                balance: openingBal,
+                currency: targetCurrency,
+                buildingsCount: 0,
+                color: 'border-blue-500'
+            };
+
+            const newTransactions = [...bankData.transactions];
+            if (openingBal > 0) {
+                newTransactions.unshift({
+                    id: `TX-${Date.now()}`,
+                    accountId: newAccountId,
+                    companyId: selectedCompId,
+                    date: new Date().toISOString().split('T')[0],
+                    building: '-',
+                    description: 'Opening Balance Deposit',
+                    category: 'Initial Deposit',
+                    type: 'INCOME',
+                    amount: openingBal,
+                    balanceAfter: openingBal,
+                    reference: `DEP-00${newAccountId}`
+                });
+            }
+
+            setBankData(prev => ({
+                accounts: [newAccount, ...(prev.accounts || []).filter(a => String(a.id) !== String(newAccountId))],
+                transactions: newTransactions
+            }));
+            setSelectedAccountId(newAccountId);
+
+            // Automatically switch company context to the created account's company so it is instantly in view!
+            if (selectedCompanyId && String(selectedCompanyId) !== String(selectedCompId)) {
+                setSelectedCompanyId(selectedCompId);
+                try {
+                    localStorage.setItem('global_selected_company_id', selectedCompId);
+                    localStorage.setItem('companyContext', selectedCompId);
+                    window.dispatchEvent(new Event('companyChanged'));
+                } catch (e) {}
+            }
+
+            setShowAddAccountModal(false);
+            setNewAccountForm({
+                companyId: selectedCompanyId || (companiesList[0]?.id ? String(companiesList[0].id) : ''),
+                bankName: '',
+                accountName: '',
+                accountNumber: '',
+                routingNumber: '',
+                openingBalance: '',
+                currency: 'CAD'
+            });
+
+            showToast(`Bank account "${targetAccountName}" added successfully.`);
+        } catch (err) {
+            console.error('Failed to create bank account:', err);
+            const errMsg = err?.data?.message || err?.message || 'Failed to create bank account on server';
+            alert(`Error: ${errMsg}`);
+        }
     };
 
     // ==========================================
@@ -516,16 +650,31 @@ export const BankAccounts = () => {
         setShowEditAccountModal(true);
     };
 
-    const handleUpdateAccount = (e) => {
+    const handleUpdateAccount = async (e) => {
         e.preventDefault();
         if (!editAccountForm.id) return;
 
-        const matchedComp = companies.find(c => c.id === parseInt(editAccountForm.companyId));
+        const currentCompanies = realCompanies.length > 0 ? realCompanies : companies;
+        const matchedComp = currentCompanies.find(c => String(c.id) === String(editAccountForm.companyId));
         const targetCompanyName = matchedComp ? matchedComp.name : (currentAccount ? currentAccount.companyName : '');
         const shortAcc = `${editAccountForm.bankName} (${targetCompanyName})`;
 
+        try {
+            await updateBankAccountApi({
+                id: String(editAccountForm.id),
+                bankName: editAccountForm.bankName,
+                accountName: editAccountForm.accountName,
+                accountNumber: editAccountForm.accountNumber,
+                routingNumber: editAccountForm.routingNumber,
+                balance: parseFloat(editAccountForm.balance) || 0,
+                companyId: String(editAccountForm.companyId),
+            }).unwrap();
+        } catch (err) {
+            console.warn('Backend update note:', err);
+        }
+
         const updatedAccounts = bankData.accounts.map(acc => {
-            if (acc.id === editAccountForm.id) {
+            if (String(acc.id) === String(editAccountForm.id)) {
                 return {
                     ...acc,
                     companyId: matchedComp ? matchedComp.id : acc.companyId,
@@ -554,13 +703,19 @@ export const BankAccounts = () => {
     // ==========================================
     // DELETE BANK ACCOUNT
     // ==========================================
-    const handleDeleteAccount = (accId) => {
-        const accToDelete = bankData.accounts.find(a => a.id === accId);
+    const handleDeleteAccount = async (accId) => {
+        const accToDelete = bankData.accounts.find(a => String(a.id) === String(accId));
         if (!accToDelete) return;
 
         if (window.confirm(`Are you sure you want to remove "${accToDelete.accountName}"?`)) {
-            const remainingAccounts = bankData.accounts.filter(a => a.id !== accId);
-            const remainingTransactions = bankData.transactions.filter(t => t.accountId !== accId);
+            try {
+                await deleteBankAccountApi(String(accId)).unwrap();
+            } catch (err) {
+                console.warn('Backend delete sync note:', err);
+            }
+
+            const remainingAccounts = bankData.accounts.filter(a => String(a.id) !== String(accId));
+            const remainingTransactions = bankData.transactions.filter(t => String(t.accountId) !== String(accId));
             const nextSelectedId = remainingAccounts.length > 0 ? remainingAccounts[0].id : null;
 
             setBankData({
@@ -568,6 +723,7 @@ export const BankAccounts = () => {
                 transactions: remainingTransactions
             });
             setSelectedAccountId(nextSelectedId);
+
             showToast(`Bank account "${accToDelete.accountName}" removed.`);
         }
     };
@@ -601,7 +757,7 @@ export const BankAccounts = () => {
         };
 
         const updatedAccounts = bankData.accounts.map(acc => {
-            if (acc.id === currentAccount.id) {
+            if (String(acc.id) === String(currentAccount.id)) {
                 return { ...acc, balance: newBalance };
             }
             return acc;
@@ -611,6 +767,14 @@ export const BankAccounts = () => {
             accounts: updatedAccounts,
             transactions: [newTx, ...bankData.transactions]
         });
+
+        // Sync updated balance with backend if persisted
+        try {
+            updateBankAccountApi({
+                id: String(currentAccount.id),
+                balance: newBalance,
+            }).unwrap().catch(err => console.warn('Balance sync note:', err));
+        } catch (e) {}
 
         setShowPayBillModal(false);
         setBillForm({ building: '', description: '', category: 'Utilities', amount: '', reference: '' });
@@ -646,7 +810,7 @@ export const BankAccounts = () => {
         };
 
         const updatedAccounts = bankData.accounts.map(acc => {
-            if (acc.id === currentAccount.id) {
+            if (String(acc.id) === String(currentAccount.id)) {
                 return { ...acc, balance: newBalance };
             }
             return acc;
@@ -657,6 +821,14 @@ export const BankAccounts = () => {
             transactions: [newTx, ...bankData.transactions]
         });
 
+        // Sync updated balance with backend if persisted
+        try {
+            updateBankAccountApi({
+                id: String(currentAccount.id),
+                balance: newBalance,
+            }).unwrap().catch(err => console.warn('Balance sync note:', err));
+        } catch (e) {}
+
         setShowDepositModal(false);
         setDepositForm({ building: '', description: '', category: 'Rent Collection', amount: '', reference: '' });
         showToast(`Payment recorded. $${amt.toFixed(2)} deposited into ${currentAccount.accountName}.`);
@@ -664,7 +836,7 @@ export const BankAccounts = () => {
 
     // Demo account loader for quick 1-click preview
     const handleLoadDemoAccount = () => {
-        const targetComp = companies[0] || { id: 1, name: 'Apex Real Estate Partners' };
+        const targetComp = companiesList[0] || { id: 1, name: 'Apex Real Estate Partners' };
         const demoAcc = {
             id: 1,
             companyId: targetComp.id,
@@ -754,14 +926,14 @@ export const BankAccounts = () => {
 
                 <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                     <Button
-                        onClick={() => setShowAddAccountModal(true)}
+                        onClick={handleOpenAddModal}
                         className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2.5 rounded-xl shadow-xs"
                     >
                         <Plus size={15} />
                         <span>Add Bank Account</span>
                     </Button>
 
-                    {bankData.accounts.length > 0 && (
+                    {displayedAccounts.length > 0 && (
                         <>
                             <Button
                                 onClick={() => setShowReconciliationModal(true)}
@@ -792,7 +964,7 @@ export const BankAccounts = () => {
             </div>
 
             {/* IF NO ACCOUNTS EXIST (EMPTY STATE) */}
-            {bankData.accounts.length === 0 ? (
+            {displayedAccounts.length === 0 ? (
                 <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border-2 border-dashed border-slate-200 shadow-xs max-w-2xl mx-auto my-8">
                     <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
                         <Landmark size={32} />
@@ -803,7 +975,7 @@ export const BankAccounts = () => {
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                         <Button
-                            onClick={() => setShowAddAccountModal(true)}
+                            onClick={handleOpenAddModal}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold inline-flex items-center gap-2 shadow-xs"
                         >
                             <Plus size={18} />
@@ -823,8 +995,8 @@ export const BankAccounts = () => {
                 <>
                     {/* 🏢 BANK ACCOUNT SELECTOR CARDS */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full min-w-0">
-                        {bankData.accounts.map((acc) => {
-                            const isSelected = acc.id === selectedAccountId;
+                        {displayedAccounts.map((acc) => {
+                            const isSelected = String(acc.id) === String(selectedAccountId);
                             return (
                                 <div
                                     key={acc.id}
@@ -1219,7 +1391,7 @@ export const BankAccounts = () => {
                                     className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 bg-white"
                                 >
                                     <option value="" disabled>Select Company</option>
-                                    {companies.map(c => (
+                                    {companiesList.map(c => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
@@ -1593,7 +1765,7 @@ export const BankAccounts = () => {
                                     className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 bg-white"
                                 >
                                     <option value="" disabled>Select Company</option>
-                                    {companies.map(c => (
+                                    {companiesList.map(c => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>

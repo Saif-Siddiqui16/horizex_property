@@ -150,3 +150,85 @@ export const deleteOvertime = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+// -------------------------------------------------------------
+// PAYROLL RUN CONTROLLERS
+// -------------------------------------------------------------
+export const listPayrollRuns = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const runs = await PayrollService.listPayrollRuns(req.query);
+    return sendSuccess(res, runs, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const getPayrollRun = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const run = await PayrollService.getPayrollRunById(req.params.id);
+    return sendSuccess(res, run, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const createPayrollRun = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authorName = req.user?.email || 'Admin User';
+    const run = await PayrollService.createPayrollRun(req.body, authorName);
+    return sendSuccess(res, run, 201);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const generatePayrollRuns = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authorName = req.user?.email || 'Admin User';
+    const runs = await PayrollService.generatePayrollRuns(req.body, authorName);
+    return sendSuccess(res, runs, 201);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const approvePayrollRun = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { level } = req.body;
+    const approverName = req.user?.email || 'Admin User';
+    const run = await PayrollService.approvePayrollRun(req.params.id, level, approverName);
+    return sendSuccess(res, run, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const rejectPayrollRun = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { reason } = req.body;
+    const rejecterName = req.user?.email || 'Admin User';
+    const run = await PayrollService.rejectPayrollRun(req.params.id, reason, rejecterName);
+    return sendSuccess(res, run, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const markPaidPayrollRun = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const payerName = req.user?.email || 'Admin User';
+    const run = await PayrollService.markPaidPayrollRun(req.params.id, payerName);
+    return sendSuccess(res, run, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const uploadPayrollRunReceipt = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { receiptFile } = req.body;
+    const run = await PayrollService.uploadPayrollRunReceipt(req.params.id, receiptFile);
+    return sendSuccess(res, run, 200);
+  } catch (err) {
+    return next(err);
+  }
+};

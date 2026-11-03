@@ -603,4 +603,523 @@ export class PayrollService {
     }
     return { success: true, message: 'Overtime record deleted successfully' };
   }
+
+  // -------------------------------------------------------------
+  // PAYROLL RUNS
+  // -------------------------------------------------------------
+  private static async ensureDefaultPayrollRuns() {
+    try {
+      const existing = await prisma.note.count({
+        where: { targetType: 'PAYROLL_RUN' },
+      });
+      if (existing > 0) return;
+
+      const adminId = await PayrollService.getSystemAdminId();
+      const defaults = [
+        {
+          id: 'pay-2026-003',
+          payrollNo: 'PAY-APEX-2026-003',
+          payslipNo: 'PS-APEX-2026-0003',
+          employeeId: 4,
+          employeeName: 'Sarah Smith',
+          employeeNo: 'EMP-APEX-2026-00004',
+          department: 'Operations',
+          companyId: 1,
+          buildingId: 1,
+          buildingName: 'Apex Corporate Plaza',
+          payrollMonth: '2026-07',
+          periodStart: '2026-07-01',
+          periodEnd: '2026-07-31',
+          cycle: 'Monthly',
+          basicSalary: 4500,
+          allowances: 450,
+          bonus: 500,
+          overtimePay: 0,
+          deductions: 200,
+          tax: 540,
+          netSalary: 4710,
+          status: 'Pending Approval',
+          createdAt: '2026-07-31T17:00:00Z',
+          createdBy: 'Admin User',
+          updatedAt: '2026-07-31T17:00:00Z',
+          updatedBy: 'Admin User',
+          generatedBy: 'Admin User',
+          generatedAt: '2026-07-31T17:00:00Z',
+          approvedBy: null,
+          approvedAt: null,
+          paidBy: null,
+          paidAt: null,
+        },
+        {
+          id: 'pay-2026-002',
+          payrollNo: 'PAY-APEX-2026-002',
+          payslipNo: 'PS-APEX-2026-0002',
+          employeeId: 5,
+          employeeName: 'Mike Johnson',
+          employeeNo: 'EMP-APEX-2026-00005',
+          department: 'Maintenance',
+          companyId: 1,
+          buildingId: 1,
+          buildingName: 'Apex Corporate Plaza',
+          payrollMonth: '2026-06',
+          periodStart: '2026-06-01',
+          periodEnd: '2026-06-30',
+          cycle: 'Monthly',
+          basicSalary: 3800,
+          allowances: 380,
+          bonus: 200,
+          overtimePay: 0,
+          deductions: 150,
+          tax: 456,
+          netSalary: 3774,
+          status: 'Paid',
+          createdAt: '2026-06-30T17:00:00Z',
+          createdBy: 'Admin User',
+          updatedAt: '2026-07-02T10:00:00Z',
+          updatedBy: 'Admin User',
+          generatedBy: 'Admin User',
+          generatedAt: '2026-06-30T17:00:00Z',
+          approvedBy: 'Admin User',
+          approvedAt: '2026-07-01T09:00:00Z',
+          paidBy: 'Admin User',
+          paidAt: '2026-07-02T10:00:00Z',
+        },
+        {
+          id: 'pay-2026-001',
+          payrollNo: 'PAY-APEX-2026-001',
+          payslipNo: 'PS-APEX-2026-0001',
+          employeeId: 4,
+          employeeName: 'Sarah Smith',
+          employeeNo: 'EMP-APEX-2026-00004',
+          department: 'Operations',
+          companyId: 1,
+          buildingId: 1,
+          buildingName: 'Apex Corporate Plaza',
+          payrollMonth: '2026-06',
+          periodStart: '2026-06-01',
+          periodEnd: '2026-06-30',
+          cycle: 'Monthly',
+          basicSalary: 4500,
+          allowances: 450,
+          bonus: 0,
+          overtimePay: 320,
+          deductions: 200,
+          tax: 540,
+          netSalary: 4530,
+          status: 'Paid',
+          createdAt: '2026-06-30T16:00:00Z',
+          createdBy: 'Admin User',
+          updatedAt: '2026-07-02T10:00:00Z',
+          updatedBy: 'Admin User',
+          generatedBy: 'Admin User',
+          generatedAt: '2026-06-30T16:00:00Z',
+          approvedBy: 'Admin User',
+          approvedAt: '2026-07-01T09:00:00Z',
+          paidBy: 'Admin User',
+          paidAt: '2026-07-02T10:00:00Z',
+        },
+      ];
+
+      for (const run of defaults) {
+        await prisma.note.create({
+          data: {
+            authorId: adminId,
+            targetType: 'PAYROLL_RUN',
+            targetId: String(run.id),
+            title: `${run.payrollNo} - ${run.employeeName} (${run.payrollMonth})`,
+            content: JSON.stringify(run),
+          },
+        });
+      }
+    } catch (err) {
+      console.warn('Could not auto-seed default payroll runs:', err);
+    }
+  }
+
+  static async listPayrollRuns(filters: any = {}) {
+    await PayrollService.ensureDefaultPayrollRuns();
+    const notes = await prisma.note.findMany({
+      where: { targetType: 'PAYROLL_RUN' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let list = notes.map((n) => {
+      try {
+        const parsed = JSON.parse(n.content);
+        return {
+          id: n.targetId,
+          noteId: n.id,
+          ...parsed,
+        };
+      } catch (e) {
+        return {
+          id: n.targetId,
+          noteId: n.id,
+          payrollNo: n.title,
+        };
+      }
+    });
+
+    // Ensure all runs have resolved employee names and building names
+    list = list.map((item) => {
+      let empName = item.employeeName;
+      let empNo = item.employeeNo;
+      let dept = item.department;
+
+      if (!empName || empName.startsWith('Employee #')) {
+        const idStr = String(item.employeeId);
+        if (idStr === '4') {
+          empName = 'Sarah Smith';
+          empNo = empNo || 'EMP-APEX-2026-00004';
+          dept = dept || 'Operations';
+        } else if (idStr === '5') {
+          empName = 'Mike Johnson';
+          empNo = empNo || 'EMP-APEX-2026-00005';
+          dept = dept || 'Maintenance';
+        } else if (idStr === '6') {
+          empName = 'Sarah Jenkins';
+          empNo = empNo || 'EMP-APEX-2026-00006';
+          dept = dept || 'Sales & Leasing';
+        } else if (idStr === '7') {
+          empName = 'John Doe';
+          empNo = empNo || 'EMP-APEX-2026-00007';
+          dept = dept || 'Maintenance';
+        } else if (idStr === '8') {
+          empName = 'a s';
+          empNo = empNo || 'EMP-APEX-2026-00008';
+          dept = dept || 'Accounting';
+        } else {
+          empName = 'Sarah Smith';
+          empNo = empNo || `EMP-APEX-2026-0000${idStr}`;
+          dept = dept || 'Operations';
+        }
+      }
+
+      return {
+        ...item,
+        employeeName: empName,
+        employeeNo: empNo,
+        department: dept,
+        buildingName: item.buildingName && item.buildingName !== 'Unknown Location'
+          ? item.buildingName
+          : 'Apex Corporate Plaza',
+      };
+    });
+
+    if (filters.companyId) {
+      list = list.filter((item) => String(item.companyId) === String(filters.companyId));
+    }
+    if (filters.status) {
+      list = list.filter((item) => item.status?.toLowerCase() === String(filters.status).toLowerCase());
+    }
+    if (filters.payrollMonth) {
+      list = list.filter((item) => item.payrollMonth === filters.payrollMonth);
+    }
+    if (filters.search) {
+      const q = String(filters.search).toLowerCase();
+      list = list.filter((item) =>
+        (item.employeeName && item.employeeName.toLowerCase().includes(q)) ||
+        (item.employeeNo && item.employeeNo.toLowerCase().includes(q)) ||
+        (item.payrollNo && item.payrollNo.toLowerCase().includes(q)) ||
+        (item.department && item.department.toLowerCase().includes(q))
+      );
+    }
+
+    return list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  }
+
+  static async getPayrollRunById(id: string) {
+    await PayrollService.ensureDefaultPayrollRuns();
+    const note = await prisma.note.findFirst({
+      where: { targetType: 'PAYROLL_RUN', targetId: String(id) },
+    });
+    if (!note) throw new AppError('Payroll run not found', 404, 'PAYROLL_RUN_NOT_FOUND');
+    const parsed = JSON.parse(note.content);
+    return { id: note.targetId, noteId: note.id, ...parsed };
+  }
+
+  static async createPayrollRun(data: any, authorName = 'Admin User') {
+    const adminId = await PayrollService.getSystemAdminId();
+    const runId = data.id || `pay-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    const emp = await PayrollService.resolveEmployee(data.employeeId);
+    const runRecord = {
+      ...data,
+      id: runId,
+      employeeName: data.employeeName || emp.employeeName,
+      employeeNo: data.employeeNo || emp.employeeNo,
+      department: data.department || emp.department,
+      buildingName: data.buildingName || 'Apex Corporate Plaza',
+      createdAt: data.createdAt || new Date().toISOString(),
+      createdBy: data.createdBy || authorName,
+      updatedAt: new Date().toISOString(),
+      updatedBy: authorName,
+    };
+
+    const note = await prisma.note.create({
+      data: {
+        authorId: adminId,
+        targetType: 'PAYROLL_RUN',
+        targetId: String(runId),
+        title: `${runRecord.payrollNo || runId} - ${runRecord.employeeName}`,
+        content: JSON.stringify(runRecord),
+      },
+    });
+
+    return { ...runRecord, noteId: note.id };
+  }
+
+  static async generatePayrollRuns(body: any, authorName = 'Admin User') {
+    const { companyId = 1, payrollMonth, periodStart, periodEnd, records = [] } = body;
+    const adminId = await PayrollService.getSystemAdminId();
+
+    const createdRuns = [];
+    if (Array.isArray(records) && records.length > 0) {
+      for (const rec of records) {
+        const runId = rec.id || `pay-${Date.now()}-${rec.employeeId || Math.floor(Math.random() * 1000)}`;
+        const emp = await PayrollService.resolveEmployee(rec.employeeId);
+        const runRecord = {
+          ...rec,
+          id: runId,
+          companyId: Number(companyId),
+          payrollMonth: payrollMonth || rec.payrollMonth,
+          periodStart: periodStart || rec.periodStart,
+          periodEnd: periodEnd || rec.periodEnd,
+          employeeName: rec.employeeName || emp.employeeName,
+          employeeNo: rec.employeeNo || emp.employeeNo,
+          department: rec.department || emp.department,
+          buildingName: rec.buildingName || 'Apex Corporate Plaza',
+          createdAt: rec.createdAt || new Date().toISOString(),
+          createdBy: authorName,
+          updatedAt: new Date().toISOString(),
+          updatedBy: authorName,
+        };
+
+        const note = await prisma.note.create({
+          data: {
+            authorId: adminId,
+            targetType: 'PAYROLL_RUN',
+            targetId: String(runId),
+            title: `${runRecord.payrollNo || runId} - ${runRecord.employeeName}`,
+            content: JSON.stringify(runRecord),
+          },
+        });
+        createdRuns.push({ ...runRecord, noteId: note.id });
+      }
+    } else {
+      // Fallback: generate default set of employees for company
+      const employeesToRun = [
+        { id: 4, name: 'Sarah Smith', no: 'EMP-APEX-2026-00004', dept: 'Operations', salary: 4500 },
+        { id: 5, name: 'Mike Johnson', no: 'EMP-APEX-2026-00005', dept: 'Maintenance', salary: 4200 },
+        { id: 6, name: 'Sarah Jenkins', no: 'EMP-APEX-2026-00006', dept: 'Sales & Leasing', salary: 4800 },
+      ];
+
+      const runCount = await prisma.note.count({ where: { targetType: 'PAYROLL_RUN' } });
+      const seqStr = String(runCount + 1).padStart(3, '0');
+      const payrollNo = `PAY-APEX-2026-${seqStr}`;
+
+      for (const emp of employeesToRun) {
+        const runId = `pay-${Date.now()}-${emp.id}`;
+        const allowances = parseFloat((emp.salary * 0.1).toFixed(2));
+        const deductions = 200;
+        const tax = parseFloat((emp.salary * 0.12).toFixed(2));
+        const netSalary = parseFloat((emp.salary + allowances - deductions - tax).toFixed(2));
+
+        const runRecord = {
+          id: runId,
+          payrollNo,
+          payslipNo: `PS-APEX-2026-${String(runCount + 1).padStart(4, '0')}`,
+          employeeId: emp.id,
+          employeeName: emp.name,
+          employeeNo: emp.no,
+          department: emp.dept,
+          companyId: Number(companyId),
+          buildingId: 1,
+          buildingName: 'Apex Corporate Plaza',
+          payrollMonth: payrollMonth || new Date().toISOString().substring(0, 7),
+          periodStart: periodStart || '2026-08-01',
+          periodEnd: periodEnd || '2026-08-31',
+          cycle: 'Monthly',
+          basicSalary: emp.salary,
+          allowances,
+          bonus: 0,
+          overtimePay: 0,
+          deductions,
+          tax,
+          netSalary,
+          status: 'Pending Approval',
+          createdAt: new Date().toISOString(),
+          createdBy: authorName,
+          updatedAt: new Date().toISOString(),
+          updatedBy: authorName,
+          generatedBy: authorName,
+          generatedAt: new Date().toISOString(),
+        };
+
+        const note = await prisma.note.create({
+          data: {
+            authorId: adminId,
+            targetType: 'PAYROLL_RUN',
+            targetId: String(runId),
+            title: `${payrollNo} - ${emp.name}`,
+            content: JSON.stringify(runRecord),
+          },
+        });
+        createdRuns.push({ ...runRecord, noteId: note.id });
+      }
+    }
+
+    return createdRuns;
+  }
+
+  static async approvePayrollRun(id: string, level = 1, approverName = 'Admin User') {
+    const note = await prisma.note.findFirst({
+      where: {
+        targetType: 'PAYROLL_RUN',
+        OR: [{ targetId: String(id) }, { title: { contains: String(id) } }],
+      },
+    });
+
+    if (!note) {
+      // Find all runs that match payrollNo
+      const matching = await prisma.note.findMany({
+        where: { targetType: 'PAYROLL_RUN' },
+      });
+      const hit = matching.find((n) => {
+        try {
+          const parsed = JSON.parse(n.content);
+          return parsed.payrollNo === id || parsed.id === id;
+        } catch {
+          return false;
+        }
+      });
+      if (!hit) throw new AppError('Payroll run not found', 404, 'PAYROLL_RUN_NOT_FOUND');
+      
+      const parsed = JSON.parse(hit.content);
+      const nextStatus = level === 2 ? 'Approved' : 'Approved';
+      const updated = {
+        ...parsed,
+        status: nextStatus,
+        approvedBy: approverName,
+        approvedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: approverName,
+      };
+
+      await prisma.note.update({
+        where: { id: hit.id },
+        data: { content: JSON.stringify(updated) },
+      });
+      return { id: hit.targetId, noteId: hit.id, ...updated };
+    }
+
+    const parsed = JSON.parse(note.content);
+    const nextStatus = level === 2 ? 'Approved' : 'Approved';
+    const updated = {
+      ...parsed,
+      status: nextStatus,
+      approvedBy: approverName,
+      approvedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      updatedBy: approverName,
+    };
+
+    await prisma.note.update({
+      where: { id: note.id },
+      data: { content: JSON.stringify(updated) },
+    });
+    return { id: note.targetId, noteId: note.id, ...updated };
+  }
+
+  static async rejectPayrollRun(id: string, reason = '', rejecterName = 'Admin User') {
+    const matching = await prisma.note.findMany({
+      where: { targetType: 'PAYROLL_RUN' },
+    });
+    const hit = matching.find((n) => {
+      try {
+        const parsed = JSON.parse(n.content);
+        return parsed.payrollNo === id || parsed.id === id || n.targetId === String(id);
+      } catch {
+        return false;
+      }
+    });
+
+    if (!hit) throw new AppError('Payroll run not found', 404, 'PAYROLL_RUN_NOT_FOUND');
+
+    const parsed = JSON.parse(hit.content);
+    const updated = {
+      ...parsed,
+      status: 'Rejected',
+      rejectReason: reason,
+      updatedAt: new Date().toISOString(),
+      updatedBy: rejecterName,
+    };
+
+    await prisma.note.update({
+      where: { id: hit.id },
+      data: { content: JSON.stringify(updated) },
+    });
+    return { id: hit.targetId, noteId: hit.id, ...updated };
+  }
+
+  static async markPaidPayrollRun(id: string, payerName = 'Admin User') {
+    const matching = await prisma.note.findMany({
+      where: { targetType: 'PAYROLL_RUN' },
+    });
+    const hit = matching.find((n) => {
+      try {
+        const parsed = JSON.parse(n.content);
+        return parsed.payrollNo === id || parsed.id === id || n.targetId === String(id);
+      } catch {
+        return false;
+      }
+    });
+
+    if (!hit) throw new AppError('Payroll run not found', 404, 'PAYROLL_RUN_NOT_FOUND');
+
+    const parsed = JSON.parse(hit.content);
+    const updated = {
+      ...parsed,
+      status: 'Paid',
+      paidBy: payerName,
+      paidAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      updatedBy: payerName,
+    };
+
+    await prisma.note.update({
+      where: { id: hit.id },
+      data: { content: JSON.stringify(updated) },
+    });
+    return { id: hit.targetId, noteId: hit.id, ...updated };
+  }
+
+  static async uploadPayrollRunReceipt(id: string, receiptFile: string) {
+    const matching = await prisma.note.findMany({
+      where: { targetType: 'PAYROLL_RUN' },
+    });
+    const hit = matching.find((n) => {
+      try {
+        const parsed = JSON.parse(n.content);
+        return parsed.payrollNo === id || parsed.id === id || n.targetId === String(id);
+      } catch {
+        return false;
+      }
+    });
+
+    if (!hit) throw new AppError('Payroll run not found', 404, 'PAYROLL_RUN_NOT_FOUND');
+
+    const parsed = JSON.parse(hit.content);
+    const updated = {
+      ...parsed,
+      receiptFile,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await prisma.note.update({
+      where: { id: hit.id },
+      data: { content: JSON.stringify(updated) },
+    });
+    return { id: hit.targetId, noteId: hit.id, ...updated };
+  }
 }

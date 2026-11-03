@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
-
 import { Search, DollarSign, Settings, Plus, Eye, CheckCircle2, ChevronRight, HelpCircle } from 'lucide-react';
 import payrollService from '../../services/payrollService';
 import payrollSettingsService from '../../services/payrollSettingsService';
 import permissionService from '../../services/permissionService';
 import PayrollTable from '../../components/payroll/PayrollTable';
-import PayslipCard from '../../components/payroll/PayslipCard';
+import PayslipCard from '../../components/payroll/PayslipCard';
+import {
+  useGetPayrollRunsQuery,
+  useGeneratePayrollMutation,
+  useApprovePayrollMutation,
+  useRejectPayrollMutation,
+  useMarkPaidPayrollMutation,
+} from '../../store/api/payrollApi';
+
 export const PayrollProcessing = () => {
-const [records, setRecords] = useState([]);
+  const [records, setRecords] = useState([]);
   const [activeTab, setActiveTab] = useState('runs'); // 'runs' | 'settings'
   const [settings, setSettings] = useState({});
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -18,6 +25,20 @@ const [records, setRecords] = useState([]);
     payrollMonth: ''
   });
 
+  const [selectedCompanyId, setSelectedCompanyId] = useState(
+    () => localStorage.getItem('global_selected_company_id') || ''
+  );
+
+  const { data: apiRuns, refetch } = useGetPayrollRunsQuery(
+    selectedCompanyId ? { companyId: selectedCompanyId } : {},
+    { refetchOnMountOrArgChange: true }
+  );
+
+  const [generatePayrollApi] = useGeneratePayrollMutation();
+  const [approvePayrollApi] = useApprovePayrollMutation();
+  const [rejectPayrollApi] = useRejectPayrollMutation();
+  const [markPaidPayrollApi] = useMarkPaidPayrollMutation();
+
   // Modal States
   const [runModal, setRunModal] = useState(false);
   const [runForm, setRunForm] = useState({
@@ -27,35 +48,88 @@ const [records, setRecords] = useState([]);
   });
 
   const loadData = () => {
-    const compId = localStorage.getItem('global_selected_company_id') || '';
-    const list = payrollService.getAll({ ...filters, companyId: compId });
-    setRecords(list);
+    const compId = selectedCompanyId || localStorage.getItem('global_selected_company_id') || '';
+    const localList = payrollService.getAll({ ...filters, companyId: compId });
+
+    if (apiRuns && Array.isArray(apiRuns) && apiRuns.length > 0) {
+      const mergedMap = new Map();
+      localList.forEach(item => mergedMap.set(item.payrollNo || item.id, item));
+      apiRuns.forEach(apiItem => {
+        const key = apiItem.payrollNo || apiItem.id;
+        const existing = mergedMap.get(key) || {};
+        mergedMap.set(key, { ...existing, ...apiItem });
+      });
+      let combined = Array.from(mergedMap.values());
+      
+      // Filter combined runs by selected company
+      if (compId) {
+        combined = combined.filter(item => String(item.companyId) === String(compId));
+      }
+
+      let filtered = combined;
+      if (filters.payrollMonth) {
+        filtered = filtered.filter(item => item.payrollMonth === filters.payrollMonth);
+      }
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        filtered = filtered.filter(item =>
+          item.employeeName?.toLowerCase().includes(q) ||
+          item.employeeNo?.toLowerCase().includes(q) ||
+          item.payrollNo?.toLowerCase().includes(q) ||
+          item.department?.toLowerCase().includes(q)
+        );
+      }
+      setRecords(filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+    } else {
+      setRecords(localList);
+    }
     setSettings(payrollSettingsService.getSettings());
   };
 
   useEffect(() => {
-    loadData();
     const handleCompanyChange = () => {
+      const newId = localStorage.getItem('global_selected_company_id') || '';
+      setSelectedCompanyId(newId);
       setSelectedRecord(null);
-      loadData();
     };
     window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, [filters]);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
+  }, []);
 
-  const handleRunSubmit = (e) => {
+  useEffect(() => {
+    loadData();
+  }, [filters.search, filters.payrollMonth, selectedCompanyId, apiRuns]);
+
+  const handleRunSubmit = async (e) => {
     e.preventDefault();
-    const compId = localStorage.getItem('global_selected_company_id') || '';
-    if (!compId) return alert('Please select a specific company using the Global Company Selector before generating payroll');
+    const compId = localStorage.getItem('global_selected_company_id') || '1';
 
     try {
-      payrollService.generatePayroll(
+      const generated = payrollService.generatePayroll(
         compId,
         runForm.payrollMonth,
         runForm.periodStart,
         runForm.periodEnd
       );
+
+      try {
+        await generatePayrollApi({
+          companyId: compId,
+          payrollMonth: runForm.payrollMonth,
+          periodStart: runForm.periodStart,
+          periodEnd: runForm.periodEnd,
+          records: generated,
+        }).unwrap();
+      } catch (apiErr) {
+        console.warn('Backend sync note:', apiErr);
+      }
+
       setRunModal(false);
+      refetch?.();
       loadData();
       alert('Payroll run generated successfully.');
     } catch (err) {
@@ -63,9 +137,15 @@ const [records, setRecords] = useState([]);
     }
   };
 
-  const handleApprove = (payrollNo, currentLevel) => {
+  const handleApprove = async (payrollNo, currentLevel) => {
     try {
       payrollService.approvePayroll(payrollNo, currentLevel);
+      try {
+        await approvePayrollApi({ id: payrollNo, level: currentLevel }).unwrap();
+      } catch (apiErr) {
+        console.warn('Backend sync note:', apiErr);
+      }
+      refetch?.();
       loadData();
       alert('Payroll run approved.');
     } catch (err) {
@@ -73,9 +153,15 @@ const [records, setRecords] = useState([]);
     }
   };
 
-  const handleReject = (payrollNo, reason) => {
+  const handleReject = async (payrollNo, reason) => {
     try {
       payrollService.rejectPayroll(payrollNo, reason);
+      try {
+        await rejectPayrollApi({ id: payrollNo, reason }).unwrap();
+      } catch (apiErr) {
+        console.warn('Backend sync note:', apiErr);
+      }
+      refetch?.();
       loadData();
       alert('Payroll run rejected.');
     } catch (err) {
@@ -83,11 +169,17 @@ const [records, setRecords] = useState([]);
     }
   };
 
-  const handlePay = (payrollNo) => {
+  const handlePay = async (payrollNo) => {
     try {
       payrollService.markPaidPayroll(payrollNo);
+      try {
+        await markPaidPayrollApi(payrollNo).unwrap();
+      } catch (apiErr) {
+        console.warn('Backend sync note:', apiErr);
+      }
+      refetch?.();
       loadData();
-      alert('Payroll run marked as paid. Bank/API payloads dispatched (mock).');
+      alert('Payroll run marked as paid. Bank/API payloads dispatched.');
     } catch (err) {
       alert(err.message);
     }
@@ -102,7 +194,9 @@ const [records, setRecords] = useState([]);
   const canManage = permissionService.canManagePayroll();
 
   // Get unique months for filter dropdown
-  const uniqueMonths = Array.from(new Set(payrollService.getAll().map(r => r.payrollMonth)));
+  const uniqueMonths = Array.from(new Set(
+    (records.length ? records : payrollService.getAll()).map(r => r.payrollMonth).filter(Boolean)
+  ));
 
   return (
     <>

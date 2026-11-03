@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from 'react';
-
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '../components/Card';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
+import {
+  useGetDashboardStatsQuery,
+  useGetRevenueTrajectoryQuery,
+  useGetUnitsQuery,
+  useGetLeasesQuery,
+  useGetInvoicesQuery,
+  useGetTalCasesQuery,
+} from '../store';
 
 import { RecentRenewalsWidget } from '../components/renewals/RecentRenewalsWidget';
-
 import { notesHubService } from '../services/notesHubService';
 
 /* TIME & PAYROLL INTEGRATION */
@@ -17,7 +23,6 @@ import employeeService from '../services/employeeService';
 import payrollSettingsService from '../services/payrollSettingsService';
 import { PendingLeaveWidget } from '../components/payroll/PendingLeaveWidget';
 import { UpcomingPayrollWidget } from '../components/payroll/UpcomingPayrollWidget';
-// import { RecentPaymentsWidget } from '../components/collection/RecentPaymentsWidget';
 import { UpcomingHearingsWidget } from '../components/tal/UpcomingHearingsWidget';
 import { DashboardTasksWidget } from '../components/tal/DashboardTasksWidget';
 import { UrgentCasesWidget } from '../components/tal/UrgentCasesWidget';
@@ -32,7 +37,6 @@ import emailService from '../services/emailService';
 import integrationAnalyticsService from '../services/integrationAnalyticsService';
 import {
   BarChart,
-
   Bar,
   XAxis,
   YAxis,
@@ -63,15 +67,37 @@ import {
   CheckCircle
 } from 'lucide-react';
 
-
-
 export const Dashboard = () => {
+  const navigate = useNavigate();
   const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
     return () => window.removeEventListener('permissionsUpdated', handleUpdate);
   }, []);
+
+  // Track global building filter from top bar
+  const [selectedBuildingId, setSelectedBuildingId] = useState(() => localStorage.getItem('global_selected_building_id') || '');
+
+  useEffect(() => {
+    const handleBuildingSync = () => {
+      setSelectedBuildingId(localStorage.getItem('global_selected_building_id') || '');
+    };
+    window.addEventListener('buildingChanged', handleBuildingSync);
+    window.addEventListener('companyChanged', handleBuildingSync);
+    return () => {
+      window.removeEventListener('buildingChanged', handleBuildingSync);
+      window.removeEventListener('companyChanged', handleBuildingSync);
+    };
+  }, []);
+
+  // RTK Query Hooks
+  const { data: backendStats, isLoading: statsLoading } = useGetDashboardStatsQuery();
+  const { data: revenueDataRaw = [] } = useGetRevenueTrajectoryQuery();
+  const { data: allUnits = [], isLoading: unitsLoading } = useGetUnitsQuery({ showInactive: true });
+  const { data: allLeases = [], isLoading: leasesLoading } = useGetLeasesQuery();
+  const { data: allInvoices = [] } = useGetInvoicesQuery();
+  const { data: allTalCases = [] } = useGetTalCasesQuery();
 
   // Dynamic greeting and user name
   const [adminName, setAdminName] = useState('Admin');
@@ -89,19 +115,9 @@ export const Dashboard = () => {
     hasPermission('Vacancy Dashboard', 'view') ||
     hasPermission('Revenue Dashboard', 'view');
 
-  const [stats, setStats] = useState(null);
-  const [revenueStats, setRevenueStats] = useState(null);
-  const [renewals, setRenewals] = useState([]);
-  const [collectionMetrics, setCollectionMetrics] = useState({});
-  const [dashboardInvoices, setDashboardInvoices] = useState([]);
-  const [legalSummary, setLegalSummary] = useState({});
-  const [upcomingHearings, setUpcomingHearings] = useState([]);
-  const [overdueTasks, setOverdueTasks] = useState([]);
   const [notesActivity, setNotesActivity] = useState([]);
   const [notesStats, setNotesStats] = useState({});
   const [recentNotes, setRecentNotes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedOwnerId, setSelectedOwnerId] = useState('');
   const [leaseAlertPage, setLeaseAlertPage] = useState(1);
   const [reservedUnitPage, setReservedUnitPage] = useState(1);
   const leaseAlertsPerPage = 5;
@@ -120,30 +136,12 @@ export const Dashboard = () => {
   const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
   const [sentEmailsCount, setSentEmailsCount] = useState(0);
 
-
-  const fetchStats = async (ownerId = '') => {
+  const syncLocalServices = () => {
     try {
-      setLoading(true);
-      const ownerParam = ownerId ? `?ownerId=${ownerId}` : '';
-      const [dashRes, revRes, renewalRes, invRes] = await Promise.all([
-        api.get(`/api/admin/dashboard/stats${ownerParam}`),
-        api.get(`/api/admin/analytics/revenue${ownerParam}`),
-        api.get('/admin/leases/renewals').catch(() => ({ data: [] })),
-        api.get('/admin/invoices').catch(() => ({ data: [] }))
-      ]);
-      setStats(dashRes.data);
-      setRevenueStats(revRes.data);
-      setRenewals(renewalRes.data || []);
-      setCollectionMetrics({ collected: 0, overdue: 0, pending: 0 });
-      setDashboardInvoices(invRes?.data?.data || invRes?.data || []);
-      setLegalSummary({ activeCases: 0, pendingHearings: 0 });
-      setUpcomingHearings([]);
-      setOverdueTasks([]);
       setNotesActivity(notesHubService.getRecentActivity(8));
       setNotesStats(notesHubService.getStats());
       setRecentNotes(notesHubService.listNotes({}).slice(0, 5));
 
-      // Fetch Time & Payroll
       const compId = localStorage.getItem('global_selected_company_id') || '';
       setPayrollKPIs(payrollAnalyticsService.getKPIs(compId));
       setDashboardPendingLeaves(leaveService.getAll({ companyId: compId, status: 'Pending' }));
@@ -151,34 +149,18 @@ export const Dashboard = () => {
       setDashboardSettings(payrollSettingsService.getSettings());
       setDashboardCorrections(attendanceService.getCorrections({ companyId: compId, status: 'Pending' }));
 
-      // Fetch Integrations
       setIntegrationStats(integrationAnalyticsService.getStats());
       setDashboardEvents(calendarService.getAll());
       setUnreadNotifsCount(notificationService.getUnreadCount());
       setSentEmailsCount(emailService.getAll().length);
-    } catch (error) {
-      console.error('Failed to fetch dashboard stats', error);
-      setStats(null);
-      setRevenueStats(null);
-      setRenewals([]);
-      setCollectionMetrics({});
-      setDashboardInvoices([]);
-      setLegalSummary({});
-      setUpcomingHearings([]);
-      setOverdueTasks([]);
-      setNotesActivity([]);
-      setNotesStats({});
-      setRecentNotes([]);
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      console.error('Failed to sync secondary services', e);
     }
   };
 
   useEffect(() => {
-    fetchStats();
-    const handleSync = () => {
-      fetchStats();
-    };
+    syncLocalServices();
+    const handleSync = () => syncLocalServices();
     window.addEventListener('companyChanged', handleSync);
     window.addEventListener('buildingChanged', handleSync);
     return () => {
@@ -187,115 +169,176 @@ export const Dashboard = () => {
     };
   }, []);
 
-  const handleCompleteTask = (taskId) => {
-    api.put(`/admin/tal-cases/tasks/${taskId}`, { status: 'COMPLETED' }).catch(() => {});
-    fetchStats();
-  };
+  // Filtered units respecting top-bar Building selector
+  const filteredUnits = useMemo(() => {
+    let list = Array.isArray(allUnits) ? allUnits : [];
+    if (selectedBuildingId) {
+      list = list.filter(u => String(u.propertyId || u.property?.id) === String(selectedBuildingId));
+    }
+    return list;
+  }, [allUnits, selectedBuildingId]);
 
-  const handleCancelRefund = async (tenantId, unitId) => {
-    if (!window.confirm('Are you sure you want to cancel the refund process for this tenant?')) return;
-    try {
-      await api.post('/api/admin/refunds', {
-        tenantId: parseInt(tenantId),
-        unitId: parseInt(unitId),
-        type: 'Security Deposit',
-        status: 'Cancelled',
-        outcomeReason: 'Cancelled – lease renewed',
-        amount: 0,
-        reason: 'Refund process cancelled via Dashboard Alert'
+  // Vacant units count
+  const vacantUnitsCount = useMemo(() => {
+    return filteredUnits.filter(u => {
+      const st = (u.status || '').toLowerCase();
+      return st === 'vacant' || st === 'available';
+    }).length;
+  }, [filteredUnits]);
+
+  // Filtered leases respecting top-bar Building selector
+  const filteredLeases = useMemo(() => {
+    let list = Array.isArray(allLeases) ? allLeases : [];
+    if (selectedBuildingId) {
+      list = list.filter(l => {
+        const bId = l.propertyId || l.unit?.propertyId || l.unit?.property?.id || l.buildingId;
+        const bName = l.buildingName || l.building || l.unit?.property?.name;
+        return String(bId) === String(selectedBuildingId) || bName === selectedBuildingId;
       });
-      alert('Refund process cancelled successfully.');
-      fetchStats();
-    } catch (error) {
-      console.error('Failed to cancel refund process', error);
-      alert('Failed to cancel refund process');
     }
-  };
+    return list;
+  }, [allLeases, selectedBuildingId]);
 
-  // Fallback to initial structure if API fails or returns partial
-  const data = stats || {
-    totalProperties: 0,
-    totalUnits: 0,
-    occupancy: { occupied: 0, vacant: 0 },
-    projectedRevenue: 0,
-    actualRevenue: 0,
-    insuranceAlerts: { expired: 0, expiringSoon: 0 },
-    leaseAlerts: { expired: 0, expiringSoon: 0 },
-    leaseAlertList: [],
-    recentActivity: []
-  };
+  // Upcoming renewals
+  const renewals = useMemo(() => {
+    return filteredLeases.filter(l => (l.status || '').toUpperCase() === 'RENEWAL_PENDING' || l.isRenewal);
+  }, [filteredLeases]);
 
-  const { totalProperties, totalUnits, occupancy, projectedRevenue, actualRevenue, outstandingRent, outstandingDeposits, insuranceAlerts, leaseAlerts, leaseAlertList, recentActivity, vehicleStats, pendingRefunds, reservedUnits } = data;
+  // Lease Expiration Alerts
+  const leaseAlertList = useMemo(() => {
+    const now = new Date();
+    return filteredLeases
+      .filter(l => l.endDate)
+      .map(l => {
+        const endDate = new Date(l.endDate);
+        const diffDays = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+        const tenantName = typeof l.tenant === 'object'
+          ? `${l.tenant?.firstName || ''} ${l.tenant?.lastName || ''}`.trim()
+          : (l.tenant || 'Unknown Tenant');
+        const unitName = typeof l.unit === 'object'
+          ? `${l.unit?.unitNumber || l.unit?.name || ''}`
+          : (l.unit || '-');
+        const bName = l.buildingName || l.building || l.unit?.property?.name || '';
+        const unitBuilding = bName ? `${unitName} / ${bName}` : unitName;
 
-  const sortedLeaseAlertList = leaseAlertList ? [...leaseAlertList].sort((a, b) => a.daysLeft - b.daysLeft) : [];
-  const totalLeaseAlertPages = Math.ceil(sortedLeaseAlertList.length / leaseAlertsPerPage);
-  const paginatedLeaseAlerts = sortedLeaseAlertList.slice(
-    (leaseAlertPage - 1) * leaseAlertsPerPage,
-    leaseAlertPage * leaseAlertsPerPage
-  );
+        return {
+          id: l.id,
+          tenant: tenantName,
+          type: l.leaseType || (l.type === 'BEDROOM' || l.bedroom ? 'Bedroom Lease' : 'Full Unit Lease'),
+          unit: unitBuilding,
+          expiryDate: l.endDate,
+          daysLeft: diffDays,
+          status: diffDays < 0 ? 'Expired' : 'Active'
+        };
+      })
+      .filter(a => a.daysLeft <= 120); // 4 months criteria
+  }, [filteredLeases]);
 
-  const paginatedReservedUnits = reservedUnits ? reservedUnits.slice(
-    (reservedUnitPage - 1) * reservedUnitsPerPage,
-    reservedUnitPage * reservedUnitsPerPage
-  ) : [];
-  const totalReservedUnitPages = Math.ceil((reservedUnits?.length || 0) / reservedUnitsPerPage);
+  const sortedLeaseAlertList = useMemo(() => {
+    return [...leaseAlertList].sort((a, b) => a.daysLeft - b.daysLeft);
+  }, [leaseAlertList]);
 
-  // Build revenue chart from real monthly data (sorted chronologically)
-  const revenueData = [...(revenueStats?.monthlyRevenue || [])]
-    .sort((a, b) => {
-      const parse = (s) => {
-        if (!s) return 0;
-        if (typeof s !== 'string') return 0;
-        if (s.includes('-')) {
-          const [y, m] = s.split('-');
-          return new Date(y, parseInt(m, 10) - 1).getTime();
-        }
-        const [mName, y] = s.split(' ');
-        const monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
-        const shortMonthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const totalLeaseAlertPages = Math.max(1, Math.ceil(sortedLeaseAlertList.length / leaseAlertsPerPage));
+  const paginatedLeaseAlerts = useMemo(() => {
+    return sortedLeaseAlertList.slice(
+      (leaseAlertPage - 1) * leaseAlertsPerPage,
+      leaseAlertPage * leaseAlertsPerPage
+    );
+  }, [sortedLeaseAlertList, leaseAlertPage]);
 
-        let mIdx = monthNames.indexOf(mName.toLowerCase());
-        if (mIdx === -1) mIdx = shortMonthNames.indexOf(mName.toLowerCase());
-
-        return new Date(y, mIdx !== -1 ? mIdx : 0).getTime();
-      };
-      return parse(a.month) - parse(b.month);
-    })
-    .map(m => ({
-      month: m.month,          // e.g. "2025-03"
-      revenue: m.amount,
-      rent: m.rent,
-      deposit: m.deposit,
-      serviceFees: m.serviceFees,
-    }));
-
-  // Format month label: "2025-03" -> "Mar '25" or "March 2026" -> "Mar '26"
-  const formatMonth = (val) => {
-    if (!val) return '';
-    if (val.toString().includes('-')) {
-      const [year, mon] = val.split('-');
-      const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `${names[parseInt(mon, 10) - 1]} '${year.slice(2)}`;
+  // Financial Metrics from Invoices
+  const collectionMetrics = useMemo(() => {
+    let list = Array.isArray(allInvoices) ? allInvoices : [];
+    if (selectedBuildingId) {
+      list = list.filter(inv => {
+        const bId = inv.propertyId || inv.unit?.propertyId || inv.unit?.property?.id;
+        return String(bId) === String(selectedBuildingId);
+      });
     }
-    // Handle "March 2025" format
-    const parts = val.toString().split(' ');
-    if (parts.length === 2) {
-      const longMonth = parts[0];
-      const year = parts[1];
-      return `${longMonth.substring(0, 3)} '${year.slice(2)}`;
-    }
-    return val;
-  };
 
-  // NEW: Fix for the "One-Day Backup" bug (Ignores timezone shifting)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    let outstanding = 0;
+    let overdueAmt = 0;
+    let overdueCnt = 0;
+    let billedThisMonth = 0;
+    let collectedThisMonth = 0;
+
+    list.forEach(inv => {
+      const balance = Math.max(0, (Number(inv.amountDue || inv.amount) || 0) - (Number(inv.amountPaid) || 0));
+      outstanding += balance;
+
+      const due = inv.dueDate ? new Date(inv.dueDate) : null;
+      if (due && due < now && balance > 0) {
+        overdueAmt += balance;
+        overdueCnt += 1;
+      }
+
+      if (due && due.getFullYear() === currentYear && due.getMonth() === currentMonth) {
+        billedThisMonth += Number(inv.amountDue || inv.amount) || 0;
+      }
+      collectedThisMonth += Number(inv.amountPaid) || 0;
+    });
+
+    const rate = billedThisMonth > 0 ? Math.round((collectedThisMonth / billedThisMonth) * 100) : 0;
+
+    return {
+      totalOutstanding: outstanding,
+      overdueAmount: overdueAmt,
+      overdueCount: overdueCnt,
+      thisMonthCollection: collectedThisMonth,
+      collectionRate: rate
+    };
+  }, [allInvoices, selectedBuildingId]);
+
+  // Active TAL cases count
+  const legalSummary = useMemo(() => {
+    const list = Array.isArray(allTalCases) ? allTalCases : [];
+    const active = list.filter(c => (c.status || '').toUpperCase() !== 'CLOSED' && (c.status || '').toUpperCase() !== 'RESOLVED');
+    return {
+      activeCasesCount: active.length,
+      urgentCases: active.slice(0, 5)
+    };
+  }, [allTalCases]);
+
+  // Reserved Units from Vacant / Inactive units
+  const reservedUnits = useMemo(() => {
+    return filteredUnits
+      .filter(u => u.status === 'RESERVED' || u.status === 'Reserved' || u.isReserved)
+      .map(u => ({
+        id: u.id,
+        tenantName: u.reservedBy || u.tenantName || 'Pending Applicant',
+        building: u.buildingName || u.property?.name || 'Main Building',
+        unitNumber: u.unitNumber || u.name,
+        moveInDate: u.tentativeMoveIn || u.availableDate || new Date().toISOString(),
+        isNewConstruction: Boolean(u.isNewConstruction || !u.isActive)
+      }));
+  }, [filteredUnits]);
+
+  const paginatedReservedUnits = useMemo(() => {
+    return reservedUnits.slice(
+      (reservedUnitPage - 1) * reservedUnitsPerPage,
+      reservedUnitPage * reservedUnitsPerPage
+    );
+  }, [reservedUnits, reservedUnitPage]);
+
+  const totalReservedUnitPages = Math.max(1, Math.ceil(reservedUnits.length / reservedUnitsPerPage));
+
+  // Format date helper
   const formatTableDate = (dateString) => {
     if (!dateString) return 'N/A';
-    // dateString looks like "2026-04-30T00:00:00.000Z"
-    // We only care about the part BEFORE the 'T'
     const [year, month, day] = dateString.split('T')[0].split('-');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${months[parseInt(month, 10) - 1]} ${parseInt(day, 10)}, ${year}`;
   };
+
+  const handleCompleteTask = (taskId) => {
+    api.put(`/admin/tal-cases/tasks/${taskId}`, { status: 'COMPLETED' }).catch(() => {});
+  };
+
+  const loading = statsLoading || unitsLoading || leasesLoading;
 
   if (!canViewAnyDashboard) {
     return (
@@ -348,7 +391,7 @@ export const Dashboard = () => {
                   { title: 'This Month Collected', value: `$${(collectionMetrics.thisMonthCollection || 0).toLocaleString('en-CA')}`, subValue: 'Cash Inflow', icon: TrendingUp, color: 'bg-emerald-500', path: '/payments/received' },
                   { title: 'Active TAL Cases', value: legalSummary.activeCasesCount || 0, subValue: 'In Litigation', icon: Gavel, color: 'bg-violet-500', path: '/tal-cases' },
                   { title: 'Notes Hub', value: notesStats.totalNotes || 0, subValue: `${notesStats.recentCount || 0} This Week`, icon: StickyNote, color: 'bg-indigo-500', path: '/notes-hub' },
-                  { title: 'Vacant Units', value: occupancy?.vacant || 0, subValue: 'Available Units', icon: Home, color: 'bg-blue-500', path: '/vacancy' }
+                  { title: 'Vacant Units', value: vacantUnitsCount, subValue: 'Available Units', icon: Home, color: 'bg-blue-500', path: '/vacancy' }
                 ];
               })().map((card, idx) => (
                 <Link
@@ -446,7 +489,7 @@ export const Dashboard = () => {
                           <td className="py-5 text-right pr-2">
                             <button
                               onClick={() => navigate(`/leases`)}
-                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline uppercase tracking-widest transition-colors"
+                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline uppercase tracking-widest transition-colors cursor-pointer"
                             >
                               Manage
                             </button>
@@ -490,19 +533,9 @@ export const Dashboard = () => {
               </div>
             </section>
 
-            {/* LEASE RENEWALS WIDGETS */}
-            <section className="hidden">
-
-              {/* <RecentRenewalsWidget renewals={renewals} /> moved */}
-            </section>
-
             {/* RENT COLLECTION WIDGETS */}
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
               <RecentRenewalsWidget renewals={renewals} />
-              {/* <RecentPaymentsWidget
-                payments={dashboardInvoices.flatMap(inv => inv.paymentsList || [])}
-                invoices={dashboardInvoices}
-              /> */}
 
               {/* Quick Actions Card */}
               <div className="p-6 bg-slate-900 text-white rounded-[22px] shadow-[0_10px_30px_rgba(15,23,42,0.15)] hover:shadow-[0_15px_40px_rgba(15,23,42,0.25)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
@@ -512,14 +545,14 @@ export const Dashboard = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-4">
                   <button
-                    onClick={() => window.location.href = '/payments/collection'}
-                    className="py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-xl transition-all"
+                    onClick={() => navigate('/payments/collection')}
+                    className="py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
                   >
                     Open Workspace
                   </button>
                   <button
-                    onClick={() => window.location.href = '/payments/collection'}
-                    className="py-2.5 bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold rounded-xl transition-all"
+                    onClick={() => navigate('/payments/collection')}
+                    className="py-2.5 bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold rounded-xl transition-all cursor-pointer"
                   >
                     View Tenant Ledger
                   </button>
@@ -529,10 +562,11 @@ export const Dashboard = () => {
 
             {/* TAL LEGAL WIDGETS */}
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6 items-start">
-              <UpcomingHearingsWidget hearings={upcomingHearings} />
-              <DashboardTasksWidget tasks={overdueTasks} onCompleteTask={handleCompleteTask} />
-              <UrgentCasesWidget cases={legalSummary.urgentCases || []} onView={(id) => window.location.href = `/tal-cases/${id}`} />
+              <UpcomingHearingsWidget hearings={[]} />
+              <DashboardTasksWidget tasks={[]} onCompleteTask={handleCompleteTask} />
+              <UrgentCasesWidget cases={legalSummary.urgentCases || []} onView={(id) => navigate(`/tal-cases/${id}`)} />
             </section>
+
             {/* NOTES & ACTIVITY */}
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6 items-start">
               <Card className="lg:col-span-2 h-fit">
@@ -604,8 +638,8 @@ export const Dashboard = () => {
                 <div className="lg:col-span-2">
                   <PendingLeaveWidget
                     requests={dashboardPendingLeaves}
-                    onApprove={(id) => { leaveService.updateStatus(id, 'Approved'); fetchStats(); }}
-                    onReject={(id, r) => { leaveService.updateStatus(id, 'Rejected', r); fetchStats(); }}
+                    onApprove={(id) => { leaveService.updateStatus(id, 'Approved'); syncLocalServices(); }}
+                    onReject={(id, r) => { leaveService.updateStatus(id, 'Rejected', r); syncLocalServices(); }}
                   />
                 </div>
                 <div>
@@ -664,7 +698,7 @@ export const Dashboard = () => {
                             {item.isNewConstruction ? (
                               <button
                                 onClick={() => navigate(`/unit-readiness`)}
-                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-zinc-900 transition-all shadow-lg shadow-slate-200"
+                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-zinc-900 transition-all shadow-lg shadow-slate-200 cursor-pointer"
                               >
                                 View Readiness
                               </button>
@@ -702,7 +736,6 @@ export const Dashboard = () => {
 
                       {[...Array(totalReservedUnitPages)].map((_, i) => {
                         const p = i + 1;
-                        // Only show first, last, and pages around current
                         if (p === 1 || p === totalReservedUnitPages || (p >= reservedUnitPage - 1 && p <= reservedUnitPage + 1)) {
                           return (
                             <button

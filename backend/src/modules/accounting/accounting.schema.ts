@@ -29,12 +29,27 @@ export const createInvoiceSchema = z.object({
 
 export const createBankAccountSchema = z.object({
   body: z.object({
-    companyId: z.string().uuid().optional(),
-    bankName: z.string().min(1, 'Bank name is required'),
+    companyId: z.string().optional(),
+    bankName: z.string().optional().default('General Ledger'),
     accountName: z.string().min(1, 'Account name is required'),
-    accountNumber: z.string().min(4, 'Account number is required'),
+    accountNumber: z.string().min(1, 'Account number is required'),
     routingNumber: z.string().optional(),
+    assetType: z.string().optional(),
     initialBalance: z.number().nonnegative().optional().default(0),
+    openingBalance: z.union([z.number(), z.string()]).optional(),
+  }),
+});
+
+export const updateBankAccountSchema = z.object({
+  body: z.object({
+    companyId: z.string().optional(),
+    bankName: z.string().optional(),
+    accountName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    routingNumber: z.string().optional(),
+    assetType: z.string().optional(),
+    balance: z.number().optional(),
+    openingBalance: z.union([z.number(), z.string()]).optional(),
   }),
 });
 
