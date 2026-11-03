@@ -1,4 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  useGetTenantsQuery,
+  useGetPropertiesQuery,
+  useGetUnitsQuery,
+  useGetVacantBedroomsQuery,
+  useCreateTenantMutation,
+  useUpdateTenantMutation,
+  useDeleteTenantMutation,
+  useSendTenantInviteMutation,
+  useLazyGetTenantByIdQuery,
+  useGetTenantByIdQuery,
+  useGetTicketsQuery,
+  useCreateTicketMutation,
+  useCreateLeaseMutation,
+} from '../store';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { Button } from '../components/Button';
@@ -20,8 +35,16 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
   const { id } = useParams();
   const navigate = useNavigate();
-  const [tenants, setTenants] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  // RTK Query Hooks
+  const { data: rawTenants = [], isLoading: loading } = useGetTenantsQuery();
+  const { data: properties = [] } = useGetPropertiesQuery();
+  const { data: allUnits = [] } = useGetUnitsQuery({ showInactive: true });
+  const [createTenant] = useCreateTenantMutation();
+  const [updateTenant] = useUpdateTenantMutation();
+  const [deleteTenantMutation] = useDeleteTenantMutation();
+  const [sendTenantInviteMutation] = useSendTenantInviteMutation();
+  const [fetchTenantById] = useLazyGetTenantByIdQuery();
 
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -35,7 +58,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const [inviteMethods, setInviteMethods] = useState({ email: true, sms: true });
   const [isSendingInvite, setIsSendingInvite] = useState(false);
   const [tenantBuildingFilter, setTenantBuildingFilter] = useState('');
-  const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 25 });
   const [activeCopyMenuId, setActiveCopyMenuId] = useState(null);
   const [copiedState, setCopiedState] = useState({ id: null, type: null });
 
@@ -98,13 +121,6 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     }
   };
 
-  // Lists for Dropdowns
-  const [properties, setProperties] = useState([]);
-  const [allUnits, setAllUnits] = useState([]); // All units fetched
-  const [availableUnits, setAvailableUnits] = useState([]); // Filtered by selected property
-  const [allBedrooms, setAllBedrooms] = useState([]); // All vacant bedrooms
-  const [availableBedrooms, setAvailableBedrooms] = useState([]); // Filtered by selected property
-
   // For Modal Form State
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [tenantType, setTenantType] = useState('Individual');
@@ -114,139 +130,48 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const [selectedBedroomId, setSelectedBedroomId] = useState('');
   const [isBedroomWise, setIsBedroomWise] = useState(false);
   const [formStep, setFormStep] = useState(1); // 1: Type Selection, 2: Details
-  const [billableTenants, setBillableTenants] = useState([]);
   const [selectedParentId, setSelectedParentId] = useState('');
 
+  // Billable tenants for "Responsible Party" dropdown
+  const billableTenants = useMemo(() => {
+    const list = Array.isArray(rawTenants) ? rawTenants : [];
+    return list.filter(t => t.type !== 'RESIDENT' && t.type !== 'Resident');
+  }, [rawTenants]);
+
+  // Filtered available units based on selected building and tenant type
+  const availableUnits = useMemo(() => {
+    if (!selectedPropertyId) return [];
+    return (Array.isArray(allUnits) ? allUnits : []).filter(u => {
+      const propMatch = String(u.propertyId || u.property?.id) === String(selectedPropertyId);
+      if (!propMatch) return false;
+      if (tenantType === 'Resident' || tenantType === 'RESIDENT') {
+        return u.status !== 'Fully Booked' || (u.activeLeaseCount > 0);
+      }
+      return u.status !== 'Fully Booked';
+    });
+  }, [allUnits, selectedPropertyId, tenantType]);
+
+  // Vacant bedrooms query
+  const { data: vacantBedroomsData = [] } = useGetVacantBedroomsQuery(
+    { unitId: selectedUnitId, includeId: editingTenant?.bedroomId },
+    { skip: !selectedUnitId || (!isBedroomWise && tenantType !== 'Resident') }
+  );
+  const availableBedrooms = (selectedUnitId && (isBedroomWise || tenantType === 'Resident')) ? vacantBedroomsData : [];
+
+  // Edit Tenant Consistency: If editing, ensure the unit stays selected if found in result
   useEffect(() => {
-    // Reset page to 1 when filters change
+    if (editingTenant && editingTenant.unitId && availableUnits.length > 0) {
+      const found = availableUnits.find(u => String(u.id) === String(editingTenant.unitId));
+      if (found) {
+        setSelectedUnitId(editingTenant.unitId.toString());
+      }
+    }
+  }, [editingTenant, availableUnits]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
     setPagination(prev => ({ ...prev, page: 1 }));
   }, [search, tenantBuildingFilter]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchTenants(pagination.page);
-    }, 400); // Debounce search/filter
-    return () => clearTimeout(timer);
-  }, [pagination.page, search, tenantBuildingFilter]);
-
-  useEffect(() => {
-    const handleCompanyChange = () => {
-      setPagination(prev => ({ ...prev, page: 1 }));
-      fetchTenants(1);
-    };
-    window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, [search, tenantBuildingFilter]);
-
-  const fetchTenants = async (page = 1) => {
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: pagination.limit.toString(),
-        search: search || '',
-        propertyId: tenantBuildingFilter || ''
-      });
-      const res = await api.get(`/api/admin/tenants?${params.toString()}`);
-      
-      if (res.data?.data) {
-        setTenants(res.data.data);
-        if (res.data.meta) {
-          setPagination(prev => ({
-            ...prev,
-            total: res.data.meta.total,
-            totalPages: res.data.meta.totalPages,
-            page: res.data.meta.page
-          }));
-        }
-      } else {
-        const dataArr = res.data || [];
-        const currentLimit = pagination.limit || 25;
-        const totalItems = dataArr.length;
-        const totalPages = Math.ceil(totalItems / currentLimit) || 1;
-        const currentPage = parseInt(page) || 1;
-        
-        // Manual slice for non-paginated backend fallback
-        const startIndex = (currentPage - 1) * currentLimit;
-        const slicedData = dataArr.slice(startIndex, startIndex + currentLimit);
-        
-        setTenants(slicedData);
-        setPagination({
-          page: currentPage,
-          limit: currentLimit,
-          total: totalItems,
-          totalPages: totalPages
-        });
-      }
-    } catch (e) {
-      console.error("Failed to fetch tenants", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchDropdownData = async () => {
-    try {
-      const propsRes = await api.get('/api/admin/properties');
-      const propsData = propsRes.data?.data || propsRes.data || [];
-      setProperties(propsData);
-
-      // Fetch all billable tenants for the "Responsible Party" dropdown
-      const tenantsRes = await api.get('/api/admin/tenants?limit=1000');
-      const allTenants = tenantsRes.data?.data || tenantsRes.data || [];
-      const billable = allTenants.filter(t => t.type !== 'RESIDENT' && t.type !== 'Resident');
-      setBillableTenants(billable);
-
-      // Fetch all units for dropdowns
-      const unitsRes = await api.get('/api/admin/units?limit=1000&showInactive=true');
-      setAllUnits(unitsRes.data?.data || unitsRes.data || []);
-    } catch (e) {
-      console.error("Failed to fetch dropdown data", e);
-      setProperties([]);
-      setBillableTenants([]);
-      setAllUnits([]);
-    }
-  };
-
-  useEffect(() => {
-    fetchDropdownData();
-  }, []);
-  // Fetch units when building selection changes
-  useEffect(() => {
-    const fetchUnitsForBuilding = async () => {
-      if (selectedPropertyId) {
-        try {
-          const res = await api.get(`/api/admin/units?building_id=${selectedPropertyId}&limit=1000`);
-          const allUnits = res.data?.data || res.data || [];
-
-          // Filter units:
-          // 1. If Individual/Company tenant: only show Vacant
-          // 2. If Resident: show units with Active company leases + Vacant
-          const units = allUnits.filter(u => {
-            if (tenantType === 'Resident' || tenantType === 'RESIDENT') {
-              return u.status !== 'Fully Booked' || u.activeLeaseCount > 0;
-            }
-            return u.status !== 'Fully Booked';
-          });
-
-          setAvailableUnits(units);
-
-          // Edit Tenant Consistency: If editing, ensure the unit stays selected if found in result
-          if (editingTenant && editingTenant.unitId) {
-            const found = units.find(u => String(u.id) === String(editingTenant.unitId));
-            if (found) {
-              setSelectedUnitId(editingTenant.unitId.toString());
-            }
-          }
-        } catch (e) {
-          console.error("Failed to fetch units", e);
-          setAvailableUnits([]);
-        }
-      } else {
-        setAvailableUnits([]);
-      }
-    };
-    fetchUnitsForBuilding();
-  }, [selectedPropertyId, editingTenant]);
 
   // Handle building change: reset unit and bedroom
   const handleBuildingChange = (val) => {
@@ -265,38 +190,49 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     }
   }, [selectedUnitId, availableUnits]);
 
-  // Note: For existing bedroom logic, we'll keep the load-all approach for now 
-  // unless explicitly told to change it, as it works with the filter below.
-  // But we'll add a fetch for bedrooms if needed.
-  useEffect(() => {
-    const fetchBedrooms = async () => {
-      if (selectedUnitId && (isBedroomWise || tenantType === 'Resident')) {
-        try {
-          // If editing, tell the backend to include the current bedroom even if it's "taken" by this user
-          const includeId = editingTenant?.bedroomId ? `&includeId=${editingTenant.bedroomId}` : '';
-          const res = await api.get(`/api/admin/units/bedrooms/vacant?unitId=${selectedUnitId}${includeId}`);
-          setAvailableBedrooms(res.data || []);
-        } catch (e) {
-          console.error("Failed to fetch bedrooms", e);
-        }
-      } else {
-        setAvailableBedrooms([]);
-      }
-    };
-    fetchBedrooms();
-  }, [selectedUnitId, isBedroomWise, tenantType, editingTenant]);
+  // Filter tenants by building and search query
+  const filteredTenants = useMemo(() => {
+    let result = Array.isArray(rawTenants) ? rawTenants : [];
+
+    if (tenantBuildingFilter) {
+      result = result.filter(t => 
+        String(t.propertyId) === String(tenantBuildingFilter) || 
+        String(t.property?.id) === String(tenantBuildingFilter) ||
+        t.propertyName === tenantBuildingFilter
+      );
+    }
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(t => {
+        const fullName = `${t.firstName || ''} ${t.lastName || ''} ${t.name || ''}`.toLowerCase();
+        const email = (t.email || '').toLowerCase();
+        const prop = (t.property || t.propertyName || '').toLowerCase();
+        const unit = (t.unit || t.unitNumber || '').toLowerCase();
+        return fullName.includes(q) || email.includes(q) || prop.includes(q) || unit.includes(q);
+      });
+    }
+
+    return result;
+  }, [rawTenants, tenantBuildingFilter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTenants.length / pagination.limit));
+  const paginatedTenants = useMemo(() => {
+    const startIndex = (pagination.page - 1) * pagination.limit;
+    return filteredTenants.slice(startIndex, startIndex + pagination.limit);
+  }, [filteredTenants, pagination.page, pagination.limit]);
 
   /* 🔗 HANDLE URL PARAMS */
   useEffect(() => {
     if (id) {
-      const found = tenants.find(t => String(t.id) === String(id));
+      const found = Array.isArray(rawTenants) ? rawTenants.find(t => String(t.id) === String(id)) : null;
       if (found) {
         setViewingTenant(found);
         setErrorNotFound(false);
       } else {
-        api.get('/api/admin/tenants/' + id)
-          .then(res => {
-            const data = res.data?.data || res.data;
+        fetchTenantById(id)
+          .unwrap()
+          .then(data => {
             if (data && data.id) {
               setViewingTenant(data);
               setErrorNotFound(false);
@@ -314,9 +250,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
       setViewingTenant(null);
       setErrorNotFound(false);
     }
-  }, [id, tenants]);
-
-
+  }, [id, rawTenants, fetchTenantById]);
 
   /* 🔒 LOCK BACKGROUND SCROLL */
   useEffect(() => {
@@ -397,34 +331,31 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     try {
       let res;
       if (editingTenant) {
-        res = await api.put(`/api/admin/tenants/${editingTenant.id}`, payload);
+        res = await updateTenant({ id: editingTenant.id, ...payload }).unwrap();
       } else {
-        res = await api.post('/api/admin/tenants', payload);
+        res = await createTenant(payload).unwrap();
       }
 
-      // Check SMS Status if response contains it
-      if (res.data?.smsResult) {
-        if (res.data.smsResult.skipped) {
+      const resData = res?.data || res;
+      if (resData?.smsResult) {
+        if (resData.smsResult.skipped) {
           alert(tenantType === 'Resident' ? 'Resident added successfully!' : 'Tenant added successfully!');
-        } else if (res.data.smsResult.success) {
+        } else if (resData.smsResult.success) {
           alert("Tenant added successfully! \nSMS Credentials sent.");
         } else {
-          alert(`Tenant added, BUT SMS Failed. \nError: ${res.data.smsResult.error || "Unknown Error"}`);
+          alert(`Tenant added, BUT SMS Failed. \nError: ${resData.smsResult.error || "Unknown Error"}`);
         }
       } else if (!editingTenant) {
-        // Fallback if no smsResult but valid tenant creation
         alert(tenantType === 'Resident' ? 'Resident added successfully!' : 'Tenant added successfully!');
       }
 
-      await fetchTenants();
-      await fetchDropdownData();
       setShowModal(false);
       setEditingTenant(null);
       resetForm();
     } catch (e) {
       console.error(e);
-      const serverError = e.response?.data?.errors;
-      const serverMessage = e.response?.data?.message;
+      const serverError = e?.data?.errors || e?.response?.data?.errors;
+      const serverMessage = e?.data?.message || e?.response?.data?.message;
 
       if (serverError && Object.keys(serverError).length > 0) {
         setErrors(serverError);
@@ -452,11 +383,9 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const deleteTenant = async (id) => {
     if (window.confirm('Are you sure you want to delete this tenant?')) {
       try {
-        await api.delete(`/api/admin/tenants/${id}`);
-        fetchTenants(pagination.page);
-        fetchDropdownData();
+        await deleteTenantMutation(id).unwrap();
       } catch (e) {
-        alert('Failed to delete tenant');
+        alert(e?.data?.message || e?.response?.data?.message || 'Failed to delete tenant');
       }
     }
   };
@@ -491,22 +420,22 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
       if (inviteMethods.email) methods.push('email');
       if (inviteMethods.sms) methods.push('sms');
 
-      const res = await api.post(`/api/admin/tenants/${invitingTenant.id}/send-invite`, { methods });
+      const res = await sendTenantInviteMutation({ id: invitingTenant.id, methods }).unwrap();
 
       let msg = 'Invitations processed successfully.';
-      if (res.data.data?.results) {
-        const { email, sms } = res.data.data.results;
-        if (email.attempted) msg += `\nEmail: ${email.success ? 'Sent' : 'Failed (' + (email.error || 'Unknown error') + ')'}`;
-        if (sms.attempted) msg += `\nSMS: ${sms.success ? 'Sent' : 'Failed (' + (sms.error || 'Unknown error') + ')'}`;
+      const resData = res?.data || res;
+      if (resData?.results) {
+        const { email, sms } = resData.results;
+        if (email?.attempted) msg += `\nEmail: ${email.success ? 'Sent' : 'Failed (' + (email.error || 'Unknown error') + ')'}`;
+        if (sms?.attempted) msg += `\nSMS: ${sms.success ? 'Sent' : 'Failed (' + (sms.error || 'Unknown error') + ')'}`;
       }
 
       alert(msg);
       setShowInviteModal(false);
       setInvitingTenant(null);
-      await fetchTenants();
     } catch (e) {
       console.error(e);
-      alert(e.response?.data?.message || 'Failed to send invite');
+      alert(e?.data?.message || e?.response?.data?.message || 'Failed to send invite');
     } finally {
       setIsSendingInvite(false);
     }
@@ -605,7 +534,12 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               </div>
 
               <div className="divide-y divide-slate-100">
-                {tenants.map((tenant, index) => {
+                {loading ? (
+                <div className="py-12 text-center text-slate-400">Loading tenants...</div>
+              ) : paginatedTenants.length === 0 ? (
+                <div className="py-12 text-center text-slate-400">No tenants found</div>
+              ) : (
+                paginatedTenants.map((tenant, index) => {
                   const hasInsuranceIssue = tenant.insurance?.some(policy => {
                     const end = new Date(policy.endDate);
                     const now = new Date();
@@ -1019,16 +953,16 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                       </div>
                     </div>
                   );
-                })}
+                }))}
               </div>
 
               {/* PAGINATION FOOTER */}
               <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 border-t border-slate-100 p-4 md:px-6 gap-4">
                 <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider order-2 sm:order-1">
-                  Showing <span className="text-slate-800 font-bold">{(pagination.page - 1) * pagination.limit + 1}</span> to <span className="text-slate-800 font-bold">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of <span className="text-slate-800 font-bold">{pagination.total}</span> tenants
+                  Showing <span className="text-slate-800 font-bold">{filteredTenants.length === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1}</span> to <span className="text-slate-800 font-bold">{Math.min(pagination.page * pagination.limit, filteredTenants.length)}</span> of <span className="text-slate-800 font-bold">{filteredTenants.length}</span> tenants
                 </div>
 
-                {pagination.totalPages > 1 && (
+                {totalPages > 1 && (
                   <div className="flex items-center gap-2 order-1 sm:order-2">
                     <button
                       onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
@@ -1039,12 +973,12 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     </button>
 
                     <div className="flex items-center gap-1">
-                      {[...Array(pagination.totalPages)].map((_, i) => {
+                      {[...Array(totalPages)].map((_, i) => {
                         const pageNum = i + 1;
                         if (
-                          pagination.totalPages <= 5 ||
+                          totalPages <= 5 ||
                           pageNum === 1 ||
-                          pageNum === pagination.totalPages ||
+                          pageNum === totalPages ||
                           (pageNum >= pagination.page - 1 && pageNum <= pagination.page + 1)
                         ) {
                           return (
@@ -1067,8 +1001,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     </div>
 
                     <button
-                      onClick={() => setPagination(prev => ({ ...prev, page: Math.min(pagination.totalPages, prev.page + 1) }))}
-                      disabled={pagination.page === pagination.totalPages}
+                      onClick={() => setPagination(prev => ({ ...prev, page: Math.min(totalPages, prev.page + 1) }))}
+                      disabled={pagination.page === totalPages}
                       className="p-2 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       <ArrowLeft size={16} className="rotate-180" />
@@ -1598,65 +1532,53 @@ const TenantTALHistoryWidget = ({ tenantId, tenantName }) => {
 
 const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) => {
   const [activeTab, setActiveTab] = useState('Details');
-  const [loading, setLoading] = useState(false);
+  const { data: liveTenant, isLoading: loading, refetch: fetchTenantData } = useGetTenantByIdQuery(tenant?.id, {
+    skip: !tenant?.id,
+  });
+  const { data: rawTickets = [], refetch: fetchTickets } = useGetTicketsQuery(
+    { userId: tenant?.id },
+    { skip: !tenant?.id }
+  );
+  const [createTicketMutation] = useCreateTicketMutation();
+  const [createLeaseMutation] = useCreateLeaseMutation();
+
   const [tenantData, setTenantData] = useState({
     ...tenant,
-    email: tenant.email || `${tenant.name.toLowerCase().replace(' ', '.')}@example.com`,
+    email: tenant.email || `${tenant.name?.toLowerCase().replace(' ', '.') || ''}@example.com`,
     phone: tenant.phone || '+1 (555) 012-3456',
     leaseStatus: tenant.leaseStatus || 'Active'
   });
   const [documents, setDocuments] = useState(tenant.documents || []);
   const [policies, setPolicies] = useState(tenant.insurance || []);
   const [leases, setLeases] = useState([]);
-  const [tickets, setTickets] = useState([]);
-
-  const fetchTenantData = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get(`/api/admin/tenants/${tenant.id}`);
-      const data = res.data;
-      setTenantData({
-        ...data,
-        name: data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim(),
-        leaseStatus: data.type === 'RESIDENT' ? 'Occupant' : (data.leases?.find(l => l.status === 'Active')?.status || data.leases?.find(l => l.status === 'DRAFT')?.status || 'Inactive'),
-        property: data.leases?.find(l => l.status === 'Active')?.unit?.property?.name || data.assignedUnit?.property?.name || 'No Property',
-        unit: data.leases?.find(l => l.status === 'Active')?.unit?.unitNumber || data.leases?.find(l => l.status === 'Active')?.unit?.name || data.assignedUnit?.unitNumber || data.assignedUnit?.name || 'No Unit'
-      });
-      setDocuments(data.documents || []);
-      setPolicies(data.insurances || []);
-      setLeases(data.leases || []);
-    } catch (e) {
-      console.error("Failed to fetch tenant data", e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    if (tenant?.id) {
-      fetchTenantData();
-      fetchTickets();
+    if (liveTenant) {
+      setTenantData({
+        ...liveTenant,
+        name: liveTenant.name || `${liveTenant.firstName || ''} ${liveTenant.lastName || ''}`.trim(),
+        leaseStatus: liveTenant.type === 'RESIDENT' ? 'Occupant' : (liveTenant.leases?.find(l => l.status === 'Active')?.status || liveTenant.leases?.find(l => l.status === 'DRAFT')?.status || 'Inactive'),
+        property: liveTenant.leases?.find(l => l.status === 'Active')?.unit?.property?.name || liveTenant.assignedUnit?.property?.name || 'No Property',
+        unit: liveTenant.leases?.find(l => l.status === 'Active')?.unit?.unitNumber || liveTenant.leases?.find(l => l.status === 'Active')?.unit?.name || liveTenant.assignedUnit?.unitNumber || liveTenant.assignedUnit?.name || 'No Unit'
+      });
+      setDocuments(liveTenant.documents || []);
+      setPolicies(liveTenant.insurances || liveTenant.insurance || []);
+      setLeases(liveTenant.leases || []);
     }
-  }, [tenant]);
+  }, [liveTenant]);
 
-  const fetchTickets = async () => {
-    try {
-      const res = await api.get(`/api/admin/tickets?userId=${tenant.id}`);
-      // Map backend fields to frontend UI expectations if needed
-      const mapped = res.data.map(t => ({
-        id: t.id, // e.g. T-1001
-        dbId: t.dbId,
-        title: t.subject,
-        category: t.category || 'General',
-        priority: t.priority,
-        status: t.status,
-        date: t.date
-      }));
-      setTickets(mapped);
-    } catch (e) {
-      console.error("Failed to fetch tickets", e);
-    }
-  };
+  const tickets = useMemo(() => {
+    const list = Array.isArray(rawTickets) ? rawTickets : [];
+    return list.map(t => ({
+      id: t.id,
+      dbId: t.dbId,
+      title: t.subject || t.title,
+      category: t.category || 'General',
+      priority: t.priority,
+      status: t.status,
+      date: t.date
+    }));
+  }, [rawTickets]);
 
   // Modals state
   const [showAddInsurance, setShowAddInsurance] = useState(false);
@@ -1800,8 +1722,8 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         propertyId: tenant.propertyId,
         unitId: tenant.unitId
       };
-      await api.post('/api/admin/tickets', payload);
-      fetchTickets(); // Refresh list
+      await createTicketMutation(payload).unwrap();
+      fetchTickets();
       setShowAddTicket(false);
     } catch (e) {
       console.error("Failed to save ticket", e);
@@ -1824,13 +1746,13 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
         type: formData.get('type')
       };
 
-      await api.post('/api/admin/leases', payload);
+      await createLeaseMutation(payload).unwrap();
       alert('Lease added successfully');
       setShowAddLease(false);
       fetchTenantData();
     } catch (e) {
       console.error("Failed to save lease", e);
-      alert(e.response?.data?.message || "Error saving lease");
+      alert(e.data?.message || e.response?.data?.message || "Error saving lease");
     }
   };
 

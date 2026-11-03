@@ -7,15 +7,19 @@ export const leasesApi = masterApi.injectEndpoints({
         url: '/admin/leases',
         params,
       }),
-      transformResponse: (response) => response.data || [],
+      transformResponse: (response) => {
+        if (Array.isArray(response?.data)) return response.data;
+        if (Array.isArray(response)) return response;
+        return response?.data || [];
+      },
       providesTags: (result) =>
-        result
+        result && Array.isArray(result)
           ? [...result.map(({ id }) => ({ type: 'Leases', id })), { type: 'Leases', id: 'LIST' }]
           : [{ type: 'Leases', id: 'LIST' }],
     }),
     getLeaseById: builder.query({
       query: (id) => `/admin/leases/${id}`,
-      transformResponse: (response) => response.data,
+      transformResponse: (response) => response?.data || response,
       providesTags: (result, error, id) => [{ type: 'Leases', id }],
     }),
     createLease: builder.mutation({
@@ -25,6 +29,32 @@ export const leasesApi = masterApi.injectEndpoints({
         body,
       }),
       invalidatesTags: [{ type: 'Leases', id: 'LIST' }, 'Units', 'Invoices', 'Dashboard'],
+    }),
+    updateLease: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/admin/leases/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'Leases', id },
+        { type: 'Leases', id: 'LIST' },
+        'Dashboard',
+      ],
+    }),
+    deleteLease: builder.mutation({
+      query: (id) => ({
+        url: `/admin/leases/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'Leases', id: 'LIST' }, 'Units', 'Dashboard'],
+    }),
+    sendLeaseCredentials: builder.mutation({
+      query: (id) => ({
+        url: `/admin/leases/${id}/send-credentials`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, id) => [{ type: 'Leases', id }],
     }),
     renewLease: builder.mutation({
       query: ({ id, ...body }) => ({
@@ -49,7 +79,9 @@ export const {
   useGetLeasesQuery,
   useGetLeaseByIdQuery,
   useCreateLeaseMutation,
+  useUpdateLeaseMutation,
+  useDeleteLeaseMutation,
+  useSendLeaseCredentialsMutation,
   useRenewLeaseMutation,
   useAddMoveInspectionMutation,
 } = leasesApi;
-
