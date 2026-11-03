@@ -248,6 +248,7 @@ export class AccountingService {
       where,
       include: {
         _count: { select: { payments: true } },
+        company: { select: { id: true, name: true, code: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -256,22 +257,31 @@ export class AccountingService {
   static async createBankAccount(
     data: {
       companyId: string;
-      bankName: string;
+      bankName?: string;
       accountName: string;
       accountNumber: string;
       routingNumber?: string;
+      assetType?: string;
       initialBalance?: number;
+      openingBalance?: number | string;
     },
     actorUserId?: string
   ) {
+    const bankName = data.bankName || data.assetType || 'General Ledger';
+    const routingNumber = data.routingNumber || data.assetType || '001-00000';
+    const initialBal = data.initialBalance ?? (data.openingBalance ? Number(data.openingBalance) : 0);
+
     const account = await prisma.bankAccount.create({
       data: {
         companyId: data.companyId,
-        bankName: data.bankName,
+        bankName,
         accountName: data.accountName,
         accountNumber: data.accountNumber,
-        routingNumber: data.routingNumber,
-        balance: data.initialBalance ?? 0,
+        routingNumber,
+        balance: initialBal,
+      },
+      include: {
+        company: { select: { id: true, name: true, code: true } },
       },
     });
 
@@ -284,6 +294,78 @@ export class AccountingService {
     });
 
     return account;
+  }
+
+  static async updateBankAccount(
+    id: string,
+    data: {
+      bankName?: string;
+      accountName?: string;
+      accountNumber?: string;
+      routingNumber?: string;
+      assetType?: string;
+      balance?: number;
+      openingBalance?: number | string;
+      companyId?: string;
+    },
+    actorUserId?: string
+  ) {
+    const existing = await prisma.bankAccount.findUnique({ where: { id } });
+    if (!existing) {
+      throw new AppError('Bank account not found', 404, 'ACCOUNT_NOT_FOUND');
+    }
+
+    const bankName = data.bankName !== undefined ? data.bankName : (data.assetType !== undefined ? data.assetType : existing.bankName);
+    const routingNumber = data.routingNumber !== undefined ? data.routingNumber : (data.assetType !== undefined ? data.assetType : existing.routingNumber);
+    const balance = data.balance !== undefined ? data.balance : (data.openingBalance !== undefined ? Number(data.openingBalance) : existing.balance);
+
+    const updated = await prisma.bankAccount.update({
+      where: { id },
+      data: {
+        bankName,
+        accountName: data.accountName !== undefined ? data.accountName : existing.accountName,
+        accountNumber: data.accountNumber !== undefined ? data.accountNumber : existing.accountNumber,
+        routingNumber,
+        balance,
+        companyId: data.companyId !== undefined ? data.companyId : existing.companyId,
+      },
+      include: {
+        company: { select: { id: true, name: true, code: true } },
+      },
+    });
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'UPDATE_BANK_ACCOUNT',
+      entityType: 'BankAccount',
+      entityId: updated.id,
+      oldData: existing,
+      newData: updated,
+    });
+
+    return updated;
+  }
+
+  static async deleteBankAccount(id: string, actorUserId?: string) {
+    const existing = await prisma.bankAccount.findUnique({ where: { id } });
+    if (!existing) {
+      throw new AppError('Bank account not found', 404, 'ACCOUNT_NOT_FOUND');
+    }
+
+    const deleted = await prisma.bankAccount.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'DELETE_BANK_ACCOUNT',
+      entityType: 'BankAccount',
+      entityId: id,
+      oldData: existing,
+    });
+
+    return { success: true, message: 'Bank account deleted successfully' };
   }
 }
 

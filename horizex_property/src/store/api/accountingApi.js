@@ -34,8 +34,11 @@ export const accountingApi = masterApi.injectEndpoints({
       invalidatesTags: ['Payments', 'Invoices', 'Units', 'Dashboard', 'BankAccounts'],
     }),
     getBankAccounts: builder.query({
-      query: () => '/admin/accounts',
-      transformResponse: (response) => response.data || [],
+      query: (params) => ({
+        url: '/admin/accounts',
+        params,
+      }),
+      transformResponse: (response) => response?.data || response || [],
       providesTags: ['BankAccounts'],
     }),
     createBankAccount: builder.mutation({
@@ -43,6 +46,21 @@ export const accountingApi = masterApi.injectEndpoints({
         url: '/admin/accounts',
         method: 'POST',
         body,
+      }),
+      invalidatesTags: ['BankAccounts'],
+    }),
+    updateBankAccount: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/admin/accounts/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['BankAccounts'],
+    }),
+    deleteBankAccount: builder.mutation({
+      query: (id) => ({
+        url: `/admin/accounts/${id}`,
+        method: 'DELETE',
       }),
       invalidatesTags: ['BankAccounts'],
     }),
@@ -56,5 +74,7 @@ export const {
   useRecordPaymentMutation,
   useGetBankAccountsQuery,
   useCreateBankAccountMutation,
+  useUpdateBankAccountMutation,
+  useDeleteBankAccountMutation,
 } = accountingApi;
 

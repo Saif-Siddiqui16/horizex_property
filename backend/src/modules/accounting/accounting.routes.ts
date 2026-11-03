@@ -6,9 +6,11 @@ import {
   getOutstandingDues,
   listBankAccounts,
   createBankAccount,
+  updateBankAccount,
+  deleteBankAccount,
 } from './accounting.controller';
 import { validateRequest } from '../../middlewares/validate.middleware';
-import { recordPaymentSchema, createBankAccountSchema } from './accounting.schema';
+import { recordPaymentSchema, createBankAccountSchema, updateBankAccountSchema } from './accounting.schema';
 import { authenticate } from '../../middlewares/auth.middleware';
 import { authorizeRoles } from '../../middlewares/rbac.middleware';
 
@@ -60,6 +62,26 @@ router.post(
   authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'ACCOUNTANT'),
   validateRequest(createBankAccountSchema),
   createBankAccount
+);
+
+router.put(
+  '/accounts/:id',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'ACCOUNTANT'),
+  validateRequest(updateBankAccountSchema),
+  updateBankAccount
+);
+
+router.patch(
+  '/accounts/:id',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'ACCOUNTANT'),
+  validateRequest(updateBankAccountSchema),
+  updateBankAccount
+);
+
+router.delete(
+  '/accounts/:id',
+  authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'ACCOUNTANT'),
+  deleteBankAccount
 );
 
 export default router;
