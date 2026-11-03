@@ -1,13 +1,31 @@
 import React from 'react';
 import { Edit3, Clock, AlertTriangle } from 'lucide-react';
 
-export const AttendanceTable = ({ logs = [], onEdit, onCorrect }) => {
+export const AttendanceTable = ({ logs = [], onEdit, onCorrect, onSelect }) => {
+  const formatUSDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('T')[0].split('-');
+      if (parts.length === 3) {
+        return `${parts[1]}/${parts[2]}/${parts[0]}`; // MM/DD/YYYY standard US format
+      }
+      return dateStr;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   const formatTime = (isoString) => {
     if (!isoString) return '--:--';
+    if (typeof isoString === 'string' && (isoString.includes('AM') || isoString.includes('PM'))) {
+      return isoString;
+    }
     try {
-      return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     } catch (e) {
-      return '--:--';
+      return isoString || '--:--';
     }
   };
 
@@ -64,9 +82,9 @@ export const AttendanceTable = ({ logs = [], onEdit, onCorrect }) => {
             logs.map((log) => {
               const hasAnomaly = log.clockIn && !log.clockOut && log.date !== new Date().toISOString().split('T')[0];
               return (
-                <tr key={log.id} className="hover:bg-slate-50/20 transition-colors duration-200">
+                <tr key={log.id} onClick={() => onSelect && onSelect(log)} className="hover:bg-slate-50/40 cursor-pointer transition-colors duration-200">
                   <td className="px-6 py-4 font-semibold text-slate-700 whitespace-nowrap">
-                    {log.date}
+                    {formatUSDate(log.date)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col">

@@ -68,6 +68,48 @@ const DEFAULT_EMPLOYEES = [
     updatedAt: '2025-03-01T09:00:00Z',
     createdBy: 'Admin User',
     updatedBy: 'Admin User'
+  },
+  {
+    id: 7,
+    employeeNo: 'EMP-APEX-2026-00007',
+    companyId: 1,
+    buildingId: 1,
+    department: 'Maintenance',
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'john123@gmail.com',
+    phone: '+1 (514) 555-0191',
+    role: 'COWORKER',
+    designation: 'Maintenance Technician',
+    employmentType: 'Full-time',
+    shiftId: 1,
+    salary: 4000,
+    status: 'Active',
+    createdAt: '2025-03-05T09:00:00Z',
+    updatedAt: '2025-03-05T09:00:00Z',
+    createdBy: 'Admin User',
+    updatedBy: 'Admin User'
+  },
+  {
+    id: 8,
+    employeeNo: 'EMP-APEX-2026-00008',
+    companyId: 1,
+    buildingId: 1,
+    department: 'Accounting',
+    firstName: 'a',
+    lastName: 's',
+    email: 'a1@gmail.com',
+    phone: '+1 (514) 555-0192',
+    role: 'COWORKER',
+    designation: 'Accountant',
+    employmentType: 'Full-time',
+    shiftId: 1,
+    salary: 4600,
+    status: 'Active',
+    createdAt: '2025-03-10T09:00:00Z',
+    updatedAt: '2025-03-10T09:00:00Z',
+    createdBy: 'Admin User',
+    updatedBy: 'Admin User'
   }
 ];
 
@@ -75,7 +117,7 @@ const getStore = () => {
   const data = localStorage.getItem(KEY);
   if (!data) {
     localStorage.setItem(KEY, JSON.stringify(DEFAULT_EMPLOYEES));
-    localStorage.setItem(SEQ_KEY, '7');
+    localStorage.setItem(SEQ_KEY, '9');
     return [...DEFAULT_EMPLOYEES];
   }
   
@@ -85,6 +127,13 @@ const getStore = () => {
   } catch (e) {
     list = [...DEFAULT_EMPLOYEES];
   }
+
+  DEFAULT_EMPLOYEES.forEach(seed => {
+    if (!list.some(item => item.id === seed.id || item.email === seed.email || (item.firstName === seed.firstName && item.lastName === seed.lastName))) {
+      list.push(seed);
+    }
+  });
+  localStorage.setItem(KEY, JSON.stringify(list));
   
   // Non-destructive migration
   let migrated = false;
@@ -223,64 +272,11 @@ const filterLocalList = (sourceList, filters = {}) => {
 export const employeeService = {
   getAll(filters = {}) {
     const cachedStore = getStore();
-    const localFiltered = filterLocalList(cachedStore, filters);
-
-    // Attach thenable so callers using `await employeeService.getAll(...)` trigger real API request!
-    const promise = api.get('/admin/employees', { params: filters })
-      .then(res => {
-        const data = res.data?.data || res.data || [];
-        if (Array.isArray(data) && data.length > 0) {
-          // Merge with local store
-          const currentList = getStore();
-          const merged = [...data];
-          currentList.forEach(localEmp => {
-            if (!merged.some(m => String(m.id) === String(localEmp.id) || m.employeeNo === localEmp.employeeNo)) {
-              merged.push(localEmp);
-            }
-          });
-          setStore(merged);
-          return filterLocalList(merged, filters);
-        }
-        return localFiltered;
-      })
-      .catch(err => {
-        console.warn('API error fetching employees, fallback to cached store:', err);
-        return localFiltered;
-      });
-
-    Object.defineProperty(localFiltered, 'then', {
-      value: function(resolve, reject) {
-        return promise.then(resolve, reject);
-      },
-      writable: true,
-      configurable: true
-    });
-
-    return localFiltered;
+    return filterLocalList(cachedStore, filters);
   },
 
   getById(id) {
-    const cached = getStore().find(emp => String(emp.id) === String(id)) || null;
-
-    const promise = api.get(`/admin/employees/${id}`)
-      .then(res => {
-        const data = res.data?.data || res.data;
-        return data || cached;
-      })
-      .catch(() => cached);
-
-    if (cached) {
-      Object.defineProperty(cached, 'then', {
-        value: function(resolve, reject) {
-          return promise.then(resolve, reject);
-        },
-        writable: true,
-        configurable: true
-      });
-      return cached;
-    }
-
-    return promise;
+    return getStore().find(emp => String(emp.id) === String(id)) || null;
   },
 
   create(data) {

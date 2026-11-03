@@ -13,6 +13,7 @@ import communicationsRouter from './modules/communications/communications.routes
 import analyticsRouter from './modules/analytics/analytics.routes';
 import extraRouter from './modules/extra/extra.routes';
 import employeesRouter from './modules/employees/employees.routes';
+import payrollRouter, { shiftsRouter, leavesRouter, overtimeRouter } from './modules/payroll/payroll.routes';
 import tenantPortalRouter from './modules/tenantPortal/tenantPortal.routes';
 import ownerPortalRouter from './modules/ownerPortal/ownerPortal.routes';
 import { getDashboardStats } from './modules/analytics/analytics.controller';
@@ -93,6 +94,10 @@ router.use('/admin/analytics', analyticsRouter);
 router.use('/admin', extraRouter); // Mounts /unit-types, /insurance, /notes, /clock-in, /clock-out
 router.use('/admin/employees', employeesRouter);
 router.use('/employees', employeesRouter);
+router.use('/admin/shifts', shiftsRouter);
+router.use('/admin/leaves', leavesRouter);
+router.use('/admin/overtime', overtimeRouter);
+router.use('/admin/payroll', payrollRouter);
 
 // Communication
 router.use('/communication', communicationsRouter);

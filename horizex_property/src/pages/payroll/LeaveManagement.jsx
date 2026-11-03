@@ -4,9 +4,15 @@ import { Search, Calendar, FileText, Check, X, Plus } from 'lucide-react';
 import leaveService from '../../services/leaveService';
 import employeeService from '../../services/employeeService';
 import permissionService from '../../services/permissionService';
-import LeaveCalendar from '../../components/payroll/LeaveCalendar';
+import LeaveCalendar from '../../components/payroll/LeaveCalendar';
+import {
+  useGetLeavesQuery,
+  useCreateLeaveMutation,
+  useUpdateLeaveStatusMutation,
+  useDeleteLeaveMutation,
+} from '../../store';
 export const LeaveManagement = () => {
-const [leaves, setLeaves] = useState([]);
+  const [leaves, setLeaves] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'calendar'
   
@@ -16,6 +22,24 @@ const [leaves, setLeaves] = useState([]);
     status: '',
     leaveType: ''
   });
+
+  const { data: rtkLeaves = [], refetch: refetchLeaves } = useGetLeavesQuery(filters);
+  const [createLeaveMutation] = useCreateLeaveMutation();
+  const [updateLeaveStatusMutation] = useUpdateLeaveStatusMutation();
+  const [deleteLeaveMutation] = useDeleteLeaveMutation();
+
+  const formatUSDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('T')[0].split('-');
+      if (parts.length === 3) {
+        return `${parts[1]}/${parts[2]}/${parts[0]}`; // MM/DD/YYYY standard US format
+      }
+      return dateStr;
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
   // Modal States
   const [requestModal, setRequestModal] = useState(false);
@@ -28,26 +52,67 @@ const [leaves, setLeaves] = useState([]);
     status: 'Pending'
   });
 
+  const mergeLeaves = (apiList = [], localList = []) => {
+    const map = new Map();
+    (localList || []).forEach(item => {
+      const key = `${item.employeeId}_${item.startDate}_${item.leaveType}`;
+      map.set(key, item);
+      map.set(String(item.id), item);
+    });
+    (apiList || []).forEach(item => {
+      const key = `${item.employeeId}_${item.startDate}_${item.leaveType}`;
+      if (!map.has(key)) {
+        map.set(key, item);
+      } else {
+        const existing = map.get(key);
+        map.set(key, { ...existing, ...item });
+      }
+      map.set(String(item.id), item);
+    });
+
+    const seen = new Set();
+    const result = [];
+    for (const val of map.values()) {
+      const uniqueKey = `${val.employeeId}_${val.startDate}_${val.leaveType}`;
+      if (!seen.has(uniqueKey)) {
+        seen.add(uniqueKey);
+        result.push(val);
+      }
+    }
+    return result.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+  };
+
   const loadData = () => {
     const compId = localStorage.getItem('global_selected_company_id') || '';
-    const list = leaveService.getAll({ ...filters, companyId: compId });
-    setLeaves(list);
+    const localItems = leaveService.getAll({ ...filters, companyId: compId });
+    const merged = mergeLeaves(rtkLeaves, localItems);
+    setLeaves(merged);
     setEmployees(employeeService.getAll({ companyId: compId }));
   };
 
   useEffect(() => {
     loadData();
-    const handleCompanyChange = () => loadData();
+  }, [rtkLeaves, filters.search, filters.status, filters.leaveType]);
+
+  useEffect(() => {
+    const handleCompanyChange = () => {
+      refetchLeaves();
+    };
     window.addEventListener('companyChanged', handleCompanyChange);
     return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, [filters]);
+  }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.employeeId || !form.startDate || !form.endDate) {
       return alert('Please fill in all required fields');
     }
     try {
+      try {
+        await createLeaveMutation(form).unwrap();
+      } catch (err) {
+        console.warn('Backend create leave fallback:', err);
+      }
       leaveService.create(form);
       setRequestModal(false);
       resetForm();
@@ -58,14 +123,24 @@ const [leaves, setLeaves] = useState([]);
     }
   };
 
-  const handleApprove = (id) => {
+  const handleApprove = async (id) => {
+    try {
+      await updateLeaveStatusMutation({ id, status: 'Approved' }).unwrap();
+    } catch (err) {
+      console.warn('Backend approve fallback:', err);
+    }
     leaveService.updateStatus(id, 'Approved');
     loadData();
   };
 
-  const handleReject = (id) => {
+  const handleReject = async (id) => {
     const reason = window.prompt("Enter rejection reason:");
     if (reason !== null) {
+      try {
+        await updateLeaveStatusMutation({ id, status: 'Rejected', reason }).unwrap();
+      } catch (err) {
+        console.warn('Backend reject fallback:', err);
+      }
       leaveService.updateStatus(id, 'Rejected', reason);
       loadData();
     }
@@ -232,7 +307,7 @@ const [leaves, setLeaves] = useState([]);
                         </span>
                       </td>
                       <td className="px-6 py-4 font-semibold text-slate-600 font-mono text-xs whitespace-nowrap">
-                        {lv.startDate} to {lv.endDate}
+                        {formatUSDate(lv.startDate)} to {formatUSDate(lv.endDate)}
                       </td>
                       <td className="px-6 py-4 italic text-slate-500 max-w-xs truncate whitespace-nowrap">
                         "{lv.reason || 'No description'}"

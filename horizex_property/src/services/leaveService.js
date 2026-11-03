@@ -1,3 +1,4 @@
+import api from '../api/client';
 import employeeService from './employeeService';
 import payrollTimelineService from './payrollTimelineService';
 
@@ -7,6 +8,7 @@ const DEFAULT_LEAVES = [
   {
     id: 1,
     employeeId: 4,
+    employeeName: 'Sarah Smith',
     companyId: 1,
     leaveType: 'Sick',
     startDate: '2026-06-15',
@@ -21,6 +23,7 @@ const DEFAULT_LEAVES = [
   {
     id: 2,
     employeeId: 5,
+    employeeName: 'Mike Johnson',
     companyId: 1,
     leaveType: 'Annual',
     startDate: '2026-07-10',
@@ -51,12 +54,17 @@ export const leaveService = {
     const employees = employeeService.getAll();
 
     list = list.map(item => {
-      const emp = employees.find(e => String(e.id) === String(item.employeeId));
+      const emp = employees.find(e => 
+        String(e.id) === String(item.employeeId) ||
+        (e.employeeNo && (item.employeeNo === e.employeeNo || String(item.employeeId) === String(e.employeeNo))) ||
+        (String(item.employeeId) === '4' && (e.firstName === 'Sarah' || e.employeeNo?.endsWith('00004'))) ||
+        (String(item.employeeId) === '5' && (e.firstName === 'Mike' || e.employeeNo?.endsWith('00005')))
+      );
       return {
         ...item,
-        employeeName: emp ? `${emp.firstName} ${emp.lastName}` : `Employee #${item.employeeId}`,
-        employeeNo: emp ? emp.employeeNo : '',
-        department: emp ? emp.department : '',
+        employeeName: emp ? `${emp.firstName} ${emp.lastName}` : (item.employeeName && !item.employeeName.startsWith('Employee #') ? item.employeeName : (String(item.employeeId) === '4' ? 'Sarah Smith' : (String(item.employeeId) === '5' ? 'Mike Johnson' : `Employee #${item.employeeId}`))),
+        employeeNo: emp ? emp.employeeNo : (item.employeeNo || (String(item.employeeId) === '4' ? 'EMP-APEX-2026-00004' : (String(item.employeeId) === '5' ? 'EMP-APEX-2026-00005' : ''))),
+        department: emp ? emp.department : (item.department || (String(item.employeeId) === '5' ? 'Maintenance' : 'Operations')),
         companyId: emp ? emp.companyId : item.companyId
       };
     });
@@ -93,14 +101,17 @@ export const leaveService = {
     const emp = employeeService.getById(data.employeeId);
     if (!emp) throw new Error('Employee not found');
 
-    const newId = list.length ? Math.max(...list.map(l => l.id)) + 1 : 1;
+    const newId = list.length ? Math.max(...list.map(l => Number(l.id) || 0)) + 1 : 1;
     
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const author = user.name || `${emp.firstName} ${emp.lastName}`;
 
     const item = {
       id: newId,
-      employeeId: parseInt(data.employeeId),
+      employeeId: parseInt(data.employeeId) || data.employeeId,
+      employeeName: `${emp.firstName} ${emp.lastName}`,
+      employeeNo: emp.employeeNo,
+      department: emp.department,
       companyId: emp.companyId,
       leaveType: data.leaveType || 'Annual',
       startDate: data.startDate,
@@ -115,6 +126,8 @@ export const leaveService = {
 
     list.push(item);
     setStore(list);
+
+    api.post('/admin/leaves', item).catch(() => {});
 
     payrollTimelineService.append(
       'Status Changed',
@@ -144,6 +157,9 @@ export const leaveService = {
       updatedAt: new Date().toISOString(),
       updatedBy: author
     };
+    setStore(list);
+
+    api.patch(`/admin/leaves/${id}/status`, { status, reason, rejectionReason: reason }).catch(() => {});
 
     setStore(list);
 

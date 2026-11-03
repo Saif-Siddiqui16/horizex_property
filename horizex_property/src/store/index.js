@@ -18,6 +18,7 @@ import './api/analyticsApi';
 import './api/mediaApi';
 import './api/extraApi';
 import './api/employeesApi';
+import './api/payrollApi';
 
 export const store = configureStore({
   reducer: {
@@ -52,4 +53,5 @@ export * from './api/analyticsApi';
 export * from './api/mediaApi';
 export * from './api/extraApi';
 export * from './api/employeesApi';
+export * from './api/payrollApi';
 

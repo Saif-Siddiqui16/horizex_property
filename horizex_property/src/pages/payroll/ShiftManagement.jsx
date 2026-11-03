@@ -4,11 +4,22 @@ import { Plus, X, Calendar, Settings } from 'lucide-react';
 import shiftService from '../../services/shiftService';
 import employeeService from '../../services/employeeService';
 import permissionService from '../../services/permissionService';
-import ShiftCalendar from '../../components/payroll/ShiftCalendar';
+import ShiftCalendar from '../../components/payroll/ShiftCalendar';
+import {
+  useGetShiftsQuery,
+  useCreateShiftMutation,
+  useUpdateShiftMutation,
+  useDeleteShiftMutation,
+} from '../../store';
 export const ShiftManagement = () => {
-const [shifts, setShifts] = useState([]);
+  const [shifts, setShifts] = useState([]);
   const [employees, setEmployees] = useState([]);
   
+  const { data: rtkShifts = [], refetch: refetchShifts } = useGetShiftsQuery();
+  const [createShiftMutation] = useCreateShiftMutation();
+  const [updateShiftMutation] = useUpdateShiftMutation();
+  const [deleteShiftMutation] = useDeleteShiftMutation();
+
   // Modal States
   const [addModal, setAddModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
@@ -26,21 +37,47 @@ const [shifts, setShifts] = useState([]);
     rotation: 'Fixed Schedule'
   });
 
+  const mergeShifts = (apiList = [], localList = []) => {
+    const list = [...(apiList || []), ...(localList || [])];
+    const seenNames = new Set();
+    const result = [];
+    for (const sh of list) {
+      const nameKey = (sh.name || '').toLowerCase().trim();
+      if (nameKey && !seenNames.has(nameKey)) {
+        seenNames.add(nameKey);
+        result.push(sh);
+      }
+    }
+    return result;
+  };
+
   const loadData = () => {
     const compId = localStorage.getItem('global_selected_company_id') || '';
-    setShifts(shiftService.getAll());
+    const localItems = shiftService.getAll();
+    const merged = mergeShifts(rtkShifts, localItems);
+    setShifts(merged);
     setEmployees(employeeService.getAll({ companyId: compId }));
   };
 
   useEffect(() => {
     loadData();
-    const handleCompanyChange = () => loadData();
+  }, [rtkShifts]);
+
+  useEffect(() => {
+    const handleCompanyChange = () => {
+      refetchShifts();
+    };
     window.addEventListener('companyChanged', handleCompanyChange);
     return () => window.removeEventListener('companyChanged', handleCompanyChange);
   }, []);
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
+    try {
+      await createShiftMutation(form).unwrap();
+    } catch (err) {
+      console.warn('Backend shift create fallback:', err);
+    }
     shiftService.create(form);
     setAddModal(false);
     resetForm();
@@ -48,15 +85,31 @@ const [shifts, setShifts] = useState([]);
     alert('New shift schedule created.');
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!selectedShift) return;
+    try {
+      await updateShiftMutation({ id: selectedShift.id, ...form }).unwrap();
+    } catch (err) {
+      console.warn('Backend shift update fallback:', err);
+    }
     shiftService.update(selectedShift.id, form);
     setEditModal(false);
     setSelectedShift(null);
     resetForm();
     loadData();
     alert('Shift settings updated.');
+  };
+
+  const handleDelete = async (sh) => {
+    if (!window.confirm(`Are you sure you want to delete "${sh.name}" shift?`)) return;
+    try {
+      await deleteShiftMutation(sh.id).unwrap();
+    } catch (err) {
+      console.warn('Backend shift delete fallback:', err);
+    }
+    shiftService.delete(sh.id);
+    loadData();
   };
 
   const openEdit = (sh) => {
@@ -135,6 +188,7 @@ const [shifts, setShifts] = useState([]);
           shifts={shifts}
           employees={employees}
           onEdit={canManage ? openEdit : null}
+          onDelete={canManage ? handleDelete : null}
           onRotate={() => setRotationModal(true)}
         />
 
