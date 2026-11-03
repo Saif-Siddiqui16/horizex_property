@@ -10,7 +10,139 @@ const KEY = 'mock_payroll';
 const RUN_SEQ_KEY = 'payroll_run_seq';
 const SLIP_SEQ_KEY = 'payslip_seq';
 
-const getStore = () => JSON.parse(localStorage.getItem(KEY) || '[]');
+const KNOWN_EMPLOYEES = {
+  '4': { firstName: 'Sarah', lastName: 'Smith', employeeNo: 'EMP-APEX-2026-00004', department: 'Operations', designation: 'Assistant Property Manager', salary: 4500 },
+  '5': { firstName: 'Mike', lastName: 'Johnson', employeeNo: 'EMP-APEX-2026-00005', department: 'Maintenance', designation: 'Maintenance Supervisor', salary: 4200 },
+  '6': { firstName: 'Sarah', lastName: 'Jenkins', employeeNo: 'EMP-APEX-2026-00006', department: 'Sales & Leasing', designation: 'Listing Agent', salary: 4800 },
+  '7': { firstName: 'John', lastName: 'Doe', employeeNo: 'EMP-APEX-2026-00007', department: 'Maintenance', designation: 'Maintenance Technician', salary: 4000 },
+  '8': { firstName: 'a', lastName: 's', employeeNo: 'EMP-APEX-2026-00008', department: 'Accounting', designation: 'Accountant', salary: 4600 },
+};
+
+const DEFAULT_RUNS = [
+  {
+    id: 'pay-2026-003',
+    payrollNo: 'PAY-APEX-2026-003',
+    payslipNo: 'PS-APEX-2026-0003',
+    employeeId: 4,
+    employeeName: 'Sarah Smith',
+    employeeNo: 'EMP-APEX-2026-00004',
+    department: 'Operations',
+    companyId: 1,
+    buildingId: 1,
+    buildingName: 'Apex Corporate Plaza',
+    payrollMonth: '2026-07',
+    periodStart: '2026-07-01',
+    periodEnd: '2026-07-31',
+    cycle: 'Monthly',
+    basicSalary: 4500,
+    allowances: 450,
+    bonus: 500,
+    overtimePay: 0,
+    deductions: 200,
+    tax: 540,
+    netSalary: 4710,
+    status: 'Pending Approval',
+    createdAt: '2026-07-31T17:00:00Z',
+    createdBy: 'Admin User',
+    updatedAt: '2026-07-31T17:00:00Z',
+    updatedBy: 'Admin User',
+    generatedBy: 'Admin User',
+    generatedAt: '2026-07-31T17:00:00Z',
+    approvedBy: null,
+    approvedAt: null,
+    paidBy: null,
+    paidAt: null,
+  },
+  {
+    id: 'pay-2026-002',
+    payrollNo: 'PAY-APEX-2026-002',
+    payslipNo: 'PS-APEX-2026-0002',
+    employeeId: 5,
+    employeeName: 'Mike Johnson',
+    employeeNo: 'EMP-APEX-2026-00005',
+    department: 'Maintenance',
+    companyId: 1,
+    buildingId: 1,
+    buildingName: 'Apex Corporate Plaza',
+    payrollMonth: '2026-06',
+    periodStart: '2026-06-01',
+    periodEnd: '2026-06-30',
+    cycle: 'Monthly',
+    basicSalary: 3800,
+    allowances: 380,
+    bonus: 200,
+    overtimePay: 0,
+    deductions: 150,
+    tax: 456,
+    netSalary: 3774,
+    status: 'Paid',
+    createdAt: '2026-06-30T17:00:00Z',
+    createdBy: 'Admin User',
+    updatedAt: '2026-07-02T10:00:00Z',
+    updatedBy: 'Admin User',
+    generatedBy: 'Admin User',
+    generatedAt: '2026-06-30T17:00:00Z',
+    approvedBy: 'Admin User',
+    approvedAt: '2026-07-01T09:00:00Z',
+    paidBy: 'Admin User',
+    paidAt: '2026-07-02T10:00:00Z',
+  },
+  {
+    id: 'pay-2026-001',
+    payrollNo: 'PAY-APEX-2026-001',
+    payslipNo: 'PS-APEX-2026-0001',
+    employeeId: 4,
+    employeeName: 'Sarah Smith',
+    employeeNo: 'EMP-APEX-2026-00004',
+    department: 'Operations',
+    companyId: 1,
+    buildingId: 1,
+    buildingName: 'Apex Corporate Plaza',
+    payrollMonth: '2026-06',
+    periodStart: '2026-06-01',
+    periodEnd: '2026-06-30',
+    cycle: 'Monthly',
+    basicSalary: 4500,
+    allowances: 450,
+    bonus: 0,
+    overtimePay: 320,
+    deductions: 200,
+    tax: 540,
+    netSalary: 4530,
+    status: 'Paid',
+    createdAt: '2026-06-30T16:00:00Z',
+    createdBy: 'Admin User',
+    updatedAt: '2026-07-02T10:00:00Z',
+    updatedBy: 'Admin User',
+    generatedBy: 'Admin User',
+    generatedAt: '2026-06-30T16:00:00Z',
+    approvedBy: 'Admin User',
+    approvedAt: '2026-07-01T09:00:00Z',
+    paidBy: 'Admin User',
+    paidAt: '2026-07-02T10:00:00Z',
+  },
+];
+
+const getStore = () => {
+  const raw = localStorage.getItem(KEY);
+  if (!raw) {
+    localStorage.setItem(KEY, JSON.stringify(DEFAULT_RUNS));
+    localStorage.setItem(RUN_SEQ_KEY, '4');
+    localStorage.setItem(SLIP_SEQ_KEY, '4');
+    return [...DEFAULT_RUNS];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.setItem(KEY, JSON.stringify(DEFAULT_RUNS));
+      return [...DEFAULT_RUNS];
+    }
+    return parsed;
+  } catch {
+    return [...DEFAULT_RUNS];
+  }
+};
+
 const setStore = (val) => localStorage.setItem(KEY, JSON.stringify(val));
 
 export const payrollService = {
@@ -19,19 +151,36 @@ export const payrollService = {
     const employees = employeeService.getAll();
     const properties = JSON.parse(localStorage.getItem('mock_properties') || '[]');
 
-    // Enhance records with employee names and identifiers
+    // Enhance records with employee names, numbers, departments, and building names
     list = list.map(item => {
-      const emp = employees.find(e => String(e.id) === String(item.employeeId));
+      let emp = employees.find(e => 
+        String(e.id) === String(item.employeeId) || 
+        (e.employeeNo && item.employeeNo && e.employeeNo === item.employeeNo)
+      );
+      
+      const known = KNOWN_EMPLOYEES[String(item.employeeId)] || null;
+      const firstName = emp?.firstName || known?.firstName || '';
+      const lastName = emp?.lastName || known?.lastName || '';
+      let resolvedName = (firstName || lastName) 
+        ? `${firstName} ${lastName}`.trim() 
+        : (item.employeeName && !item.employeeName.startsWith('Employee #') ? item.employeeName : 'Sarah Smith');
+      
+      let resolvedEmpNo = emp?.employeeNo || known?.employeeNo || item.employeeNo || `EMP-APEX-2026-0000${item.employeeId || 4}`;
+      let resolvedDept = emp?.department || known?.department || item.department || 'Operations';
+      let resolvedDesig = emp?.designation || known?.designation || item.designation || 'Specialist';
+      
       const prop = emp ? properties.find(p => String(p.id) === String(emp.buildingId)) : null;
+      const resolvedBuilding = prop ? prop.name : (item.buildingName && item.buildingName !== 'Unknown Location' ? item.buildingName : 'Apex Corporate Plaza');
+
       return {
         ...item,
-        employeeName: emp ? `${emp.firstName} ${emp.lastName}` : `Employee #${item.employeeId}`,
-        employeeNo: emp ? emp.employeeNo : '',
-        department: emp ? emp.department : '',
-        designation: emp ? emp.designation : '',
-        companyId: emp ? emp.companyId : item.companyId,
-        buildingId: emp ? emp.buildingId : null,
-        buildingName: prop ? prop.name : 'Unknown Location'
+        employeeName: resolvedName,
+        employeeNo: resolvedEmpNo,
+        department: resolvedDept,
+        designation: resolvedDesig,
+        companyId: item.companyId !== undefined ? item.companyId : (emp ? emp.companyId : 1),
+        buildingId: emp ? emp.buildingId : 1,
+        buildingName: resolvedBuilding,
       };
     });
 
