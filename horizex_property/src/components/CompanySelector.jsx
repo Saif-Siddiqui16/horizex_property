@@ -1,84 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api/client';
+import { useDispatch, useSelector } from 'react-redux';
 import { Briefcase } from 'lucide-react';
+import { useGetCompaniesQuery, setCompanyContext } from '../store';
 
 export const CompanySelector = () => {
-    const [companies, setCompanies] = useState([]);
-    const [selectedId, setSelectedId] = useState('');
+    const dispatch = useDispatch();
+    const effectiveCompanyId = useSelector((state) => state.auth?.effectiveCompanyId);
+    const { data: companies = [] } = useGetCompaniesQuery();
+    const [selectedId, setSelectedId] = useState(() => {
+        return localStorage.getItem('global_selected_company_id') || '';
+    });
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+    // Synchronize default company selection on companies data load
     useEffect(() => {
-        const fetchCompanies = async () => {
-            try {
-                const res = await api.get('/api/admin/companies');
-                const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-                setCompanies(list);
-                
-                // Initialize default selection
-                const saved = localStorage.getItem('global_selected_company_id');
-                if (saved) {
-                    // Verify if saved company is in allowed list
-                    const exists = list.some(c => c.id.toString() === saved.toString());
-                    if (exists) {
-                        setSelectedId(saved);
-                        localStorage.setItem('companyContext', saved);
-                    } else if (list.length === 1) {
-                        // Lock to the only assigned company
-                        localStorage.setItem('global_selected_company_id', list[0].id.toString());
-                        localStorage.setItem('companyContext', list[0].id.toString());
-                        setSelectedId(list[0].id.toString());
-                    } else {
-                        localStorage.setItem('global_selected_company_id', '');
-                        localStorage.setItem('companyContext', '');
-                        setSelectedId('');
-                    }
-                } else if (list.length === 1) {
-                    localStorage.setItem('global_selected_company_id', list[0].id.toString());
-                    localStorage.setItem('companyContext', list[0].id.toString());
-                    setSelectedId(list[0].id.toString());
-                } else {
-                    localStorage.setItem('global_selected_company_id', '');
-                    localStorage.setItem('companyContext', '');
-                    setSelectedId('');
-                }
-            } catch (error) {
-                console.error('Failed to fetch companies', error);
-            }
-        };
+        if (!companies || companies.length === 0) return;
 
-        fetchCompanies();
+        const saved = localStorage.getItem('global_selected_company_id') || effectiveCompanyId;
+        const exists = saved && companies.some(c => c.id.toString() === saved.toString());
 
-        // Listen for changes in company from other parts if needed
+        if (exists) {
+            setSelectedId(saved);
+            dispatch(setCompanyContext(saved));
+            localStorage.setItem('companyContext', saved);
+        } else if (companies.length === 1) {
+            const singleId = companies[0].id.toString();
+            setSelectedId(singleId);
+            dispatch(setCompanyContext(singleId));
+            localStorage.setItem('global_selected_company_id', singleId);
+            localStorage.setItem('companyContext', singleId);
+        } else {
+            setSelectedId('');
+            dispatch(setCompanyContext(null));
+            localStorage.setItem('global_selected_company_id', '');
+            localStorage.setItem('companyContext', '');
+        }
+    }, [companies, dispatch]);
+
+    // Keep state in sync with external storage/building changes
+    useEffect(() => {
         const handleStorageChange = () => {
             const current = localStorage.getItem('global_selected_company_id') || '';
             setSelectedId(current);
+            dispatch(setCompanyContext(current || null));
         };
-        const handleCompanyListChange = () => {
-            fetchCompanies();
-            handleStorageChange();
-        };
-        window.addEventListener('companyChanged', handleCompanyListChange);
+
+        window.addEventListener('companyChanged', handleStorageChange);
         window.addEventListener('buildingChanged', handleStorageChange);
         window.addEventListener('storage', handleStorageChange);
         return () => {
-            window.removeEventListener('companyChanged', handleCompanyListChange);
+            window.removeEventListener('companyChanged', handleStorageChange);
             window.removeEventListener('buildingChanged', handleStorageChange);
             window.removeEventListener('storage', handleStorageChange);
         };
-    }, []);
+    }, [dispatch]);
 
     const handleChange = (e) => {
         const val = e.target.value;
+        setSelectedId(val);
+        dispatch(setCompanyContext(val || null));
         localStorage.setItem('global_selected_company_id', val);
         localStorage.setItem('companyContext', val);
-        setSelectedId(val);
         // Reset building selection when switching company
         localStorage.setItem('global_selected_building_id', '');
         window.dispatchEvent(new Event('companyChanged'));
         window.dispatchEvent(new Event('buildingChanged'));
     };
 
-    // If landlord or maintenance with single building limit, or if no companies, we can hide or restrict.
     // If user has no company access (like basic Tenant), don't render.
     if (user.role === 'TENANT') return null;
 
@@ -108,4 +96,5 @@ export const CompanySelector = () => {
         </div>
     );
 };
+
 export default CompanySelector;

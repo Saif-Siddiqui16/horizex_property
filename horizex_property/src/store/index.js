@@ -6,6 +6,7 @@ import { masterApi } from './baseApi';
 
 // Import domain APIs so their endpoints are injected into masterApi
 import './api/authApi';
+import './api/companiesApi';
 import './api/propertiesApi';
 import './api/readinessApi';
 import './api/tenantsApi';
@@ -40,6 +41,7 @@ export * from './baseApi';
 
 // Re-export all API hooks
 export * from './api/authApi';
+export * from './api/companiesApi';
 export * from './api/propertiesApi';
 export * from './api/readinessApi';
 export * from './api/tenantsApi';

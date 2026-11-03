@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Briefcase,
@@ -13,65 +13,37 @@ import {
   CheckCircle2,
   AlertTriangle,
   User,
-  MapPin
+  MapPin,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../components/Button';
-const defaultCompanies = [];
-import api from '../api/client';
+import {
+  useGetCompaniesQuery,
+  useCreateCompanyMutation,
+  useUpdateCompanyMutation,
+  useDeleteCompanyMutation,
+  useGetPropertiesQuery
+} from '../store';
 
 export const Companies = () => {
   const navigate = useNavigate();
 
-  // Load companies from localStorage (or fallback to defaults)
-  const getStoredCompanies = () => {
-    try {
-      const stored = localStorage.getItem('mock_companies');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.error('Failed to parse mock_companies:', e);
-    }
-    return defaultCompanies;
-  };
+  // RTK Query Hooks for cached server state and mutations
+  const { data: companies = [], isLoading: isLoadingCompanies, error: companiesError } = useGetCompaniesQuery();
+  const { data: buildings = [] } = useGetPropertiesQuery();
 
-  // Load buildings from localStorage
-  const getStoredBuildings = () => {
-    try {
-      const stored = localStorage.getItem('mock_properties');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch (e) {
-      console.error('Failed to parse mock_properties:', e);
-    }
-    return [];
-  };
+  const [createCompany, { isLoading: isCreating }] = useCreateCompanyMutation();
+  const [updateCompany, { isLoading: isUpdating }] = useUpdateCompanyMutation();
+  const [deleteCompany, { isLoading: isDeleting }] = useDeleteCompanyMutation();
 
-  // Load system owners for dropdown
-  const getStoredOwners = () => {
-    try {
-      const stored = localStorage.getItem('mock_users');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(u => u.role === 'OWNER' || u.role === 'ADMIN');
-        }
-      }
-    } catch (e) {}
-    return [
-      { id: 1, name: 'Admin User' },
-      { id: 3, name: 'David Miller' },
-      { id: 5, name: 'George Soros' },
-      { id: 7, name: 'Jane Doe' }
-    ];
-  };
+  // Registered owners for dropdown
+  const [availableOwners] = useState([
+    { id: 'admin', name: 'Admin User' },
+    { id: 3, name: 'David Miller' },
+    { id: 5, name: 'George Soros' },
+    { id: 7, name: 'Jane Doe' }
+  ]);
 
-  const [companies, setCompanies] = useState(getStoredCompanies);
-  const [buildings, setBuildings] = useState(getStoredBuildings);
-  const [availableOwners, setAvailableOwners] = useState(getStoredOwners);
   const [search, setSearch] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -83,7 +55,7 @@ export const Companies = () => {
 
   const [selectedCompany, setSelectedCompany] = useState(null);
 
-  // Form states: Company Name, Code, Owner (Optional Dropdown), Address (Optional)
+  // Form states: Company Name, Code, Owner, Address
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -91,73 +63,29 @@ export const Companies = () => {
     address: ''
   });
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
+  const showToast = (msg, isError = false) => {
+    setToastMessage({ text: msg, isError });
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Sync companies, buildings, and fetch registered owners
-  useEffect(() => {
-    const handleSync = () => {
-      setCompanies(getStoredCompanies());
-      setBuildings(getStoredBuildings());
-    };
-    window.addEventListener('companyChanged', handleSync);
-    window.addEventListener('storage', handleSync);
-
-    // Fetch companies list from API
-    const fetchCompaniesList = async () => {
-      try {
-        const res = await api.get('/api/admin/companies');
-        const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        if (list.length > 0) {
-          setCompanies(list);
-          localStorage.setItem('mock_companies', JSON.stringify(list));
-        }
-      } catch (err) {
-        // Fallback to getStoredCompanies
-      }
-    };
-    fetchCompaniesList();
-
-    // Fetch official owners list from API
-    const fetchOwnersList = async () => {
-      try {
-        const res = await api.get('/api/admin/owners');
-        const list = res.data?.data || res.data || [];
-        if (Array.isArray(list) && list.length > 0) {
-          const combined = [...list];
-          if (!combined.some(o => o.name === 'Admin User')) {
-            combined.unshift({ id: 'admin', name: 'Admin User' });
-          }
-          setAvailableOwners(combined);
-        }
-      } catch (err) {
-        // Fallback to getStoredOwners already initialized
-      }
-    };
-    fetchOwnersList();
-
-    return () => {
-      window.removeEventListener('companyChanged', handleSync);
-      window.removeEventListener('storage', handleSync);
-    };
-  }, []);
-
-  // Compute buildings & units stats per company
+  // Compute buildings & units stats per company using normalized server cache
   const companyStats = useMemo(() => {
     const stats = {};
     companies.forEach(c => {
-      stats[c.id] = { buildingsCount: 0, unitsCount: 0, buildingsList: [] };
+      stats[c.id] = {
+        buildingsCount: c._count?.properties ?? 0,
+        unitsCount: 0,
+        buildingsList: []
+      };
     });
 
     buildings.forEach(b => {
       const compId = b.companyId ? String(b.companyId) : null;
       if (compId && stats[compId]) {
-        stats[compId].buildingsCount += 1;
-        const uCount = Array.isArray(b.units) ? b.units.length : (parseInt(b.units) || 0);
-        stats[compId].unitsCount += uCount;
         stats[compId].buildingsList.push(b);
+        stats[compId].buildingsCount = Math.max(stats[compId].buildingsCount, stats[compId].buildingsList.length);
+        const uCount = Array.isArray(b.units) ? b.units.length : (parseInt(b.units) || b._count?.units || 0);
+        stats[compId].unitsCount += uCount;
       }
     });
 
@@ -212,54 +140,33 @@ export const Companies = () => {
     setShowAddModal(true);
   };
 
-  // Handle Create Company
+  // Handle Create Company via RTK Query mutation
   const handleCreateCompany = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      alert('Please enter a company name.');
+      showToast('Please enter a company name.', true);
       return;
     }
 
     const newCode = (formData.code || formData.name.slice(0, 4)).trim().toUpperCase();
 
     try {
-      const res = await api.post('/api/admin/companies', {
+      await createCompany({
         name: formData.name.trim(),
         code: newCode,
-        contactEmail: `info@${newCode.toLowerCase()}.com`
-      });
-      const created = res.data?.data || res.data;
+        contactEmail: `info@${newCode.toLowerCase().replace(/[^a-z0-9]/g, '') || 'company'}.com`,
+        address: formData.address ? formData.address.trim() : undefined,
+        ownerName: formData.ownerName ? formData.ownerName.trim() : undefined
+      }).unwrap();
 
-      const currentList = getStoredCompanies();
-      const updated = [...currentList, { ...created, ownerName: formData.ownerName ? formData.ownerName.trim() : '', address: formData.address ? formData.address.trim() : '' }];
-      localStorage.setItem('mock_companies', JSON.stringify(updated));
-      setCompanies(updated);
-
+      // Legacy custom event for any non-Redux views
       window.dispatchEvent(new Event('companyChanged'));
       setShowAddModal(false);
-      showToast(`Company "${formData.name.trim()}" added successfully.`);
+      showToast(`Company "${formData.name.trim()}" created successfully via RTK Query.`);
     } catch (err) {
-      console.error(err);
-      const currentList = getStoredCompanies();
-      const newId = currentList.length ? Math.max(...currentList.map(c => Number(c.id) || 0)) + 1 : 1;
-
-      const newCompany = {
-        id: newId,
-        name: formData.name.trim(),
-        code: newCode,
-        ownerName: formData.ownerName ? formData.ownerName.trim() : '',
-        address: formData.address ? formData.address.trim() : '',
-        createdAt: new Date().toISOString()
-      };
-
-      const updated = [...currentList, newCompany];
-      localStorage.setItem('mock_companies', JSON.stringify(updated));
-      setCompanies(updated);
-
-      // Notify other components & global selector
-      window.dispatchEvent(new Event('companyChanged'));
-      setShowAddModal(false);
-      showToast(`Company "${newCompany.name}" added successfully.`);
+      console.error('Failed to create company:', err);
+      const errorMessage = err?.data?.message || err?.error || 'Failed to create company.';
+      showToast(`Error: ${errorMessage}`, true);
     }
   };
 
@@ -275,43 +182,27 @@ export const Companies = () => {
     setShowEditModal(true);
   };
 
-  // Handle Update Company
-  const handleUpdateCompany = (e) => {
+  // Handle Update Company via RTK Query mutation
+  const handleUpdateCompany = async (e) => {
     e.preventDefault();
     if (!selectedCompany) return;
 
-    const updatedList = companies.map(c => {
-      if (c.id === selectedCompany.id) {
-        return {
-          ...c,
-          name: formData.name.trim(),
-          code: (formData.code || formData.name.slice(0, 4)).trim().toUpperCase(),
-          ownerName: formData.ownerName ? formData.ownerName.trim() : '',
-          address: formData.address ? formData.address.trim() : ''
-        };
-      }
-      return c;
-    });
+    try {
+      await updateCompany({
+        id: selectedCompany.id,
+        name: formData.name.trim(),
+        code: (formData.code || formData.name.slice(0, 4)).trim().toUpperCase(),
+        address: formData.address ? formData.address.trim() : undefined
+      }).unwrap();
 
-    localStorage.setItem('mock_companies', JSON.stringify(updatedList));
-    setCompanies(updatedList);
-
-    // If company name changed, synchronize matching buildings in mock_properties
-    if (selectedCompany.name !== formData.name.trim()) {
-      const currentProps = getStoredBuildings();
-      const updatedProps = currentProps.map(b => {
-        if (b.companyId === selectedCompany.id) {
-          return { ...b, companyName: formData.name.trim() };
-        }
-        return b;
-      });
-      localStorage.setItem('mock_properties', JSON.stringify(updatedProps));
-      setBuildings(updatedProps);
+      window.dispatchEvent(new Event('companyChanged'));
+      setShowEditModal(false);
+      showToast(`Company "${formData.name}" updated successfully.`);
+    } catch (err) {
+      console.error('Failed to update company:', err);
+      const errorMessage = err?.data?.message || err?.error || 'Failed to update company.';
+      showToast(`Error: ${errorMessage}`, true);
     }
-
-    window.dispatchEvent(new Event('companyChanged'));
-    setShowEditModal(false);
-    showToast(`Company "${formData.name}" updated successfully.`);
   };
 
   // Open Delete Modal
@@ -320,29 +211,26 @@ export const Companies = () => {
     setShowDeleteModal(true);
   };
 
-  // Handle Delete Company
+  // Handle Delete Company via RTK Query mutation
   const handleDeleteCompany = async () => {
     if (!selectedCompany) return;
 
     try {
-      await api.delete(`/api/admin/companies/${selectedCompany.id}`);
-    } catch (e) {
-      console.warn('Backend company delete skipped/failed:', e.message);
+      await deleteCompany(selectedCompany.id).unwrap();
+
+      const currentActive = localStorage.getItem('global_selected_company_id');
+      if (currentActive && currentActive.toString() === selectedCompany.id.toString()) {
+        localStorage.setItem('global_selected_company_id', '');
+      }
+
+      window.dispatchEvent(new Event('companyChanged'));
+      setShowDeleteModal(false);
+      showToast(`Company "${selectedCompany.name}" deleted.`);
+    } catch (err) {
+      console.error('Failed to delete company:', err);
+      const errorMessage = err?.data?.message || err?.error || 'Failed to delete company.';
+      showToast(`Error: ${errorMessage}`, true);
     }
-
-    const updated = companies.filter(c => c.id !== selectedCompany.id);
-    localStorage.setItem('mock_companies', JSON.stringify(updated));
-    setCompanies(updated);
-
-    // If deleted company was the active global filter, reset selection
-    const currentActive = localStorage.getItem('global_selected_company_id');
-    if (currentActive && currentActive.toString() === selectedCompany.id.toString()) {
-      localStorage.setItem('global_selected_company_id', '');
-    }
-
-    window.dispatchEvent(new Event('companyChanged'));
-    setShowDeleteModal(false);
-    showToast(`Company "${selectedCompany.name}" deleted.`);
   };
 
   // Open View Details Modal
@@ -355,9 +243,17 @@ export const Companies = () => {
     <div className="flex flex-col gap-6">
       {/* TOAST ALERT */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-2 bg-zinc-900 text-white px-4 py-3 rounded-xl shadow-xl border border-zinc-700 animate-in fade-in slide-in-from-top duration-200">
-          <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
-          <span className="text-xs font-semibold">{toastMessage}</span>
+        <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl border animate-in fade-in slide-in-from-top duration-200 ${
+          toastMessage.isError
+            ? 'bg-rose-900 text-white border-rose-700'
+            : 'bg-zinc-900 text-white border-zinc-700'
+        }`}>
+          {toastMessage.isError ? (
+            <AlertTriangle size={18} className="text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+          )}
+          <span className="text-xs font-semibold">{toastMessage.text}</span>
         </div>
       )}
 
@@ -430,7 +326,22 @@ export const Companies = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredCompanies.length === 0 ? (
+              {isLoadingCompanies ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-slate-400 text-sm">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 size={18} className="animate-spin text-blue-600" />
+                      <span>Loading companies from RTK Query cache...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : companiesError ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-rose-500 text-sm">
+                    Failed to load companies. Please check your backend connection.
+                  </td>
+                </tr>
+              ) : filteredCompanies.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-400 text-sm">
                     No companies found matching "{search}".
@@ -445,7 +356,7 @@ export const Companies = () => {
                       <td className="pl-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
-                            {c.name.slice(0, 2).toUpperCase()}
+                            {c.name ? c.name.slice(0, 2).toUpperCase() : 'CO'}
                           </div>
                           <div>
                             <p className="text-sm font-bold text-slate-800 leading-tight">{c.name}</p>
@@ -462,7 +373,7 @@ export const Companies = () => {
                       {/* Code Badge */}
                       <td className="py-4">
                         <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide bg-slate-100 text-slate-700 border border-slate-200">
-                          {c.code || c.name.slice(0, 4).toUpperCase()}
+                          {c.code || (c.name ? c.name.slice(0, 4).toUpperCase() : '')}
                         </span>
                       </td>
 
@@ -537,7 +448,7 @@ export const Companies = () => {
       </div>
 
       {/* ========================================================= */}
-      {/* ADD COMPANY MODAL */}
+      {/* ADD COMPANY MODAL (RTK QUERY) */}
       {/* ========================================================= */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
@@ -614,15 +525,24 @@ export const Companies = () => {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+                  disabled={isCreating}
+                  className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-xs"
+                  disabled={isCreating}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-xs flex items-center gap-1.5 disabled:opacity-70"
                 >
-                  Save Company
+                  {isCreating ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Company</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -706,15 +626,24 @@ export const Companies = () => {
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+                  disabled={isUpdating}
+                  className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-xs"
+                  disabled={isUpdating}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-xs flex items-center gap-1.5 disabled:opacity-70"
                 >
-                  Save Changes
+                  {isUpdating ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -748,15 +677,24 @@ export const Companies = () => {
               <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteCompany}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors shadow-xs"
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors shadow-xs flex items-center gap-1.5 disabled:opacity-70"
                 >
-                  Confirm Delete
+                  {isDeleting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Delete</span>
+                  )}
                 </button>
               </div>
             </div>
@@ -785,7 +723,7 @@ export const Companies = () => {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
                 <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Code</p>
-                  <p className="font-bold text-slate-800 mt-0.5">{selectedCompany.code || selectedCompany.name.slice(0, 4).toUpperCase()}</p>
+                  <p className="font-bold text-slate-800 mt-0.5">{selectedCompany.code || (selectedCompany.name ? selectedCompany.name.slice(0, 4).toUpperCase() : '')}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Owner</p>
