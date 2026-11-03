@@ -15,6 +15,14 @@ import {
   createOvertime,
   updateOvertimeStatus,
   deleteOvertime,
+  listPayrollRuns,
+  getPayrollRun,
+  createPayrollRun,
+  generatePayrollRuns,
+  approvePayrollRun,
+  rejectPayrollRun,
+  markPaidPayrollRun,
+  uploadPayrollRunReceipt,
 } from './payroll.controller';
 import { authenticate } from '../../middlewares/auth.middleware';
 
@@ -44,10 +52,21 @@ overtimeRouter.put('/:id', updateOvertimeStatus);
 overtimeRouter.patch('/:id/status', updateOvertimeStatus);
 overtimeRouter.delete('/:id', deleteOvertime);
 
+export const runsRouter = Router();
+runsRouter.use(authenticate);
+runsRouter.get('/', listPayrollRuns);
+runsRouter.get('/:id', getPayrollRun);
+runsRouter.post('/', createPayrollRun);
+runsRouter.post('/generate', generatePayrollRuns);
+runsRouter.patch('/:id/approve', approvePayrollRun);
+runsRouter.patch('/:id/reject', rejectPayrollRun);
+runsRouter.patch('/:id/pay', markPaidPayrollRun);
+runsRouter.post('/:id/receipt', uploadPayrollRunReceipt);
+
 const payrollRouter = Router();
 payrollRouter.use('/shifts', shiftsRouter);
 payrollRouter.use('/leaves', leavesRouter);
 payrollRouter.use('/overtime', overtimeRouter);
+payrollRouter.use('/runs', runsRouter);
 
 export default payrollRouter;
-

@@ -54,20 +54,20 @@ export const PayrollTable = ({ records = [], onApprove, onReject, onPay, onViewP
   return (
     <div className="w-full flex flex-col gap-4">
       <div className="overflow-x-auto w-full bg-white border border-slate-100 rounded-3xl shadow-card">
-        <table className="w-full border-collapse text-left">
+        <table className="w-full min-w-[1100px] border-collapse text-left">
           <thead>
-            <tr className="bg-slate-50/50 border-b border-slate-100">
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Run ID</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Period / Cycle</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Basic</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Allowances</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Overtime</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Deductions/Tax</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right font-black">Net Salary</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+            <tr className="bg-slate-50/50 border-b border-slate-100 whitespace-nowrap">
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Run ID</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Employee</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Location</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Period / Cycle</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">Basic</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">Allowances</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">Overtime</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">Deductions/Tax</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right font-black whitespace-nowrap">Net Salary</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Status</th>
+              <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50 text-slate-600 text-sm">
@@ -86,44 +86,48 @@ export const PayrollTable = ({ records = [], onApprove, onReject, onPay, onViewP
                 
                 return (
                   <tr key={rec.id} className="hover:bg-slate-50/20 transition-colors duration-200">
-                    <td className="px-6 py-4 font-mono font-bold text-slate-700 text-xs">
+                    <td className="px-5 py-4 font-mono font-bold text-slate-700 text-xs whitespace-nowrap">
                       {rec.payrollNo}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-800">{rec.employeeName}</span>
-                        <span className="text-xs text-slate-400">{rec.department} · {rec.employeeNo}</span>
+                        <span className="font-bold text-slate-800 text-xs sm:text-sm">{rec.employeeName}</span>
+                        <span className="text-[11px] text-slate-400">
+                          {rec.department || 'Operations'}{rec.employeeNo ? ` · ${rec.employeeNo}` : ''}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 font-semibold text-slate-600">
-                        <MapPin size={12} className="text-slate-400" />
-                        {rec.buildingName}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-slate-600 text-xs">
+                        <MapPin size={13} className="text-slate-400 shrink-0" />
+                        {rec.buildingName || 'Apex Corporate Plaza'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-slate-700">{rec.payrollMonth}</span>
-                        <span className="text-xs text-slate-400 font-mono">{rec.periodStart} to {rec.periodEnd}</span>
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <div className="flex flex-col whitespace-nowrap">
+                        <span className="font-semibold text-slate-700 text-xs">{rec.payrollMonth}</span>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          {rec.periodStart} – {rec.periodEnd}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right font-semibold text-slate-700">
+                    <td className="px-5 py-4 text-right font-semibold text-slate-700 whitespace-nowrap">
                       ${rec.basicSalary?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className="px-6 py-4 text-right text-slate-500">
+                    <td className="px-5 py-4 text-right text-slate-500 whitespace-nowrap">
                       +${rec.allowances?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className="px-6 py-4 text-right text-indigo-600 font-medium">
+                    <td className="px-5 py-4 text-right text-indigo-600 font-medium whitespace-nowrap">
                       +${rec.overtimePay?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className="px-6 py-4 text-right text-rose-500 text-xs">
-                      -${(rec.deductions + rec.tax)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <td className="px-5 py-4 text-right text-rose-500 text-xs whitespace-nowrap">
+                      -${((rec.deductions || 0) + (rec.tax || 0))?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-slate-900 bg-slate-50/30">
+                    <td className="px-5 py-4 text-right font-bold text-slate-900 bg-slate-50/30 whitespace-nowrap">
                       ${rec.netSalary?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <div className="flex flex-col gap-1 whitespace-nowrap">
                         <span className={getStatusBadge(rec.status)}>
                           {rec.status}
                         </span>
@@ -135,8 +139,8 @@ export const PayrollTable = ({ records = [], onApprove, onReject, onPay, onViewP
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                    <td className="px-5 py-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                         <button 
                           onClick={() => onViewPayslip && onViewPayslip(rec)}
                           className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
