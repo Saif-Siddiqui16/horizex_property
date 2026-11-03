@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from 'react';
-
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Pencil, Trash2, X, FileText, Calendar, User, Home, Bed, AlertTriangle, CheckCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../components/Button';
-import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
-// DUMMY_LEASES removed
+import {
+  useGetLeasesQuery,
+  useGetPropertiesQuery,
+  useUpdateLeaseMutation,
+  useDeleteLeaseMutation,
+  useSendLeaseCredentialsMutation,
+} from '../store';
+
 export const LeaseHistory = () => {
-const navigate = useNavigate();
+    const navigate = useNavigate();
     const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
@@ -15,97 +20,80 @@ const navigate = useNavigate();
         return () => window.removeEventListener('permissionsUpdated', handleUpdate);
     }, []);
 
-    const [leases, setLeases] = useState([]);
+    // RTK Query Hooks
+    const { data: rawLeases = [], isLoading } = useGetLeasesQuery();
+    const { data: buildings = [] } = useGetPropertiesQuery();
+    const [updateLease] = useUpdateLeaseMutation();
+    const [deleteLease] = useDeleteLeaseMutation();
+    const [sendLeaseCredentials] = useSendLeaseCredentialsMutation();
+
     const [selectedLease, setSelectedLease] = useState(null);
     const [editLease, setEditLease] = useState(null);
-    const [buildings, setBuildings] = useState([]);
     const [search, setSearch] = useState('');
     const [buildingFilter, setBuildingFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [page, setPage] = useState(1);
-    const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
-    const [isLoading, setIsLoading] = useState(false);
+    const limit = 15;
 
-    /* LOAD DATA */
-    const fetchLeases = async () => {
-        setIsLoading(true);
-        try {
-            const res = await api.get('/api/admin/leases', {
-                params: { 
-                    page, 
-                    limit: 15,
-                    status: statusFilter || undefined,
-                    propertyId: buildingFilter || undefined,
-                    leaseType: typeFilter || undefined,
-                    search: search || undefined
-                }
-            });
-            // Handle response data safely
-            const leaseList = Array.isArray(res.data?.data)
-                ? res.data.data
-                : (Array.isArray(res.data) ? res.data : []);
-            setLeases(leaseList);
-            if (res.data?.meta || res.data?.pagination) {
-                setPagination({
-                    page: res.data.meta?.page || res.data.pagination?.page || 1,
-                    totalPages: res.data.meta?.totalPages || res.data.pagination?.totalPages || 1,
-                    total: res.data.meta?.total || res.data.pagination?.total || leaseList.length,
-                });
-            }
-        } catch (error) {
-            console.error('Failed to fetch leases', error);
-            setLeases([]);
-        } finally {
-            setIsLoading(false);
+    // Reset page to 1 on filter changes
+    useEffect(() => {
+        setPage(1);
+    }, [search, buildingFilter, typeFilter, statusFilter]);
+
+    // Client-side filtering over query cache
+    const filteredLeases = useMemo(() => {
+        let result = Array.isArray(rawLeases) ? rawLeases : [];
+
+        if (statusFilter) {
+            result = result.filter(l => (l.status || '').toLowerCase() === statusFilter.toLowerCase());
         }
-    };
 
-    useEffect(() => {
-        fetchLeases();
-    }, [page, statusFilter, buildingFilter, typeFilter]);
+        if (buildingFilter) {
+            result = result.filter(l => {
+                const bId = l.propertyId || l.unit?.propertyId || l.unit?.property?.id || l.buildingId;
+                const bName = l.buildingName || l.building || l.unit?.property?.name;
+                return String(bId) === String(buildingFilter) || bName === buildingFilter;
+            });
+        }
 
-    // Handle search debouncing or immediate effect
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (page === 1) fetchLeases();
-            else setPage(1);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [search]);
+        if (typeFilter) {
+            result = result.filter(l => {
+                const lType = l.leaseType || (l.type === 'BEDROOM' || l.bedroom ? 'Bedroom Lease' : 'Full Unit Lease');
+                return lType.toLowerCase() === typeFilter.toLowerCase();
+            });
+        }
 
-    useEffect(() => {
-        const handleCompanyChange = () => {
-            setPage(1);
-            fetchLeases();
-        };
-        window.addEventListener('companyChanged', handleCompanyChange);
-        return () => window.removeEventListener('companyChanged', handleCompanyChange);
-    }, [page, statusFilter, buildingFilter, typeFilter, search]);
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            result = result.filter(l => {
+                const tenantName = (typeof l.tenant === 'object'
+                    ? `${l.tenant?.firstName || ''} ${l.tenant?.lastName || ''}`
+                    : String(l.tenant || '')).toLowerCase();
+                const unitNum = (typeof l.unit === 'object' ? String(l.unit?.unitNumber || '') : String(l.unit || '')).toLowerCase();
+                const bName = String(l.buildingName || l.building || l.unit?.property?.name || '').toLowerCase();
+                const ownerName = String(l.ownerName || l.owner || '').toLowerCase();
+                return tenantName.includes(q) || unitNum.includes(q) || bName.includes(q) || ownerName.includes(q);
+            });
+        }
 
-    useEffect(() => {
-        const fetchBuildings = async () => {
-            try {
-                const res = await api.get('/api/admin/properties');
-                const bList = res.data?.data || (Array.isArray(res.data) ? res.data : []);
-                setBuildings(bList);
-            } catch (error) {
-                console.error('Failed to fetch buildings', error);
-                setBuildings([]);
-            }
-        };
-        fetchBuildings();
-    }, []);
+        return result;
+    }, [rawLeases, statusFilter, buildingFilter, typeFilter, search]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredLeases.length / limit));
+    const displayLeases = useMemo(() => {
+        const startIndex = (page - 1) * limit;
+        return filteredLeases.slice(startIndex, startIndex + limit);
+    }, [filteredLeases, page, limit]);
 
     /* SEND CREDENTIALS */
     const handleSendCredentials = async (leaseId) => {
         try {
-            await api.post(`/api/admin/leases/${leaseId}/send-credentials`);
+            await sendLeaseCredentials(leaseId).unwrap();
             alert('Credentials sent successfully!');
-            fetchLeases();
         } catch (error) {
             console.error(error);
-            alert('Failed to send credentials');
+            alert(error?.data?.message || 'Failed to send credentials');
         }
     };
 
@@ -113,11 +101,10 @@ const navigate = useNavigate();
     const handleDelete = async (id) => {
         if (!window.confirm('Delete this lease?')) return;
         try {
-            await api.delete(`/api/admin/leases/${id}`);
-            const updated = leases.filter((l) => l.id !== id);
-            setLeases(updated);
+            await deleteLease(id).unwrap();
         } catch (error) {
-            alert('Failed to delete lease');
+            console.error(error);
+            alert(error?.data?.message || 'Failed to delete lease');
         }
     };
 
@@ -131,6 +118,7 @@ const navigate = useNavigate();
         e?.preventDefault();
         try {
             const payload = {
+                id: editLease.id,
                 monthlyRent: editLease.monthlyRent,
                 startDate: editLease.startDate,
                 endDate: editLease.endDate,
@@ -138,16 +126,13 @@ const navigate = useNavigate();
                 lastName: editLease.tenantLastName
             };
 
-            await api.put(`/api/admin/leases/${editLease.id}`, payload);
-            fetchLeases();
+            await updateLease(payload).unwrap();
             setEditLease(null);
         } catch (error) {
             console.error(error);
-            alert('Failed to update lease');
+            alert(error?.data?.message || 'Failed to update lease');
         }
     };
-
-    const displayLeases = Array.isArray(leases) ? leases : [];
 
     return (
         <>
@@ -174,10 +159,7 @@ const navigate = useNavigate();
                             <select
                                 className="bg-transparent border-none outline-none text-sm text-slate-700 w-full cursor-pointer"
                                 value={buildingFilter}
-                                onChange={(e) => {
-                                    setBuildingFilter(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => setBuildingFilter(e.target.value)}
                             >
                                 <option value="">All Buildings</option>
                                 {buildings.map(b => (
@@ -191,10 +173,7 @@ const navigate = useNavigate();
                             <select
                                 className="bg-transparent border-none outline-none text-sm text-slate-700 w-full cursor-pointer"
                                 value={typeFilter}
-                                onChange={(e) => {
-                                    setTypeFilter(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => setTypeFilter(e.target.value)}
                             >
                                 <option value="">All Lease Types</option>
                                 <option value="Full Unit Lease">Full Unit Lease</option>
@@ -207,10 +186,7 @@ const navigate = useNavigate();
                             <select
                                 className="bg-transparent border-none outline-none text-sm text-slate-700 w-full cursor-pointer font-medium"
                                 value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => setStatusFilter(e.target.value)}
                             >
                                 <option value="">All Statuses</option>
                                 <option value="Active">Active</option>
@@ -256,105 +232,119 @@ const navigate = useNavigate();
                             </thead>
 
                             <tbody className="divide-y divide-slate-100">
-                                {displayLeases.map((lease, index) => (
-                                    <tr
-                                        key={lease.id}
-                                        className="hover:bg-slate-50/80 transition-all duration-200 anim-slide-upfade-in fill-mode-forwards"
-                                        style={{ animationDelay: `${index * 0.05}s` }}
-                                    >
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${lease.leaseType === 'Bedroom Lease' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
-                                                {lease.leaseType}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-bold">{lease.ownerName || lease.owner || '-'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">{lease.buildingName || lease.building || '-'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="font-semibold text-slate-800">{typeof lease.unit === 'object' ? (lease.unit?.unitNumber || '-') : (lease.unit || '-')}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lease.bedroom || '-'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">
-                                            {typeof lease.tenant === 'object' ? `${lease.tenant?.firstName || ''} ${lease.tenant?.lastName || ''}`.trim() : (lease.tenant || '-')}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-mono text-[13px]">{lease.term || '-'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">${(Number(lease.monthlyRent || lease.rentAmount) || 0).toLocaleString('en-CA')}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${(lease.status || '').toLowerCase() === 'active'
-                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                                : 'bg-slate-100 text-slate-600 border-slate-200'
-                                                }`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${(lease.status || '').toLowerCase() === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                                                {lease.status ? (lease.status.charAt(0).toUpperCase() + lease.status.slice(1).toLowerCase()) : 'Active'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <button
-                                                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 ${lease.isCredentialsSent
-                                                        ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
-                                                        : 'text-amber-600 bg-amber-50 hover:bg-amber-100 hover:scale-105 shadow-sm'
-                                                        }`}
-                                                    onClick={() => handleSendCredentials(lease.id)}
-                                                    title={lease.isCredentialsSent ? "Credentials already sent - Click to Resend" : "⚠️ Credentials Not Sent - Click to Send"}
-                                                >
-                                                    {lease.isCredentialsSent ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
-                                                </button>
-                                                <button
-                                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
-                                                    onClick={() => setSelectedLease(lease)}
-                                                    title="View Details"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-                                                {hasPermission('Leases', 'edit') && (
-                                                    <button
-                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200"
-                                                        onClick={() => setEditLease({ ...lease })}
-                                                        title="Edit Lease"
-                                                    >
-                                                        <Pencil size={16} />
-                                                    </button>
-                                                )}
-                                                {hasPermission('Leases', 'delete') && (
-                                                    <button
-                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
-                                                        onClick={() => handleDelete(lease.id)}
-                                                        title="Delete Lease"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                )}
-                                            </div>
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
+                                            Loading leases...
                                         </td>
                                     </tr>
-                                ))}
+                                ) : displayLeases.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
+                                            No leases found
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    displayLeases.map((lease, index) => (
+                                        <tr
+                                            key={lease.id}
+                                            className="hover:bg-slate-50/80 transition-all duration-200 anim-slide-upfade-in fill-mode-forwards"
+                                            style={{ animationDelay: `${index * 0.05}s` }}
+                                        >
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${lease.leaseType === 'Bedroom Lease' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
+                                                    {lease.leaseType || (lease.type === 'BEDROOM' || lease.bedroom ? 'Bedroom Lease' : 'Full Unit Lease')}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-bold">{lease.ownerName || lease.owner || '-'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">{lease.buildingName || lease.building || lease.unit?.property?.name || '-'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="font-semibold text-slate-800">{typeof lease.unit === 'object' ? (lease.unit?.unitNumber || '-') : (lease.unit || '-')}</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lease.bedroom || '-'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">
+                                                {typeof lease.tenant === 'object' ? `${lease.tenant?.firstName || ''} ${lease.tenant?.lastName || ''}`.trim() : (lease.tenant || '-')}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-mono text-[13px]">{lease.term || (lease.startDate && lease.endDate ? `${new Date(lease.startDate).toLocaleDateString()} - ${new Date(lease.endDate).toLocaleDateString()}` : '-')}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">${(Number(lease.monthlyRent || lease.rentAmount) || 0).toLocaleString('en-CA')}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${(lease.status || '').toLowerCase() === 'active'
+                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                                                    }`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${(lease.status || '').toLowerCase() === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                                                    {lease.status ? (lease.status.charAt(0).toUpperCase() + lease.status.slice(1).toLowerCase()) : 'Active'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 ${lease.isCredentialsSent
+                                                            ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                                                            : 'text-amber-600 bg-amber-50 hover:bg-amber-100 hover:scale-105 shadow-sm'
+                                                            }`}
+                                                        onClick={() => handleSendCredentials(lease.id)}
+                                                        title={lease.isCredentialsSent ? "Credentials already sent - Click to Resend" : "⚠️ Credentials Not Sent - Click to Send"}
+                                                    >
+                                                        {lease.isCredentialsSent ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+                                                    </button>
+                                                    <button
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
+                                                        onClick={() => setSelectedLease(lease)}
+                                                        title="View Details"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+                                                    {hasPermission('Leases', 'edit') && (
+                                                        <button
+                                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200"
+                                                            onClick={() => setEditLease({ ...lease, tenantFirstName: lease.tenant?.firstName || '', tenantLastName: lease.tenant?.lastName || '' })}
+                                                            title="Edit Lease"
+                                                        >
+                                                            <Pencil size={16} />
+                                                        </button>
+                                                    )}
+                                                    {hasPermission('Leases', 'delete') && (
+                                                        <button
+                                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                                                            onClick={() => handleDelete(lease.id)}
+                                                            title="Delete Lease"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
                     {/* Pagination Controls */}
                     <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider order-2 sm:order-1">
-                            Showing Page {pagination.page} of {pagination.totalPages} <span className="mx-1">•</span> {pagination.total} Total Leases
+                            Showing Page {page} of {totalPages} <span className="mx-1">•</span> {filteredLeases.length} Total Leases
                         </div>
                         <div className="flex items-center gap-1.5 order-1 sm:order-2">
                             <Button 
                                 variant="secondary" 
                                 size="sm" 
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={pagination.page <= 1 || isLoading}
+                                disabled={page <= 1 || isLoading}
                                 className="!px-2 !py-1"
                             >
                                 <ChevronLeft size={14} />
                             </Button>
 
                             <div className="flex items-center gap-1">
-                                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(pageNum => (
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
                                     <button
                                         key={pageNum}
                                         onClick={() => setPage(pageNum)}
                                         disabled={isLoading}
                                         className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-200 ${
-                                            pagination.page === pageNum
+                                            page === pageNum
                                             ? 'bg-zinc-900 text-white shadow-md shadow-zinc-200'
                                             : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
                                         }`}
@@ -367,8 +357,8 @@ const navigate = useNavigate();
                             <Button 
                                 variant="secondary" 
                                 size="sm" 
-                                onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
-                                disabled={pagination.page >= pagination.totalPages || isLoading}
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages || isLoading}
                                 className="!px-2 !py-1"
                             >
                                 <ChevronRight size={14} />
@@ -394,11 +384,11 @@ const navigate = useNavigate();
                             <div className="space-y-4 mb-8">
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Lease Type</span>
-                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.leaseType || 'Full Unit Lease'}</span>
+                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.leaseType || (selectedLease.type === 'BEDROOM' || selectedLease.bedroom ? 'Bedroom Lease' : 'Full Unit Lease')}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Building</span>
-                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.buildingName || selectedLease.building || '-'}</span>
+                                    <span className="text-sm font-semibold text-slate-900">{selectedLease.buildingName || selectedLease.building || selectedLease.unit?.property?.name || '-'}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Unit</span>
@@ -414,7 +404,7 @@ const navigate = useNavigate();
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Term</span>
-                                    <span className="text-sm font-medium text-slate-900">{selectedLease.term || '-'}</span>
+                                    <span className="text-sm font-medium text-slate-900">{selectedLease.term || (selectedLease.startDate && selectedLease.endDate ? `${new Date(selectedLease.startDate).toLocaleDateString()} - ${new Date(selectedLease.endDate).toLocaleDateString()}` : '-')}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Monthly Rent</span>
@@ -489,7 +479,7 @@ const navigate = useNavigate();
                                             <input
                                                 type="date"
                                                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all text-sm"
-                                                value={editLease.startDate}
+                                                value={editLease.startDate ? new Date(editLease.startDate).toISOString().split('T')[0] : ''}
                                                 onChange={(e) => setEditLease({ ...editLease, startDate: e.target.value })}
                                                 required
                                             />
@@ -502,7 +492,7 @@ const navigate = useNavigate();
                                             <input
                                                 type="date"
                                                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all text-sm"
-                                                value={editLease.endDate}
+                                                value={editLease.endDate ? new Date(editLease.endDate).toISOString().split('T')[0] : ''}
                                                 onChange={(e) => setEditLease({ ...editLease, endDate: e.target.value })}
                                                 required
                                             />
@@ -517,7 +507,7 @@ const navigate = useNavigate();
                                         <input
                                             type="number"
                                             className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all text-sm font-semibold"
-                                            value={editLease.monthlyRent}
+                                            value={editLease.monthlyRent || ''}
                                             onChange={(e) => setEditLease({ ...editLease, monthlyRent: e.target.value })}
                                             required
                                         />

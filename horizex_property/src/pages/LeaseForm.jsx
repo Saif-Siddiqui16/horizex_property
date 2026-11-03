@@ -1,17 +1,25 @@
-import React, { useState, useEffect } from 'react';
-
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/client';
 import { Button } from '../components/Button';
 import { Home, User, Calendar, DollarSign, Shield, ChevronDown, Bed } from 'lucide-react';
+import {
+  useGetPropertiesQuery,
+  useGetTenantsQuery,
+  useGetUnitsQuery,
+  useGetVacantBedroomsQuery,
+  useCreateLeaseMutation,
+} from '../store';
+
 export const LeaseForm = () => {
-const navigate = useNavigate();
-  const [buildings, setBuildings] = useState([]);
-  const [units, setUnits] = useState([]);
-  const [tenants, setTenants] = useState([]);
+  const navigate = useNavigate();
+
+  // RTK Query Hooks
+  const { data: buildings = [] } = useGetPropertiesQuery();
+  const { data: rawTenants = [] } = useGetTenantsQuery();
+  const { data: allUnits = [] } = useGetUnitsQuery({ showInactive: true });
+  const [createLease, { isLoading: isCreating }] = useCreateLeaseMutation();
+
   const [selectedBuilding, setSelectedBuilding] = useState('');
-  const [selectedUnit, setSelectedUnit] = useState(null);
-  const [bedrooms, setBedrooms] = useState([]);
   const [form, setForm] = useState({
     unitId: '',
     bedroomId: '',
@@ -24,87 +32,41 @@ const navigate = useNavigate();
     sendCredentials: false
   });
 
-  useEffect(() => {
-    fetchBuildings();
-    fetchTenants();
-  }, []);
+  // Vacant bedrooms for selected unit
+  const { data: rawBedrooms = [] } = useGetVacantBedroomsQuery(
+    { unitId: form.unitId },
+    { skip: !form.unitId }
+  );
+  const bedrooms = useMemo(() => form.unitId ? rawBedrooms : [], [form.unitId, rawBedrooms]);
 
-  const fetchBuildings = async () => {
-    try {
-      const res = await api.get('/api/admin/properties');
-      setBuildings(res.data?.data || res.data || []);
-    } catch (error) {
-      console.error('Failed to fetch buildings', error);
-    }
-  };
+  // Derived tenants list
+  const tenants = useMemo(() => {
+    return (Array.isArray(rawTenants) ? rawTenants : []).map(t => ({
+      ...t,
+      name: t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim()
+    }));
+  }, [rawTenants]);
 
-  const fetchTenants = async () => {
-    try {
-      const res = await api.get('/api/admin/tenants?limit=1000');
-      // Show all tenants including residents
-      setTenants(res.data?.data || res.data || []);
-    } catch (error) {
-      console.error('Failed to fetch tenants', error);
-    }
-  };
+  // Filter available units for the selected building (vacant / not occupied full unit)
+  const units = useMemo(() => {
+    if (!selectedBuilding) return [];
+    return (Array.isArray(allUnits) ? allUnits : []).filter(u => {
+      const match = String(u.propertyId || u.property?.id) === String(selectedBuilding);
+      if (!match) return false;
+      if (u.status === 'Occupied' || u.status === 'Fully Booked') return false;
+      return true;
+    });
+  }, [allUnits, selectedBuilding]);
 
-  const handleBuildingChange = async (e) => {
+  const handleBuildingChange = (e) => {
     const buildingId = e.target.value;
     setSelectedBuilding(buildingId);
-    setUnits([]);
-    setForm({ ...form, unitId: '', tenantId: '' });
-
-    if (buildingId) {
-      try {
-        // Fetch all units for this building, including New Construction (INACTIVE) units so they can be reserved
-        const unitsRes = await api.get(`/api/admin/units?propertyId=${buildingId}&limit=1000&showInactive=true`);
-        const allUnits = Array.isArray(unitsRes.data.data) ? unitsRes.data.data : (Array.isArray(unitsRes.data) ? unitsRes.data : []);
-
-        // Simplified filtering for Full Unit Lease:
-        const availableUnits = allUnits.filter(u => {
-          // Full Unit requires the unit to be physically vacant
-          if (u.status === 'Occupied' || u.status === 'Fully Booked') return false;
-
-          return true;
-        });
-
-        setUnits(availableUnits);
-      } catch (error) {
-        console.error('Failed to fetch units', error);
-      }
-    }
+    setForm(prev => ({ ...prev, unitId: '', bedroomId: '', tenantId: '' }));
   };
 
-  const handleUnitChange = async (e) => {
+  const handleUnitChange = (e) => {
     const unitId = e.target.value;
-    setForm({ ...form, unitId, tenantId: '' });
-    setSelectedUnit(null);
-
-    if (unitId) {
-      const unit = units.find(u => u.id === parseInt(unitId));
-      setSelectedUnit(unit);
-      setBedrooms([]);
-
-      try {
-        // Fetch vacant bedrooms for this specific unit
-        const bedroomRes = await api.get(`/api/admin/units/bedrooms/vacant?unitId=${unitId}`);
-        const bedroomList = Array.isArray(bedroomRes.data)
-          ? bedroomRes.data
-          : (bedroomRes.data?.data && Array.isArray(bedroomRes.data.data) ? bedroomRes.data.data : []);
-        setBedrooms(bedroomList);
-
-        // Check if there's a DRAFT lease with tenant for this unit
-        const leaseRes = await api.get(`/api/admin/leases/active/${unitId}`);
-        if (leaseRes.data && leaseRes.data.tenantId) {
-          setForm(prev => ({
-            ...prev,
-            tenantId: leaseRes.data.tenantId.toString()
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to fetch data for unit', error);
-      }
-    }
+    setForm(prev => ({ ...prev, unitId, bedroomId: '', tenantId: '' }));
   };
 
   const handleSave = async () => {
@@ -128,13 +90,12 @@ const navigate = useNavigate();
         sendCredentials: form.sendCredentials === true
       };
 
-      const res = await api.post('/api/admin/leases', payload);
-
+      await createLease(payload).unwrap();
       alert('Lease created successfully.');
       navigate('/leases');
     } catch (error) {
       console.error('Failed to create lease', error);
-      alert(error.response?.data?.message || 'Error creating lease');
+      alert(error?.data?.message || error.response?.data?.message || 'Error creating lease');
     }
   };
 
@@ -222,7 +183,6 @@ const navigate = useNavigate();
               </div>
             </div>
           </div>
-
 
           {/* Tenant Selection */}
           <div className="md:col-span-2">
@@ -384,8 +344,8 @@ const navigate = useNavigate();
           <Button variant="secondary" onClick={() => navigate('/leases')}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSave} className="min-w-[140px] shadow-lg shadow-zinc-200">
-            Save Lease
+          <Button variant="primary" onClick={handleSave} disabled={isCreating} className="min-w-[140px] shadow-lg shadow-zinc-200">
+            {isCreating ? 'Saving...' : 'Save Lease'}
           </Button>
         </div>
       </div>
