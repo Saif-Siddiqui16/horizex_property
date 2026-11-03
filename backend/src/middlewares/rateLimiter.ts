@@ -3,7 +3,7 @@ import { sendError } from '../utils/apiResponse.util';
 
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // Limit each IP to 300 requests per 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 300 : 50000, // Generous limit in dev to avoid 429 during active development
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {

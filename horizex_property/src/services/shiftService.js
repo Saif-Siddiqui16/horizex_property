@@ -1,3 +1,5 @@
+import api from '../api/client';
+
 const KEY = 'mock_shifts';
 
 const DEFAULT_SHIFTS = [
@@ -29,7 +31,7 @@ export const shiftService = {
 
   create(data) {
     const list = getStore();
-    const newId = list.length ? Math.max(...list.map(s => s.id)) + 1 : 1;
+    const newId = list.length ? Math.max(...list.map(s => Number(s.id) || 0)) + 1 : 1;
     const item = {
       id: newId,
       name: data.name,
@@ -37,7 +39,7 @@ export const shiftService = {
       endTime: data.endTime || '17:00',
       graceTime: parseInt(data.graceTime) || 15,
       breakDuration: parseInt(data.breakDuration) || 60,
-      weeklyOff: data.weeklyOff || [0, 6], // Array of day indices (0 for Sunday, 6 for Saturday)
+      weeklyOff: data.weeklyOff || [0, 6],
       rotation: data.rotation || 'Fixed Schedule',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -46,6 +48,8 @@ export const shiftService = {
     };
     list.push(item);
     setStore(list);
+
+    api.post('/admin/shifts', item).catch(() => {});
     return item;
   },
 
@@ -64,6 +68,8 @@ export const shiftService = {
       updatedBy: 'Admin User'
     };
     setStore(list);
+
+    api.put(`/admin/shifts/${id}`, data).catch(() => {});
     return list[idx];
   },
 
@@ -71,6 +77,8 @@ export const shiftService = {
     const list = getStore();
     const filtered = list.filter(s => String(s.id) !== String(id));
     setStore(filtered);
+
+    api.delete(`/admin/shifts/${id}`).catch(() => {});
     return true;
   }
 };

@@ -3,9 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { Search, Calendar, FileText, Check, X, Plus, Clock, Zap } from 'lucide-react';
 import overtimeService from '../../services/overtimeService';
 import employeeService from '../../services/employeeService';
-import permissionService from '../../services/permissionService';
+import permissionService from '../../services/permissionService';
+import {
+  useGetOvertimeQuery,
+  useCreateOvertimeMutation,
+  useUpdateOvertimeStatusMutation,
+  useDeleteOvertimeMutation,
+} from '../../store';
 export const OvertimeTracking = () => {
-const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [metrics, setMetrics] = useState({ approved: 0, pending: 0, rejected: 0, cost: 0 });
 
@@ -14,6 +20,24 @@ const [logs, setLogs] = useState([]);
     search: '',
     status: ''
   });
+
+  const { data: rtkOvertime = [], refetch: refetchOvertime } = useGetOvertimeQuery(filters);
+  const [createOvertimeMutation] = useCreateOvertimeMutation();
+  const [updateOvertimeStatusMutation] = useUpdateOvertimeStatusMutation();
+  const [deleteOvertimeMutation] = useDeleteOvertimeMutation();
+
+  const formatUSDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('T')[0].split('-');
+      if (parts.length === 3) {
+        return `${parts[1]}/${parts[2]}/${parts[0]}`; // MM/DD/YYYY standard US format
+      }
+      return dateStr;
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
   // Modal States
   const [logModal, setLogModal] = useState(false);
@@ -24,35 +48,76 @@ const [logs, setLogs] = useState([]);
     status: 'Pending'
   });
 
+  const mergeOvertime = (apiList = [], localList = []) => {
+    const map = new Map();
+    (localList || []).forEach(item => {
+      const key = `${item.employeeId}_${item.date}`;
+      map.set(key, item);
+      map.set(String(item.id), item);
+    });
+    (apiList || []).forEach(item => {
+      const key = `${item.employeeId}_${item.date}`;
+      if (!map.has(key)) {
+        map.set(key, item);
+      } else {
+        const existing = map.get(key);
+        map.set(key, { ...existing, ...item });
+      }
+      map.set(String(item.id), item);
+    });
+
+    const seen = new Set();
+    const result = [];
+    for (const val of map.values()) {
+      const uniqueKey = `${val.employeeId}_${val.date}`;
+      if (!seen.has(uniqueKey)) {
+        seen.add(uniqueKey);
+        result.push(val);
+      }
+    }
+    return result.sort((a, b) => new Date(b.date) - new Date(a.date));
+  };
+
   const loadData = () => {
     const compId = localStorage.getItem('global_selected_company_id') || '';
-    const list = overtimeService.getAll({ ...filters, companyId: compId });
-    setLogs(list);
+    const localItems = overtimeService.getAll({ ...filters, companyId: compId });
+    const merged = mergeOvertime(rtkOvertime, localItems);
+    setLogs(merged);
     setEmployees(employeeService.getAll({ companyId: compId }));
 
     // Compute metrics
-    const rawList = overtimeService.getAll({ companyId: compId });
-    const approved = rawList.filter(l => l.status === 'Approved').reduce((s, l) => s + l.hours, 0);
-    const pending = rawList.filter(l => l.status === 'Pending').reduce((s, l) => s + l.hours, 0);
-    const rejected = rawList.filter(l => l.status === 'Rejected').reduce((s, l) => s + l.hours, 0);
-    const cost = rawList.filter(l => l.status === 'Approved').reduce((s, l) => s + l.cost, 0);
+    const rawList = merged;
+    const approved = rawList.filter(l => l.status === 'Approved').reduce((s, l) => s + (Number(l.hours) || 0), 0);
+    const pending = rawList.filter(l => l.status === 'Pending').reduce((s, l) => s + (Number(l.hours) || 0), 0);
+    const rejected = rawList.filter(l => l.status === 'Rejected').reduce((s, l) => s + (Number(l.hours) || 0), 0);
+    const cost = rawList.filter(l => l.status === 'Approved').reduce((s, l) => s + (Number(l.cost) || 0), 0);
 
     setMetrics({ approved, pending, rejected, cost });
   };
 
   useEffect(() => {
     loadData();
-    const handleCompanyChange = () => loadData();
+  }, [rtkOvertime, filters.search, filters.status]);
+
+  useEffect(() => {
+    const handleCompanyChange = () => {
+      refetchOvertime();
+    };
     window.addEventListener('companyChanged', handleCompanyChange);
     return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, [filters]);
+  }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.employeeId || !form.hours || !form.date) {
       return alert('Please fill in all required fields');
     }
     try {
+      try {
+        await createOvertimeMutation(form).unwrap();
+      } catch (err) {
+        console.warn('Backend overtime create fallback:', err);
+      }
       overtimeService.create(form);
       setLogModal(false);
       resetForm();
@@ -63,12 +128,22 @@ const [logs, setLogs] = useState([]);
     }
   };
 
-  const handleApprove = (id) => {
+  const handleApprove = async (id) => {
+    try {
+      await updateOvertimeStatusMutation({ id, status: 'Approved' }).unwrap();
+    } catch (err) {
+      console.warn('Backend approve fallback:', err);
+    }
     overtimeService.updateStatus(id, 'Approved');
     loadData();
   };
 
-  const handleReject = (id) => {
+  const handleReject = async (id) => {
+    try {
+      await updateOvertimeStatusMutation({ id, status: 'Rejected' }).unwrap();
+    } catch (err) {
+      console.warn('Backend reject fallback:', err);
+    }
     overtimeService.updateStatus(id, 'Rejected');
     loadData();
   };
@@ -221,7 +296,7 @@ const [logs, setLogs] = useState([]);
                       {log.department}
                     </td>
                     <td className="px-6 py-4 font-semibold text-slate-600 font-mono text-xs">
-                      {log.date}
+                      {formatUSDate(log.date)}
                     </td>
                     <td className="px-6 py-4 text-right font-semibold text-slate-800">
                       {log.hours} hrs

@@ -37,8 +37,42 @@ export const extraApi = masterApi.injectEndpoints({
 
     // Clock Logs & Timesheet
     getClockLogs: builder.query({
-      query: () => '/admin/clock-logs',
-      transformResponse: (response) => response.data || [],
+      query: (params) => ({
+        url: '/admin/clock-logs',
+        params,
+      }),
+      transformResponse: (response) => {
+        const raw = response?.data || response || [];
+        if (!Array.isArray(raw)) return [];
+        return raw.map(log => {
+          let meta = {};
+          if (log.notes) {
+            try {
+              meta = typeof log.notes === 'string' ? JSON.parse(log.notes) : log.notes;
+            } catch (e) {
+              meta = {};
+            }
+          }
+          const user = log.staff?.user || {};
+          const clockInDate = log.clockIn ? log.clockIn.split('T')[0] : '';
+          return {
+            id: log.id,
+            employeeId: user.id || log.staffId,
+            employeeName: user.firstName ? `${user.firstName} ${user.lastName}` : (log.employeeName || 'Staff Member'),
+            employeeNo: user.email ? `EMP-${user.email.slice(0, 4).toUpperCase()}` : '',
+            department: log.staff?.department || 'Operations',
+            date: clockInDate,
+            clockIn: log.clockIn,
+            clockOut: log.clockOut,
+            breakStart: meta.breakStart || null,
+            breakEnd: meta.breakEnd || null,
+            totalHours: log.totalHours ? Number(log.totalHours) : 0,
+            overtimeHours: meta.overtimeHours ? Number(meta.overtimeHours) : 0,
+            status: meta.status || 'Present',
+            ...meta,
+          };
+        });
+      },
       providesTags: ['ClockLogs'],
     }),
     clockIn: builder.mutation({

@@ -13,7 +13,16 @@ export const AttendanceTimeline = ({ log = {} }) => {
 
   const formatTime = (isoString) => {
     if (!isoString) return '';
-    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    if (typeof isoString === 'string' && (isoString.includes('AM') || isoString.includes('PM'))) {
+      return isoString;
+    }
+    try {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    } catch (e) {
+      return isoString || '';
+    }
   };
 
   const timelineEvents = [

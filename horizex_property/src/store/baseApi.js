@@ -80,6 +80,9 @@ export const masterApi = createApi({
     'Notes',
     'ClockLogs',
     'Employees',
+    'Shifts',
+    'Leaves',
+    'Overtime',
   ],
   endpoints: () => ({}),
 });

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Clock, Calendar, ShieldCheck, ArrowRightLeft } from 'lucide-react';
+import { Clock, Calendar, ShieldCheck, ArrowRightLeft, Trash2 } from 'lucide-react';
 
-export const ShiftCalendar = ({ shifts = [], employees = [], onEdit, onRotate }) => {
+export const ShiftCalendar = ({ shifts = [], employees = [], onEdit, onDelete, onRotate }) => {
   const getDaysOfWeek = (dayIndices = []) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return dayIndices.map(idx => days[idx]).join(', ');
@@ -25,12 +25,23 @@ export const ShiftCalendar = ({ shifts = [], employees = [], onEdit, onRotate })
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-slate-800">{sh.name} Shift</span>
-                  <button 
-                    onClick={() => onEdit && onEdit(sh)}
-                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/50 hover:bg-blue-50 px-2 py-1 rounded-lg border border-blue-100 transition-all"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button 
+                      onClick={() => onEdit && onEdit(sh)}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/50 hover:bg-blue-50 px-2 py-1 rounded-lg border border-blue-100 transition-all cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                    {onDelete && (
+                      <button 
+                        onClick={() => onDelete(sh)}
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all border border-transparent hover:border-rose-100 cursor-pointer"
+                        title="Delete Shift"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
                   <Clock size={13} className="text-slate-400" />

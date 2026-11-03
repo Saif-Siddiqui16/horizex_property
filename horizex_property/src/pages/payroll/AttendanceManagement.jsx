@@ -8,6 +8,7 @@ import permissionService from '../../services/permissionService';
 import AttendanceTable from '../../components/payroll/AttendanceTable';
 import AttendanceTimeline from '../../components/payroll/AttendanceTimeline';
 import { useSearchParams } from 'react-router-dom';
+import { useGetClockLogsQuery } from '../../store';
 import { ShiftManagement } from './ShiftManagement';
 import { LeaveManagement } from './LeaveManagement';
 import { OvertimeTracking } from './OvertimeTracking';
@@ -55,22 +56,69 @@ const [logs, setLogs] = useState([]);
     clockIn: '', clockOut: '', breakStart: '', breakEnd: '', status: 'Present'
   });
   
+  const formatUSDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('T')[0].split('-');
+      if (parts.length === 3) {
+        return `${parts[1]}/${parts[2]}/${parts[0]}`; // MM/DD/YYYY standard US format
+      }
+      return dateStr;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   const [correctionForm, setCorrectionForm] = useState({
     clockIn: '', clockOut: '', breakStart: '', breakEnd: '', reason: ''
   });
 
+  const { data: rtkLogs = [], refetch: refetchClockLogs } = useGetClockLogsQuery(filters);
+
+  const mergeLogs = (apiList = [], localList = []) => {
+    const map = new Map();
+    (localList || []).forEach(item => {
+      const key = `${item.employeeName || item.employeeId}_${item.date}`;
+      map.set(key, item);
+      map.set(String(item.id), item);
+    });
+    (apiList || []).forEach(item => {
+      const key = `${item.employeeName || item.employeeId}_${item.date}`;
+      if (!map.has(key)) {
+        map.set(key, item);
+      } else {
+        const existing = map.get(key);
+        map.set(key, { ...existing, ...item });
+      }
+      map.set(String(item.id), item);
+    });
+
+    const seen = new Set();
+    const result = [];
+    for (const val of map.values()) {
+      const uniqueKey = `${val.employeeName || val.employeeId}_${val.date}`;
+      if (!seen.has(uniqueKey)) {
+        seen.add(uniqueKey);
+        result.push(val);
+      }
+    }
+
+    return result.sort((a, b) => new Date(b.date || b.clockIn) - new Date(a.date || a.clockIn));
+  };
+
   const loadData = () => {
     const compId = localStorage.getItem('global_selected_company_id') || '';
-    const items = attendanceService.getAll({ ...filters, companyId: compId });
+    const localItems = attendanceService.getAll({ ...filters, companyId: compId });
+    const items = mergeLogs(rtkLogs, localItems);
     setLogs(items);
     
-    // Auto-select first log if none selected
-    if (items.length > 0 && !selectedLog) {
-      setSelectedLog(items[0]);
-    } else if (selectedLog) {
-      // Refresh selected log
-      const updated = items.find(i => i.id === selectedLog.id);
-      if (updated) setSelectedLog(updated);
+    // Auto-select first log if none selected using functional updater to prevent loop
+    if (items.length > 0) {
+      setSelectedLog(prev => {
+        if (!prev) return items[0];
+        const updated = items.find(i => String(i.id) === String(prev.id));
+        return updated || items[0];
+      });
     }
 
     setEmployees(employeeService.getAll({ companyId: compId }));
@@ -79,13 +127,16 @@ const [logs, setLogs] = useState([]);
 
   useEffect(() => {
     loadData();
+  }, [rtkLogs, filters.search, filters.department, filters.status, filters.date]);
+
+  useEffect(() => {
     const handleCompanyChange = () => {
       setSelectedLog(null);
-      loadData();
+      refetchClockLogs();
     };
     window.addEventListener('companyChanged', handleCompanyChange);
     return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, [filters]);
+  }, []);
 
   const handleOverrideOpen = (log) => {
     setSelectedLog(log);
@@ -260,7 +311,7 @@ const [logs, setLogs] = useState([]);
                 {selectedLog ? selectedLog.employeeName : 'Select staff member'}
               </h4>
               {selectedLog && (
-                <span className="text-xs text-slate-400 font-mono">Date: {selectedLog.date}</span>
+                <span className="text-xs text-slate-400 font-mono">Date: {formatUSDate(selectedLog.date)}</span>
               )}
             </div>
             
