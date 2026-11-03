@@ -8,12 +8,12 @@ const baseQuery = fetchBaseQuery({
   baseUrl: 'http://localhost:5000/api',
   credentials: 'include', // Automatically passes HttpOnly cookies
   prepareHeaders: (headers, { getState }) => {
-    const token = getState()?.auth?.accessToken;
+    const token = getState()?.auth?.accessToken || localStorage.getItem('accessToken');
     if (token) {
-      headers.set('authorization', `Bearer ${token}`);
+      headers.set('authorization', 'Bearer ' + token);
     }
 
-    const effectiveCompanyId = getState()?.auth?.effectiveCompanyId;
+    const effectiveCompanyId = getState()?.auth?.effectiveCompanyId || localStorage.getItem('companyContext') || localStorage.getItem('global_selected_company_id');
     if (effectiveCompanyId) {
       headers.set('x-company-context', effectiveCompanyId);
     }
@@ -79,6 +79,7 @@ export const masterApi = createApi({
     'Insurance',
     'Notes',
     'ClockLogs',
+    'Employees',
   ],
   endpoints: () => ({}),
 });

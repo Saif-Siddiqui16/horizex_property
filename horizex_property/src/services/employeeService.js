@@ -1,3 +1,4 @@
+import api from '../api/client';
 import { generateEmployeeNumber } from '../utils/numberGenerators';
 import payrollTimelineService from './payrollTimelineService';
 
@@ -75,14 +76,14 @@ const getStore = () => {
   if (!data) {
     localStorage.setItem(KEY, JSON.stringify(DEFAULT_EMPLOYEES));
     localStorage.setItem(SEQ_KEY, '7');
-    return DEFAULT_EMPLOYEES;
+    return [...DEFAULT_EMPLOYEES];
   }
   
   let list = [];
   try {
     list = JSON.parse(data);
   } catch (e) {
-    list = DEFAULT_EMPLOYEES;
+    list = [...DEFAULT_EMPLOYEES];
   }
   
   // Non-destructive migration
@@ -174,68 +175,121 @@ const getStore = () => {
 
 const setStore = (val) => localStorage.setItem(KEY, JSON.stringify(val));
 
+const filterLocalList = (sourceList, filters = {}) => {
+  let list = [...sourceList];
+  
+  if (filters.companyId) {
+    list = list.filter(emp => String(emp.companyId) === String(filters.companyId));
+  }
+  if (filters.buildingId) {
+    list = list.filter(emp => String(emp.buildingId) === String(filters.buildingId));
+  }
+  if (filters.department) {
+    list = list.filter(emp => emp.department === filters.department);
+  }
+  if (filters.shiftId) {
+    list = list.filter(emp => String(emp.shiftId) === String(filters.shiftId));
+  }
+  if (filters.status) {
+    list = list.filter(emp => emp.status.toLowerCase() === String(filters.status).toLowerCase());
+  }
+  if (filters.search) {
+    const q = filters.search.toLowerCase();
+    list = list.filter(emp => 
+      `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(q) ||
+      (emp.employeeNo && emp.employeeNo.toLowerCase().includes(q)) ||
+      (emp.email && emp.email.toLowerCase().includes(q)) ||
+      (emp.designation && emp.designation.toLowerCase().includes(q))
+    );
+  }
+  
+  if (filters.sortBy) {
+    const key = filters.sortBy;
+    const desc = filters.sortDesc;
+    list.sort((a, b) => {
+      let valA = a[key] ?? '';
+      let valB = b[key] ?? '';
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+      
+      if (valA < valB) return desc ? 1 : -1;
+      if (valA > valB) return desc ? -1 : 1;
+      return 0;
+    });
+  }
+  return list;
+};
+
 export const employeeService = {
   getAll(filters = {}) {
-    let list = getStore();
-    
-    // Filter by Global Company Selector
-    if (filters.companyId) {
-      list = list.filter(emp => String(emp.companyId) === String(filters.companyId));
-    }
-    if (filters.buildingId) {
-      list = list.filter(emp => String(emp.buildingId) === String(filters.buildingId));
-    }
-    if (filters.department) {
-      list = list.filter(emp => emp.department === filters.department);
-    }
-    if (filters.shiftId) {
-      list = list.filter(emp => String(emp.shiftId) === String(filters.shiftId));
-    }
-    if (filters.status) {
-      list = list.filter(emp => emp.status === filters.status);
-    }
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      list = list.filter(emp => 
-        `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(q) ||
-        emp.employeeNo.toLowerCase().includes(q) ||
-        emp.email.toLowerCase().includes(q) ||
-        (emp.designation && emp.designation.toLowerCase().includes(q))
-      );
-    }
-    
-    // Sort
-    if (filters.sortBy) {
-      const key = filters.sortBy;
-      const desc = filters.sortDesc;
-      list.sort((a, b) => {
-        let valA = a[key] ?? '';
-        let valB = b[key] ?? '';
-        if (typeof valA === 'string') valA = valA.toLowerCase();
-        if (typeof valB === 'string') valB = valB.toLowerCase();
-        
-        if (valA < valB) return desc ? 1 : -1;
-        if (valA > valB) return desc ? -1 : 1;
-        return 0;
+    const cachedStore = getStore();
+    const localFiltered = filterLocalList(cachedStore, filters);
+
+    // Attach thenable so callers using `await employeeService.getAll(...)` trigger real API request!
+    const promise = api.get('/admin/employees', { params: filters })
+      .then(res => {
+        const data = res.data?.data || res.data || [];
+        if (Array.isArray(data) && data.length > 0) {
+          // Merge with local store
+          const currentList = getStore();
+          const merged = [...data];
+          currentList.forEach(localEmp => {
+            if (!merged.some(m => String(m.id) === String(localEmp.id) || m.employeeNo === localEmp.employeeNo)) {
+              merged.push(localEmp);
+            }
+          });
+          setStore(merged);
+          return filterLocalList(merged, filters);
+        }
+        return localFiltered;
+      })
+      .catch(err => {
+        console.warn('API error fetching employees, fallback to cached store:', err);
+        return localFiltered;
       });
-    }
-    
-    return list;
+
+    Object.defineProperty(localFiltered, 'then', {
+      value: function(resolve, reject) {
+        return promise.then(resolve, reject);
+      },
+      writable: true,
+      configurable: true
+    });
+
+    return localFiltered;
   },
 
   getById(id) {
-    return getStore().find(emp => String(emp.id) === String(id)) || null;
+    const cached = getStore().find(emp => String(emp.id) === String(id)) || null;
+
+    const promise = api.get(`/admin/employees/${id}`)
+      .then(res => {
+        const data = res.data?.data || res.data;
+        return data || cached;
+      })
+      .catch(() => cached);
+
+    if (cached) {
+      Object.defineProperty(cached, 'then', {
+        value: function(resolve, reject) {
+          return promise.then(resolve, reject);
+        },
+        writable: true,
+        configurable: true
+      });
+      return cached;
+    }
+
+    return promise;
   },
 
   create(data) {
     const list = getStore();
     
-    // Get next sequence
     let seq = parseInt(localStorage.getItem(SEQ_KEY) || '6');
     const newId = seq;
     localStorage.setItem(SEQ_KEY, String(seq + 1));
     
-    // Resolve company code
     let companyCode = 'APEX';
     if (String(data.companyId) === '2') companyCode = 'SOROS';
     if (String(data.companyId) === '3') companyCode = 'HORIZEX';
@@ -273,31 +327,62 @@ export const employeeService = {
       { employeeId: item.id, employeeName: `${item.firstName} ${item.lastName}`, companyId: item.companyId }
     );
     
+    // Call backend API to persist in PostgreSQL database
+    const apiPromise = api.post('/admin/employees', { ...data, employeeNo: empNo })
+      .then(res => {
+        const serverCreated = res.data?.data || res.data;
+        if (serverCreated && serverCreated.id) {
+          // Update in local cache with database record
+          const currentStore = getStore();
+          const targetIdx = currentStore.findIndex(e => e.employeeNo === empNo || e.id === item.id);
+          if (targetIdx !== -1) {
+            currentStore[targetIdx] = { ...currentStore[targetIdx], ...serverCreated };
+            setStore(currentStore);
+          }
+          return { ...item, ...serverCreated };
+        }
+        return item;
+      })
+      .catch(err => {
+        console.error('API create employee error:', err);
+        // Throw or return item based on preference; returning item keeps UI resilient
+        return item;
+      });
+
+    Object.defineProperty(item, 'then', {
+      value: function(resolve, reject) {
+        return apiPromise.then(resolve, reject);
+      },
+      writable: true,
+      configurable: true
+    });
+
     return item;
   },
 
   update(id, data) {
     const list = getStore();
     const idx = list.findIndex(emp => String(emp.id) === String(id));
-    if (idx === -1) return null;
-
-    const oldEmp = list[idx];
+    
+    let oldEmp = idx !== -1 ? list[idx] : { id };
     const isSalaryChanged = data.salary !== undefined && parseFloat(data.salary) !== oldEmp.salary;
     const isStatusChanged = data.status !== undefined && data.status !== oldEmp.status;
 
-    list[idx] = {
+    const updatedEmp = {
       ...oldEmp,
       ...data,
-      companyId: data.companyId ? parseInt(data.companyId) : oldEmp.companyId,
-      buildingId: data.buildingId ? parseInt(data.buildingId) : oldEmp.buildingId,
-      shiftId: data.shiftId ? parseInt(data.shiftId) : oldEmp.shiftId,
+      companyId: data.companyId !== undefined ? (parseInt(data.companyId) || data.companyId) : oldEmp.companyId,
+      buildingId: data.buildingId !== undefined ? (parseInt(data.buildingId) || data.buildingId) : oldEmp.buildingId,
+      shiftId: data.shiftId !== undefined ? (parseInt(data.shiftId) || data.shiftId) : oldEmp.shiftId,
       salary: data.salary !== undefined ? parseFloat(data.salary) : oldEmp.salary,
       updatedAt: new Date().toISOString(),
       updatedBy: 'Admin User'
     };
-    
-    const updatedEmp = list[idx];
-    setStore(list);
+
+    if (idx !== -1) {
+      list[idx] = updatedEmp;
+      setStore(list);
+    }
     
     if (isSalaryChanged) {
       payrollTimelineService.append(
@@ -315,24 +400,68 @@ export const employeeService = {
       );
     }
     
+    const apiPromise = api.put(`/admin/employees/${id}`, data)
+      .then(res => {
+        const serverUpdated = res.data?.data || res.data;
+        if (serverUpdated) {
+          const currentStore = getStore();
+          const targetIdx = currentStore.findIndex(e => String(e.id) === String(id));
+          if (targetIdx !== -1) {
+            currentStore[targetIdx] = { ...currentStore[targetIdx], ...serverUpdated };
+            setStore(currentStore);
+          }
+          return { ...updatedEmp, ...serverUpdated };
+        }
+        return updatedEmp;
+      })
+      .catch(err => {
+        console.warn('API update employee error, using local update:', err);
+        return updatedEmp;
+      });
+
+    Object.defineProperty(updatedEmp, 'then', {
+      value: function(resolve, reject) {
+        return apiPromise.then(resolve, reject);
+      },
+      writable: true,
+      configurable: true
+    });
+
     return updatedEmp;
   },
 
   delete(id) {
     const list = getStore();
     const emp = list.find(e => String(e.id) === String(id));
-    if (!emp) return false;
     
     const filtered = list.filter(e => String(e.id) !== String(id));
     setStore(filtered);
     
-    payrollTimelineService.append(
-      'Status Changed',
-      `Employee ${emp.firstName} ${emp.lastName} (${emp.employeeNo}) removed from directory`,
-      { employeeId: emp.id, employeeName: `${emp.firstName} ${emp.lastName}`, companyId: emp.companyId }
-    );
+    if (emp) {
+      payrollTimelineService.append(
+        'Status Changed',
+        `Employee ${emp.firstName} ${emp.lastName} (${emp.employeeNo}) removed from directory`,
+        { employeeId: emp.id, employeeName: `${emp.firstName} ${emp.lastName}`, companyId: emp.companyId }
+      );
+    }
     
-    return true;
+    const resObj = { success: true };
+    const apiPromise = api.delete(`/admin/employees/${id}`)
+      .then(() => true)
+      .catch(err => {
+        console.warn('API delete employee error:', err);
+        return true;
+      });
+
+    Object.defineProperty(resObj, 'then', {
+      value: function(resolve, reject) {
+        return apiPromise.then(resolve, reject);
+      },
+      writable: true,
+      configurable: true
+    });
+
+    return resObj;
   }
 };
 

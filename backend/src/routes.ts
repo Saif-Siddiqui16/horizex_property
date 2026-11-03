@@ -12,6 +12,7 @@ import talCasesRouter from './modules/talCases/talCases.routes';
 import communicationsRouter from './modules/communications/communications.routes';
 import analyticsRouter from './modules/analytics/analytics.routes';
 import extraRouter from './modules/extra/extra.routes';
+import employeesRouter from './modules/employees/employees.routes';
 import tenantPortalRouter from './modules/tenantPortal/tenantPortal.routes';
 import ownerPortalRouter from './modules/ownerPortal/ownerPortal.routes';
 import { getDashboardStats } from './modules/analytics/analytics.controller';
@@ -90,6 +91,8 @@ router.use('/admin/tickets', maintenanceRouter);
 router.use('/admin/tal-cases', talCasesRouter);
 router.use('/admin/analytics', analyticsRouter);
 router.use('/admin', extraRouter); // Mounts /unit-types, /insurance, /notes, /clock-in, /clock-out
+router.use('/admin/employees', employeesRouter);
+router.use('/employees', employeesRouter);
 
 // Communication
 router.use('/communication', communicationsRouter);
