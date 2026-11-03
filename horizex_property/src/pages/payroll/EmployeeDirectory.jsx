@@ -3,6 +3,12 @@ import { useLocation } from 'react-router-dom';
 
 import { Search, UserPlus, Filter, X, Plus, Edit2, Mail, Phone, Building2, Briefcase, DollarSign, Calendar, Clock, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import employeeService from '../../services/employeeService';
+import {
+  useGetEmployeesQuery,
+  useCreateEmployeeMutation,
+  useUpdateEmployeeMutation,
+  useDeleteEmployeeMutation
+} from '../../store';
 import departmentService from '../../services/departmentService';
 import shiftService from '../../services/shiftService';
 import permissionService from '../../services/permissionService';
@@ -22,7 +28,6 @@ const mockBuildings = [
 
 export const EmployeeDirectory = () => {
 const location = useLocation();
-  const [employees, setEmployees] = useState([]);
   const [companies] = useState(mockCompanies);
   const [buildings] = useState(mockBuildings);
   const [shifts, setShifts] = useState([]);
@@ -57,21 +62,38 @@ const location = useLocation();
     salary: '3500', status: 'Active'
   });
 
-  const loadData = () => {
-    const compId = localStorage.getItem('global_selected_company_id') || '';
-    const items = employeeService.getAll({ ...filters, companyId: compId });
-    setEmployees(items);
-    
-    setShifts(shiftService.getAll());
-    setDepartments(departmentService.getAll());
-  };
+  // RTK Query hooks
+  const selectedCompanyId = localStorage.getItem('global_selected_company_id') || '';
+  const {
+    data: rtkEmployees = [],
+    isLoading,
+    refetch: refetchEmployees
+  } = useGetEmployeesQuery({
+    ...filters,
+    companyId: selectedCompanyId
+  });
+
+  const [createEmployeeMutation] = useCreateEmployeeMutation();
+  const [updateEmployeeMutation] = useUpdateEmployeeMutation();
+  const [deleteEmployeeMutation] = useDeleteEmployeeMutation();
+
+  // Unified employees list (RTK Query data with fallback to local store)
+  const employees = rtkEmployees && rtkEmployees.length > 0 
+    ? rtkEmployees 
+    : (employeeService.getAll(filters) || []);
 
   useEffect(() => {
-    loadData();
-    const handleCompanyChange = () => loadData();
+    setShifts(shiftService.getAll());
+    setDepartments(departmentService.getAll());
+  }, []);
+
+  useEffect(() => {
+    const handleCompanyChange = () => {
+      refetchEmployees();
+    };
     window.addEventListener('companyChanged', handleCompanyChange);
     return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, [filters]);
+  }, [refetchEmployees]);
 
   useEffect(() => {
     if (location.state && location.state.openAddModal) {
@@ -79,71 +101,84 @@ const location = useLocation();
     }
   }, [location.state]);
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
     try {
+      await createEmployeeMutation(form).unwrap();
       employeeService.create(form);
       setAddModal(false);
       resetForm();
-      loadData();
       alert('Employee created successfully.');
     } catch (err) {
-      alert(err.message);
+      alert(err?.data?.message || err?.message || 'Failed to create employee');
     }
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!selectedEmp) return;
     try {
-      employeeService.update(selectedEmp.id, {
+      await updateEmployeeMutation({
+        id: selectedEmp.id,
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
         phone: form.phone,
-        companyId: parseInt(form.companyId) || 1,
-        buildingId: parseInt(form.buildingId) || 1,
+        companyId: form.companyId,
+        buildingId: form.buildingId,
         department: form.department,
         designation: form.designation,
         employmentType: form.employmentType,
-        shiftId: parseInt(form.shiftId) || 1,
+        shiftId: form.shiftId,
         salary: parseFloat(form.salary) || 0,
         status: form.status
-      });
+      }).unwrap();
+      employeeService.update(selectedEmp.id, form);
       setEditModal(false);
       setSelectedEmp(null);
       resetForm();
-      loadData();
       alert('Employee details updated.');
     } catch (err) {
-      alert(err.message);
+      alert(err?.data?.message || err?.message || 'Failed to update employee');
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to remove this employee?')) return;
-    employeeService.delete(id);
-    loadData();
+    try {
+      await deleteEmployeeMutation(id).unwrap();
+      employeeService.delete(id);
+    } catch (err) {
+      alert(err?.data?.message || err?.message || 'Failed to delete employee');
+    }
   };
 
-  const handleShiftSubmit = (e) => {
+  const handleShiftSubmit = async (e) => {
     e.preventDefault();
     if (!selectedEmp) return;
-    employeeService.update(selectedEmp.id, { shiftId: parseInt(form.shiftId) });
-    setShiftModal(false);
-    setSelectedEmp(null);
-    loadData();
-    alert('Shift schedule updated.');
+    try {
+      await updateEmployeeMutation({ id: selectedEmp.id, shiftId: form.shiftId }).unwrap();
+      employeeService.update(selectedEmp.id, { shiftId: form.shiftId });
+      setShiftModal(false);
+      setSelectedEmp(null);
+      alert('Shift schedule updated.');
+    } catch (err) {
+      alert(err?.data?.message || err?.message || 'Failed to update shift');
+    }
   };
 
-  const handleSalarySubmit = (e) => {
+  const handleSalarySubmit = async (e) => {
     e.preventDefault();
     if (!selectedEmp) return;
-    employeeService.update(selectedEmp.id, { salary: parseFloat(form.salary) });
-    setSalaryModal(false);
-    setSelectedEmp(null);
-    loadData();
-    alert('Salary structure updated.');
+    try {
+      await updateEmployeeMutation({ id: selectedEmp.id, salary: parseFloat(form.salary) }).unwrap();
+      employeeService.update(selectedEmp.id, { salary: parseFloat(form.salary) });
+      setSalaryModal(false);
+      setSelectedEmp(null);
+      alert('Salary structure updated.');
+    } catch (err) {
+      alert(err?.data?.message || err?.message || 'Failed to update salary');
+    }
   };
 
   const resetForm = () => {
