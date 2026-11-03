@@ -277,6 +277,7 @@ model Vehicle {
   model        String
   licensePlate String   @unique
   permitNumber String?
+  color        String?
   createdAt    DateTime @default(now())
 }
 

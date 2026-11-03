@@ -1,36 +1,80 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
-  Plus, 
   X, 
   User, 
   Building2, 
   CreditCard, 
   Car, 
   MapPin, 
-  Camera,
-  Trash2,
-  ChevronRight,
-  ChevronLeft,
-  CheckCircle,
-  AlertCircle,
-  Clock
+  CheckCircle, 
+  AlertCircle 
 } from 'lucide-react';
-import api from '../api/client';
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
 import { Button } from '../components/Button';
+import { useGetTenantsQuery, useCreateVehicleMutation, useUpdateVehicleMutation } from '../store/api/tenantsApi';
 import clsx from 'clsx';
 
-export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) => {
+export const VehicleForm = ({ isOpen, onClose, editingVehicle, selectedBuildingId, effectiveCompanyId: propCompanyId }) => {
   const { t } = useTranslation();
-  const [tenants, setTenants] = useState([]);
-  const [loadingTenants, setLoadingTenants] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState(null);
-  const [saving, setSaving] = useState(false);
   
+  // Context from Redux or props
+  const reduxCompanyId = useSelector((state) => state.auth?.effectiveCompanyId);
+  const activeCompanyId = propCompanyId || reduxCompanyId || localStorage.getItem('global_selected_company_id') || '';
+  const activeBuildingId = selectedBuildingId || localStorage.getItem('global_selected_building_id') || '';
+
+  // RTK Query hooks with company context
+  const tenantQueryParams = useMemo(() => {
+    const p = { limit: 1000 };
+    if (activeCompanyId && activeCompanyId !== 'all') {
+      p.companyId = activeCompanyId;
+    }
+    return p;
+  }, [activeCompanyId]);
+
+  const { data: rawTenants = [], isLoading: loadingTenants } = useGetTenantsQuery(tenantQueryParams);
+  const tenants = Array.isArray(rawTenants) ? rawTenants : [];
+
+  // Filter tenants by selected company and building
+  const filteredTenants = useMemo(() => {
+    return tenants.filter((t) => {
+      if (activeCompanyId && activeCompanyId !== 'all') {
+        if (t.companyId && String(t.companyId) !== String(activeCompanyId)) {
+          return false;
+        }
+      }
+      if (activeBuildingId && activeBuildingId !== 'all') {
+        if (t.propertyId && String(t.propertyId) !== String(activeBuildingId)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [tenants, activeCompanyId, activeBuildingId]);
+
+  const displayTenants = useMemo(() => {
+    if (editingVehicle && editingVehicle.tenantId) {
+      const alreadyPresent = filteredTenants.some((t) => String(t.id) === String(editingVehicle.tenantId));
+      if (!alreadyPresent) {
+        const currentTenant = tenants.find((t) => String(t.id) === String(editingVehicle.tenantId));
+        if (currentTenant) return [currentTenant, ...filteredTenants];
+      }
+    }
+    return filteredTenants;
+  }, [filteredTenants, editingVehicle, tenants]);
+
+  const [createVehicle, { isLoading: isCreating }] = useCreateVehicleMutation();
+  const [updateVehicle, { isLoading: isUpdating }] = useUpdateVehicleMutation();
+  const saving = isCreating || isUpdating;
+
+  const [selectedTenant, setSelectedTenant] = useState(null);
+  const [formError, setFormError] = useState('');
+
   // Form State
   const [formData, setFormData] = useState({
     tenantId: '',
-    leaseId: '',
+    unitId: '',
     make: '',
     model: '',
     color: '',
@@ -38,342 +82,294 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
     parkingSpace: '',
   });
 
-  const [photos, setPhotos] = useState({
-    photo1: null,
-    photo2: null
-  });
-
-  const [previews, setPreviews] = useState({
-    photo1: null,
-    photo2: null
-  });
-
   useEffect(() => {
-    fetchTenants();
     if (editingVehicle) {
       setFormData({
-        tenantId: editingVehicle.tenantId.toString(),
-        leaseId: editingVehicle.leaseId ? editingVehicle.leaseId.toString() : '',
+        tenantId: editingVehicle.tenantId ? String(editingVehicle.tenantId) : '',
+        unitId: editingVehicle.unitId ? String(editingVehicle.unitId) : '',
         make: editingVehicle.make || '',
         model: editingVehicle.model || '',
-        color: editingVehicle.color || '',
+        color: editingVehicle.color !== 'N/A' ? editingVehicle.color || '' : '',
         licensePlate: editingVehicle.licensePlate || '',
-        parkingSpace: editingVehicle.parkingSpace || '',
+        parkingSpace: editingVehicle.parkingSpace || editingVehicle.permitNumber || '',
       });
-      setPreviews({
-        photo1: editingVehicle.photo1Url || null,
-        photo2: editingVehicle.photo2Url || null
+    } else {
+      setFormData({
+        tenantId: '',
+        unitId: '',
+        make: '',
+        model: '',
+        color: '',
+        licensePlate: '',
+        parkingSpace: '',
       });
+      setSelectedTenant(null);
     }
-  }, [editingVehicle]);
+    setFormError('');
+  }, [editingVehicle, isOpen]);
 
-  const fetchTenants = async () => {
-    try {
-      setLoadingTenants(true);
-      const res = await api.get('/api/admin/tenants?limit=1000');
-      setTenants(res.data?.data || res.data || []);
-    } catch (e) {
-      console.error('Failed to fetch tenants', e);
-    } finally {
-      setLoadingTenants(false);
-    }
-  };
-
+  // Sync selected tenant when tenantId changes
   useEffect(() => {
     if (formData.tenantId) {
-      const tenant = tenants.find(t => t.id === parseInt(formData.tenantId));
+      const tenant = tenants.find(t => String(t.id) === String(formData.tenantId));
       if (tenant) {
         setSelectedTenant(tenant);
-        // Find active lease to auto-set leaseId
-        // The backend `getAllTenants` doesn't always include leaseId directly, 
-        // but it includes building and unit info.
-        // If editing, we keep the existing leaseId.
         if (!editingVehicle) {
-          setFormData(prev => ({ ...prev, leaseId: tenant.leaseId || '' }));
+          setFormData(prev => ({
+            ...prev,
+            unitId: tenant.unitId || '',
+          }));
         }
       }
     } else {
       setSelectedTenant(null);
     }
-  }, [formData.tenantId, tenants]);
+  }, [formData.tenantId, tenants, editingVehicle]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    if (files && files[0]) {
-      const file = files[0];
-      setPhotos(prev => ({ ...prev, [name]: file }));
-      setPreviews(prev => ({ ...prev, [name]: URL.createObjectURL(file) }));
-    }
-  };
-
-  const removePhoto = (name) => {
-    setPhotos(prev => ({ ...prev, [name]: null }));
-    setPreviews(prev => ({ ...prev, [name]: null }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
-    
+    setFormError('');
+
     try {
-      const submitData = new FormData();
-      Object.keys(formData).forEach(key => {
-        submitData.append(key, formData[key]);
-      });
-      
-      if (photos.photo1) submitData.append('photo1', photos.photo1);
-      if (photos.photo2) submitData.append('photo2', photos.photo2);
+      const resolvedUnitId = formData.unitId || selectedTenant?.unitId;
+
+      const payload = {
+        tenantId: formData.tenantId,
+        unitId: resolvedUnitId || undefined,
+        make: formData.make.trim(),
+        model: formData.model.trim(),
+        color: formData.color ? formData.color.trim() : undefined,
+        licensePlate: formData.licensePlate.trim().toUpperCase(),
+        permitNumber: formData.parkingSpace ? formData.parkingSpace.trim() : undefined,
+      };
 
       if (editingVehicle) {
-        await api.put(`/api/admin/vehicles/${editingVehicle.id}`, submitData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await updateVehicle({ id: editingVehicle.id, ...payload }).unwrap();
       } else {
-        await api.post('/api/admin/vehicles', submitData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await createVehicle(payload).unwrap();
       }
 
-      await fetchVehicles();
       onClose();
-    } catch (e) {
-      console.error('Failed to save vehicle', e);
-      alert(e.response?.data?.message || 'Error saving vehicle information');
-    } finally {
-      setSaving(false);
+    } catch (err) {
+      console.error('Failed to save vehicle', err);
+      const msg = err?.data?.error?.message || err?.data?.message || err?.message || 'Error saving vehicle information';
+      setFormError(msg);
     }
   };
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 anim-fade-in">
-      <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl anim-zoom-in max-h-[90vh] overflow-hidden flex flex-col border border-slate-100">
-        
-        {/* HEADER */}
-        <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-          <div>
-            <h3 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                <Car size={24} />
-              </div>
-              {editingVehicle ? t('vehicle.edit_profile') : t('vehicle.register')}
-            </h3>
-            <p className="text-slate-500 font-medium text-sm mt-1">
-              {t('vehicle.identification_note')}
-            </p>
+  return createPortal(
+    <div 
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-3 sm:p-5 overflow-y-auto anim-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !saving) onClose();
+      }}
+    >
+      <form 
+        onSubmit={handleSubmit}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden my-auto border border-slate-100 anim-zoom-in"
+      >
+        {/* PINNED HEADER */}
+        <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+              <Car size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+                {editingVehicle ? t('vehicle.edit_title') || 'Edit Vehicle' : t('vehicle.register_title') || 'Register Vehicle'}
+              </h3>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                {t('vehicle.register_desc') || 'Associate a vehicle with a tenant profile for parking security.'}
+              </p>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all duration-300"
+          <button 
+            type="button" 
+            onClick={onClose} 
+            disabled={saving}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
           >
-            <X size={24} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* FORM */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
-          <div className="space-y-8">
+        {/* SCROLLABLE FORM BODY */}
+        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+          {formError && (
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold flex items-center gap-2 anim-fade-in">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
+
+          {/* SECTION: TENANT ASSIGNMENT */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-slate-400 font-black text-[11px] uppercase tracking-widest px-1">
+              <User size={14} className="text-indigo-500" />
+              {t('vehicle.step_resident') || 'Step 1: Assign Resident'}
+            </div>
             
-            {/* SECTION: TENANT ASSIGNMENT */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-400 font-black text-[11px] uppercase tracking-widest px-1">
-                <User size={14} className="text-indigo-500" />
-                {t('vehicle.step_resident')}
-              </div>
-              
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.select_tenant')}</label>
-                  <select
-                    name="tenantId"
-                    value={formData.tenantId}
-                    onChange={handleChange}
-                    required
-                    className="w-full h-[54px] px-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none"
-                  >
-                    <option value="">{t('vehicle.choose_tenant')}</option>
-                    {tenants.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedTenant && (
-                  <div className="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-center justify-between anim-slide-up">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-indigo-600 border border-indigo-100">
-                        <Building2 size={24} />
-                      </div>
-                      <div>
-                        <div className="text-sm font-black text-slate-800 uppercase tracking-tight">Auto-Populated Details</div>
-                        <div className="text-xs font-bold text-slate-500 mt-0.5">
-                          Building: {selectedTenant.property} | Unit: {selectedTenant.unit}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* SECTION: VEHICLE DETAILS */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-400 font-black text-[11px] uppercase tracking-widest px-1">
-                <CreditCard size={14} className="text-indigo-500" />
-                {t('vehicle.step_info')}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.plate')} *</label>
-                  <input
-                    type="text"
-                    name="licensePlate"
-                    value={formData.licensePlate}
-                    onChange={handleChange}
-                    required
-                    placeholder="E.g. ABC-1234"
-                    className="w-full h-[54px] px-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none uppercase placeholder:normal-case"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.color')} *</label>
-                  <input
-                    type="text"
-                    name="color"
-                    value={formData.color}
-                    onChange={handleChange}
-                    required
-                    placeholder="E.g. Silver, Black"
-                    className="w-full h-[54px] px-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.make')} *</label>
-                  <input
-                    type="text"
-                    name="make"
-                    value={formData.make}
-                    onChange={handleChange}
-                    required
-                    placeholder="E.g. Honda, Toyota"
-                    className="w-full h-[54px] px-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.model')} *</label>
-                  <input
-                    type="text"
-                    name="model"
-                    value={formData.model}
-                    onChange={handleChange}
-                    required
-                    placeholder="E.g. Civic, RAV4"
-                    className="w-full h-[54px] px-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none"
-                  />
-                </div>
-                <div className="col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.parking')}</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      name="parkingSpace"
-                      value={formData.parkingSpace}
-                      onChange={handleChange}
-                      placeholder="Enter assigned stall or space number"
-                      className="w-full h-[54px] pl-12 pr-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION: MEDIA */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-400 font-black text-[11px] uppercase tracking-widest px-1">
-                <Camera size={14} className="text-indigo-500" />
-                {t('vehicle.step_media')}
-              </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                {['photo1', 'photo2'].map((photoKey, idx) => (
-                  <div key={photoKey} className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Photo {idx + 1}</label>
-                    <div className={clsx(
-                      "relative h-44 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center gap-3 transition-all cursor-pointer overflow-hidden",
-                      previews[photoKey] ? "border-indigo-200 bg-slate-50" : "border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300"
-                    )}>
-                      {previews[photoKey] ? (
-                        <>
-                          <img src={previews[photoKey]} alt="Preview" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); removePhoto(photoKey); }}
-                            className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-rose-500 text-white shadow-lg hover:bg-rose-600 transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400">
-                            <Camera size={24} />
-                          </div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('common.actions')}</p>
-                          <input
-                            type="file"
-                            name={photoKey}
-                            onChange={handleFileChange}
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                            accept="image/*"
-                          />
-                        </>
-                      )}
-                    </div>
-                  </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 ml-1">{t('vehicle.select_tenant') || 'Select Tenant'} *</label>
+              <select
+                name="tenantId"
+                value={formData.tenantId}
+                onChange={handleChange}
+                required
+                disabled={loadingTenants || saving}
+                className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-sm"
+              >
+                <option value="">
+                  {loadingTenants 
+                    ? (t('common.loading') || 'Loading tenants...') 
+                    : displayTenants.length === 0 
+                      ? (t('vehicle.no_tenants') || '-- No tenants found for selected company/building --') 
+                      : (t('vehicle.choose_tenant') || '-- Choose Tenant --')}
+                </option>
+                {displayTenants.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim()} {t.propertyName && t.propertyName !== '-' ? `(${t.propertyName} - Unit ${t.unitNumber || '-'})` : ''}
+                  </option>
                 ))}
-              </div>
+              </select>
+              {displayTenants.length === 0 && !loadingTenants && (
+                <p className="text-xs text-amber-600 font-medium mt-1">
+                  No tenants registered under this company/building. Please switch company/building in the header or add a tenant first.
+                </p>
+              )}
             </div>
 
+            {selectedTenant && (
+              <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-center justify-between anim-slide-up">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white shadow-xs flex items-center justify-center text-indigo-600 border border-indigo-100">
+                    <Building2 size={20} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-slate-800 uppercase tracking-tight">Auto-Populated Unit Details</div>
+                    <div className="text-[11px] font-bold text-slate-500 mt-0.5">
+                      Building: {selectedTenant.property || selectedTenant.companyName || 'Main Property'} | Unit: {selectedTenant.unit || selectedTenant.unitNumber || 'Assigned'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* FOOTER ACTIONS */}
-          <div className="mt-12 flex gap-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onClose}
-              className="flex-1 h-[58px] rounded-2xl text-sm font-black uppercase tracking-widest"
-              disabled={saving}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              className="flex-[2] h-[58px] rounded-2xl shadow-xl shadow-zinc-200 text-sm font-black uppercase tracking-widest"
-              disabled={saving}
-            >
-              {saving ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {t('common.loading')}
+          {/* SECTION: VEHICLE DETAILS */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-slate-400 font-black text-[11px] uppercase tracking-widest px-1">
+              <CreditCard size={14} className="text-indigo-500" />
+              {t('vehicle.step_info') || 'Step 2: Vehicle Information'}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 ml-1">{t('vehicle.plate') || 'License Plate'} *</label>
+                <input
+                  type="text"
+                  name="licensePlate"
+                  value={formData.licensePlate}
+                  onChange={handleChange}
+                  required
+                  placeholder="E.g. ABC-1234"
+                  className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none uppercase placeholder:normal-case text-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 ml-1">{t('vehicle.color') || 'Color'}</label>
+                <input
+                  type="text"
+                  name="color"
+                  value={formData.color}
+                  onChange={handleChange}
+                  placeholder="E.g. Silver, Black"
+                  className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 ml-1">{t('vehicle.make') || 'Make'} *</label>
+                <input
+                  type="text"
+                  name="make"
+                  value={formData.make}
+                  onChange={handleChange}
+                  required
+                  placeholder="E.g. Honda, Toyota"
+                  className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 ml-1">{t('vehicle.model') || 'Model'} *</label>
+                <input
+                  type="text"
+                  name="model"
+                  value={formData.model}
+                  onChange={handleChange}
+                  required
+                  placeholder="E.g. Civic, RAV4"
+                  className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-sm"
+                />
+              </div>
+
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 ml-1">{t('vehicle.parking') || 'Permit / Parking Space'}</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    type="text"
+                    name="parkingSpace"
+                    value={formData.parkingSpace}
+                    onChange={handleChange}
+                    placeholder="Enter assigned stall or permit number (e.g. STALL-4B)"
+                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-sm"
+                  />
                 </div>
-              ) : (
-                editingVehicle ? t('vehicle.update') : t('vehicle.register')
-              )}
-            </Button>
+              </div>
+            </div>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+
+        {/* PINNED FOOTER */}
+        <div className="px-6 py-4 sm:px-8 sm:py-4 border-t border-slate-100 flex items-center gap-3 shrink-0 bg-slate-50/70">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            className="flex-1 h-11 sm:h-12 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider"
+            disabled={saving}
+          >
+            {t('common.cancel') || 'Cancel'}
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            className="flex-1 h-11 sm:h-12 rounded-xl shadow-lg shadow-indigo-100 text-xs sm:text-sm font-bold uppercase tracking-wider"
+            disabled={saving}
+          >
+            {saving ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>{t('common.loading') || 'Saving...'}</span>
+              </div>
+            ) : (
+              editingVehicle ? (t('vehicle.update') || 'Save Changes') : (t('vehicle.register') || 'Register Vehicle')
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>,
+    document.body
   );
 };

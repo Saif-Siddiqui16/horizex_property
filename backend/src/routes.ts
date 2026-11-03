@@ -5,6 +5,7 @@ import companiesRouter from './modules/companies/companies.routes';
 import propertiesRouter from './modules/properties/properties.routes';
 import unitsRouter from './modules/units/units.routes';
 import tenantsRouter from './modules/tenants/tenants.routes';
+import vehiclesRouter from './modules/tenants/vehicles.routes';
 import leasesRouter from './modules/leases/leases.routes';
 import accountingRouter from './modules/accounting/accounting.routes';
 import maintenanceRouter from './modules/maintenance/maintenance.routes';
@@ -86,6 +87,8 @@ router.use('/admin/companies', companiesRouter);
 router.use('/admin/properties', propertiesRouter);
 router.use('/admin/units', unitsRouter);
 router.use('/admin/tenants', tenantsRouter);
+router.use('/admin/vehicles', vehiclesRouter);
+router.use('/admin/tenants/vehicles', vehiclesRouter);
 router.use('/admin/leases', leasesRouter);
 router.use('/admin', accountingRouter); // Mounts /payments, /invoices, /accounts, /outstanding-dues
 router.use('/admin/tickets', maintenanceRouter);

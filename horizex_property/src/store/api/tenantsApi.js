@@ -74,21 +74,46 @@ export const tenantsApi = masterApi.injectEndpoints({
 
     // Vehicles
     getVehicles: builder.query({
-      query: () => '/admin/tenants/vehicles',
+      query: (params) => ({
+        url: '/admin/vehicles',
+        params,
+      }),
       transformResponse: (response) => {
         if (Array.isArray(response?.data)) return response.data;
         if (Array.isArray(response)) return response;
         return [];
       },
-      providesTags: ['Tenants'],
+      providesTags: (result) =>
+        result && Array.isArray(result)
+          ? [...result.map(({ id }) => ({ type: 'Vehicles', id })), { type: 'Vehicles', id: 'LIST' }]
+          : [{ type: 'Vehicles', id: 'LIST' }],
     }),
     createVehicle: builder.mutation({
       query: (body) => ({
-        url: '/admin/tenants/vehicles',
+        url: '/admin/vehicles',
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Tenants'],
+      invalidatesTags: [{ type: 'Vehicles', id: 'LIST' }, 'Tenants'],
+    }),
+    updateVehicle: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/admin/vehicles/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'Vehicles', id },
+        { type: 'Vehicles', id: 'LIST' },
+        'Tenants',
+      ],
+    }),
+    deleteVehicle: builder.mutation({
+      query: (id) => ({
+        url: `/admin/vehicles/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'Vehicles', id: 'LIST' }, 'Tenants'],
     }),
   }),
 });
@@ -104,4 +129,6 @@ export const {
   useGetVacantBedroomsQuery,
   useGetVehiclesQuery,
   useCreateVehicleMutation,
+  useUpdateVehicleMutation,
+  useDeleteVehicleMutation,
 } = tenantsApi;

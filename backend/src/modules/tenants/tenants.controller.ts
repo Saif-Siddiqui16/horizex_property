@@ -6,8 +6,9 @@ import { prisma } from '../../config/db';
 
 export const listTenants = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
-    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+    const requestedCompanyId = (req.query.companyId as string) || req.user?.effectiveCompanyId;
+    const isSuperAdminOrAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
+    const companyId = requestedCompanyId || (isSuperAdminOrAdmin ? undefined : req.user?.companyId);
     const search = req.query.search as string | undefined;
 
     const tenants = await TenantsService.listTenants(companyId, search);
@@ -52,8 +53,9 @@ export const createTenant = async (req: Request, res: Response, next: NextFuncti
 
 export const updateTenant = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
-    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+    const requestedCompanyId = (req.query.companyId as string) || req.user?.effectiveCompanyId;
+    const isSuperAdminOrAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
+    const companyId = requestedCompanyId || (isSuperAdminOrAdmin ? undefined : req.user?.companyId);
 
     const updated = await TenantsService.updateTenant(
       req.params.id,
@@ -95,10 +97,11 @@ export const sendTenantInvite = async (req: Request, res: Response, next: NextFu
 
 export const listVehicles = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
-    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+    const requestedCompanyId = (req.query.companyId as string) || req.user?.effectiveCompanyId;
+    const isSuperAdminOrAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ADMIN';
+    const companyId = requestedCompanyId || (isSuperAdminOrAdmin ? undefined : req.user?.companyId);
 
-    const vehicles = await TenantsService.listVehicles(companyId);
+    const vehicles = await TenantsService.listVehicles(companyId, req.query as any);
     return sendSuccess(res, vehicles, 200);
   } catch (err) {
     return next(err);
@@ -107,8 +110,46 @@ export const listVehicles = async (req: Request, res: Response, next: NextFuncti
 
 export const createVehicle = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const vehicle = await TenantsService.createVehicle(req.body, req.user?.userId);
+    const payload = {
+      tenantId: req.body.tenantId,
+      unitId: req.body.unitId,
+      make: req.body.make,
+      model: req.body.model,
+      color: req.body.color,
+      licensePlate: req.body.licensePlate,
+      permitNumber: req.body.permitNumber || req.body.parkingSpace,
+    };
+    const vehicle = await TenantsService.createVehicle(payload, req.user?.userId);
     return sendSuccess(res, vehicle, 201);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const updateVehicle = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const payload = {
+      ...(req.body.tenantId ? { tenantId: req.body.tenantId } : {}),
+      ...(req.body.unitId ? { unitId: req.body.unitId } : {}),
+      ...(req.body.make ? { make: req.body.make } : {}),
+      ...(req.body.model ? { model: req.body.model } : {}),
+      ...(req.body.color !== undefined ? { color: req.body.color } : {}),
+      ...(req.body.licensePlate ? { licensePlate: req.body.licensePlate } : {}),
+      ...(req.body.permitNumber !== undefined || req.body.parkingSpace !== undefined
+        ? { permitNumber: req.body.permitNumber || req.body.parkingSpace }
+        : {}),
+    };
+    const vehicle = await TenantsService.updateVehicle(req.params.id, payload, req.user?.userId);
+    return sendSuccess(res, vehicle, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const deleteVehicle = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await TenantsService.deleteVehicle(req.params.id, req.user?.userId);
+    return sendSuccess(res, result, 200);
   } catch (err) {
     return next(err);
   }

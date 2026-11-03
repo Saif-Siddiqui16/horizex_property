@@ -419,16 +419,46 @@ export class TenantsService {
     return { message: 'Tenant deleted successfully' };
   }
 
-  static async listVehicles(companyId?: string | null) {
+  static async listVehicles(
+    companyId?: string | null,
+    query?: { search?: string; buildingId?: string; unauthorizedOnly?: string }
+  ) {
     const where: any = {};
-    if (companyId) {
+    if (query?.buildingId && query.buildingId !== 'all') {
+      where.unit = {
+        propertyId: query.buildingId,
+      };
+    } else if (companyId) {
       where.tenant = { companyId };
     }
 
-    return prisma.vehicle.findMany({
+    if (query?.search) {
+      const s = query.search;
+      where.OR = [
+        { licensePlate: { contains: s, mode: 'insensitive' } },
+        { make: { contains: s, mode: 'insensitive' } },
+        { model: { contains: s, mode: 'insensitive' } },
+        { tenant: { firstName: { contains: s, mode: 'insensitive' } } },
+        { tenant: { lastName: { contains: s, mode: 'insensitive' } } },
+      ];
+    }
+
+    const vehicles = await prisma.vehicle.findMany({
       where,
       include: {
-        tenant: { select: { id: true, firstName: true, lastName: true, phone: true } },
+        tenant: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            leases: {
+              where: { status: 'ACTIVE', isActive: true },
+              select: { id: true, endDate: true },
+              take: 1,
+            },
+          },
+        },
         unit: {
           select: {
             id: true,
@@ -439,28 +469,107 @@ export class TenantsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return vehicles.map((v) => {
+      const activeLease = v.tenant?.leases?.[0];
+      const isAuthorized = !!activeLease;
+      return {
+        id: v.id,
+        tenantId: v.tenantId,
+        unitId: v.unitId,
+        make: v.make,
+        model: v.model,
+        color: (v as any).color || 'N/A',
+        licensePlate: v.licensePlate,
+        permitNumber: v.permitNumber,
+        parkingSpace: v.permitNumber || 'Assigned',
+        createdAt: v.createdAt,
+        tenantName: v.tenant ? `${v.tenant.firstName} ${v.tenant.lastName}`.trim() : 'Unknown Tenant',
+        tenantPhone: v.tenant?.phone || '',
+        buildingName: v.unit?.property?.name || 'Main Building',
+        unitNumber: v.unit?.unitNumber || '-',
+        isAuthorized,
+        leaseExpiry: activeLease?.endDate ? new Date(activeLease.endDate).toLocaleDateString() : 'Expired',
+        tenant: v.tenant,
+        unit: v.unit,
+      };
+    });
   }
 
   static async createVehicle(
     data: {
       tenantId: string;
-      unitId: string;
+      unitId?: string;
       make: string;
-      model: string;
-      licensePlate: string;
+    model: string;
+    color?: string;
+    licensePlate: string;
       permitNumber?: string;
     },
     actorUserId?: string
   ) {
+    let resolvedUnitId = data.unitId;
+    if (!resolvedUnitId && data.tenantId) {
+      const activeLease = await prisma.lease.findFirst({
+        where: { tenantId: data.tenantId, status: 'ACTIVE', isActive: true },
+        select: { unitId: true },
+      });
+      if (activeLease) {
+        resolvedUnitId = activeLease.unitId;
+      } else {
+        const anyLease = await prisma.lease.findFirst({
+          where: { tenantId: data.tenantId },
+          select: { unitId: true },
+        });
+        if (anyLease) {
+          resolvedUnitId = anyLease.unitId;
+        } else {
+          const anyUnit = await prisma.unit.findFirst({ select: { id: true } });
+          resolvedUnitId = anyUnit?.id || '';
+        }
+      }
+    }
+
+    if (!resolvedUnitId) {
+      throw new AppError('Unit ID is required to register vehicle', 400, 'UNIT_REQUIRED');
+    }
+
     const existing = await prisma.vehicle.findUnique({
-      where: { licensePlate: data.licensePlate },
+      where: { licensePlate: data.licensePlate.toUpperCase() },
     });
 
     if (existing) {
       throw new AppError('Vehicle with this license plate already registered', 409, 'DUPLICATE_LICENSE_PLATE');
     }
 
-    const vehicle = await prisma.vehicle.create({ data });
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        tenantId: data.tenantId,
+        unitId: resolvedUnitId,
+        make: data.make,
+        model: data.model,
+        color: data.color || null,
+        licensePlate: data.licensePlate.toUpperCase(),
+        permitNumber: data.permitNumber || null,
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        unit: {
+          select: {
+            id: true,
+            unitNumber: true,
+            property: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
 
     await createAuditLog({
       userId: actorUserId,
@@ -470,6 +579,108 @@ export class TenantsService {
       newData: vehicle,
     });
 
-    return vehicle;
+    return {
+      ...vehicle,
+      tenantName: vehicle.tenant ? `${vehicle.tenant.firstName} ${vehicle.tenant.lastName}`.trim() : '',
+      buildingName: vehicle.unit?.property?.name || '',
+      unitNumber: vehicle.unit?.unitNumber || '',
+      parkingSpace: vehicle.permitNumber || 'Assigned',
+      isAuthorized: true,
+    };
+  }
+
+  static async updateVehicle(
+    id: string,
+    data: {
+      tenantId?: string;
+      unitId?: string;
+      make?: string;
+    model?: string;
+    color?: string;
+    licensePlate?: string;
+      permitNumber?: string;
+    },
+    actorUserId?: string
+  ) {
+    const existing = await prisma.vehicle.findUnique({ where: { id } });
+    if (!existing) {
+      throw new AppError('Vehicle not found', 404, 'VEHICLE_NOT_FOUND');
+    }
+
+    if (data.licensePlate && data.licensePlate.toUpperCase() !== existing.licensePlate) {
+      const duplicate = await prisma.vehicle.findUnique({
+        where: { licensePlate: data.licensePlate.toUpperCase() },
+      });
+      if (duplicate) {
+        throw new AppError('Vehicle with this license plate already registered', 409, 'DUPLICATE_LICENSE_PLATE');
+      }
+    }
+
+    const updated = await prisma.vehicle.update({
+      where: { id },
+      data: {
+        ...(data.tenantId ? { tenantId: data.tenantId } : {}),
+        ...(data.unitId ? { unitId: data.unitId } : {}),
+        ...(data.make ? { make: data.make } : {}),
+        ...(data.model ? { model: data.model } : {}),
+        ...(data.color !== undefined ? { color: data.color } : {}),
+        ...(data.licensePlate ? { licensePlate: data.licensePlate.toUpperCase() } : {}),
+        ...(data.permitNumber !== undefined ? { permitNumber: data.permitNumber } : {}),
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        unit: {
+          select: {
+            id: true,
+            unitNumber: true,
+            property: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'UPDATE_VEHICLE',
+      entityType: 'Vehicle',
+      entityId: id,
+      oldData: existing,
+      newData: updated,
+    });
+
+    return {
+      ...updated,
+      tenantName: updated.tenant ? `${updated.tenant.firstName} ${updated.tenant.lastName}`.trim() : '',
+      buildingName: updated.unit?.property?.name || '',
+      unitNumber: updated.unit?.unitNumber || '',
+      parkingSpace: updated.permitNumber || 'Assigned',
+      isAuthorized: true,
+    };
+  }
+
+  static async deleteVehicle(id: string, actorUserId?: string) {
+    const existing = await prisma.vehicle.findUnique({ where: { id } });
+    if (!existing) {
+      throw new AppError('Vehicle not found', 404, 'VEHICLE_NOT_FOUND');
+    }
+
+    await prisma.vehicle.delete({ where: { id } });
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'DELETE_VEHICLE',
+      entityType: 'Vehicle',
+      entityId: id,
+      oldData: existing,
+    });
+
+    return { success: true, message: 'Vehicle deleted successfully' };
   }
 }

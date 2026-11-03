@@ -549,27 +549,45 @@ export const DocumentLibrary = () => {
 
                 {/* UPLOAD MODAL */}
                 {
-                    showUploadModal && (
-                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 anim-fade-in">
-                            <div className="bg-white rounded-[40px] w-full max-w-2xl shadow-2xl overflow-hidden anim-zoom-in">
-                                <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                    showUploadModal && createPortal(
+                        <div 
+                            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-3 sm:p-5 overflow-y-auto anim-fade-in"
+                            onClick={(e) => {
+                                if (e.target === e.currentTarget) {
+                                    setShowUploadModal(false);
+                                    resetUploadForm();
+                                }
+                            }}
+                        >
+                            <form 
+                                onSubmit={handleUpload}
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-white rounded-3xl w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden my-auto border border-slate-100 anim-zoom-in"
+                            >
+                                {/* PINNED HEADER */}
+                                <div className="px-6 py-4 sm:px-8 sm:py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
                                     <div>
-                                        <h3 className="text-2xl font-black text-slate-800 tracking-tight">{isEditing ? 'Update Document' : 'Upload Document'}</h3>
-                                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{isEditing ? 'Modify existing document metadata' : 'Add a new file and link it to entities'}</p>
+                                        <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">{isEditing ? 'Update Document' : 'Upload Document'}</h3>
+                                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-0.5">{isEditing ? 'Modify existing document metadata' : 'Add a new file and link it to entities'}</p>
                                     </div>
-                                    <button onClick={() => { setShowUploadModal(false); resetUploadForm(); }} className="p-2 text-slate-400 hover:text-slate-800 rounded-2xl bg-white shadow-sm border border-slate-100">
-                                        <X size={20} />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { setShowUploadModal(false); resetUploadForm(); }} 
+                                        className="p-2 text-slate-400 hover:text-slate-800 rounded-xl bg-white shadow-xs border border-slate-200/80 hover:bg-slate-50 transition-colors"
+                                    >
+                                        <X size={18} />
                                     </button>
                                 </div>
 
-                                <form onSubmit={handleUpload} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
+                                {/* SCROLLABLE BODY */}
+                                <div className="p-6 sm:p-8 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                                        <div className="space-y-1.5">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Document Type</label>
                                             <select
                                                 value={uploadType}
                                                 onChange={(e) => setUploadType(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500 font-bold text-slate-700 bg-slate-50"
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-bold text-slate-700 bg-slate-50 text-sm"
                                                 required
                                             >
                                                 <option value="Lease">Lease Agreement</option>
@@ -580,28 +598,28 @@ export const DocumentLibrary = () => {
                                             </select>
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Display Name (Optional)</label>
                                             <input
                                                 type="text"
                                                 placeholder="Standard naming applied if blank"
                                                 value={uploadName}
                                                 onChange={(e) => setUploadName(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500 font-bold text-slate-700 bg-slate-50"
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-bold text-slate-700 bg-slate-50 text-sm"
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Expiry Date (Optional)</label>
                                             <input
                                                 type="date"
                                                 value={expiryDate}
                                                 onChange={(e) => setExpiryDate(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500 font-bold text-slate-700 bg-slate-50"
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-bold text-slate-700 bg-slate-50 text-sm"
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{isEditing ? "File (Read Only)" : "Select File"}</label>
                                             <div className="relative">
                                                 <input
@@ -611,26 +629,26 @@ export const DocumentLibrary = () => {
                                                     required={!isEditing}
                                                     disabled={isEditing}
                                                 />
-                                                <div className="w-full px-4 py-3 rounded-2xl border border-slate-200 border-dashed bg-slate-50 flex items-center gap-3 text-slate-500 font-bold text-sm">
-                                                    <Upload size={18} className="text-indigo-500" />
-                                                    {isEditing ? "File cannot be changed here" : (uploadFile ? uploadFile.name : "Choose PDF or Image...")}
+                                                <div className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 border-dashed bg-slate-50 flex items-center gap-2.5 text-slate-500 font-bold text-xs sm:text-sm truncate">
+                                                    <Upload size={16} className="text-indigo-500 shrink-0" />
+                                                    <span className="truncate">{isEditing ? "File cannot be changed here" : (uploadFile ? uploadFile.name : "Choose PDF or Image...")}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* MULTI-LINKING SECTION */}
-                                    <div className="p-6 bg-indigo-50/50 rounded-[32px] border border-indigo-100/50 space-y-4">
+                                    <div className="p-4 sm:p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100/60 space-y-3">
                                         <div className="flex items-center justify-between">
                                             <h4 className="text-[11px] font-black text-indigo-500 uppercase tracking-widest">Multi-Entity Linking</h4>
                                             <span className="text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-bold">{selectedLinks.length} Linked</span>
                                         </div>
 
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-col sm:flex-row gap-2">
                                             <select
                                                 value={linkType}
                                                 onChange={(e) => setLinkType(e.target.value)}
-                                                className="px-3 py-2 rounded-xl bg-white border border-indigo-100 text-xs font-bold outline-none"
+                                                className="px-3 py-2 rounded-xl bg-white border border-indigo-100 text-xs font-bold outline-none text-slate-700"
                                             >
                                                 <option value="USER">Tenant</option>
                                                 <option value="PROPERTY">Property</option>
@@ -647,7 +665,7 @@ export const DocumentLibrary = () => {
                                                             setSelectedLinks([...selectedLinks, { entityType: linkType, entityId: id, label }]);
                                                         }
                                                     }}
-                                                    className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-100 text-xs font-bold outline-none"
+                                                    className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-100 text-xs font-bold outline-none text-slate-700"
                                                 >
                                                     <option value="">Search & Add...</option>
                                                     {linkType === 'USER' && (dropdownData.tenants || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -659,41 +677,43 @@ export const DocumentLibrary = () => {
                                         </div>
 
                                         {selectedLinks.length > 0 && (
-                                            <div className="flex flex-wrap gap-2 pt-2">
+                                            <div className="flex flex-wrap gap-2 pt-1">
                                                 {selectedLinks.map((link, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-indigo-100 text-[10px] font-bold text-slate-600 shadow-sm anim-zoom-in">
-                                                        <span className="text-[8px] bg-indigo-50 text-indigo-500 px-1.5 py-0.5 rounded-md uppercase">{link.entityType}</span>
-                                                        {link.label}
-                                                        <button type="button" onClick={() => setSelectedLinks(selectedLinks.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
-                                                            <X size={14} />
+                                                    <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 bg-white rounded-full border border-indigo-100 text-[10px] font-bold text-slate-600 shadow-xs anim-zoom-in">
+                                                        <span className="text-[8px] bg-indigo-50 text-indigo-500 px-1.5 py-0.5 rounded-md uppercase font-black">{link.entityType}</span>
+                                                        <span>{link.label}</span>
+                                                        <button type="button" onClick={() => setSelectedLinks(selectedLinks.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 ml-0.5">
+                                                            <X size={12} />
                                                         </button>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
+                                </div>
 
-                                    <div className="pt-4 flex gap-4">
-                                        <Button
-                                            variant="secondary"
-                                            className="flex-1 h-14 rounded-2xl"
-                                            type="button"
-                                            onClick={() => { setShowUploadModal(false); resetUploadForm(); }}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            variant="primary"
-                                            className="flex-1 h-14 rounded-2xl shadow-xl shadow-zinc-200"
-                                            type="submit"
-                                            disabled={uploading}
-                                        >
-                                            {uploading ? (isEditing ? "Updating..." : "Uploading...") : (isEditing ? "Save Changes" : "Finish Upload")}
-                                        </Button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
+                                {/* PINNED FOOTER */}
+                                <div className="px-6 py-4 sm:px-8 sm:py-4 border-t border-slate-100 flex items-center gap-3 shrink-0 bg-slate-50/70">
+                                    <Button
+                                        variant="secondary"
+                                        className="flex-1 h-11 sm:h-12 rounded-xl font-bold text-xs sm:text-sm"
+                                        type="button"
+                                        onClick={() => { setShowUploadModal(false); resetUploadForm(); }}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        className="flex-1 h-11 sm:h-12 rounded-xl shadow-lg shadow-indigo-100 font-bold text-xs sm:text-sm"
+                                        type="submit"
+                                        disabled={uploading}
+                                    >
+                                        {uploading ? (isEditing ? "Updating..." : "Uploading...") : (isEditing ? "Save Changes" : "Finish Upload")}
+                                    </Button>
+                                </div>
+                            </form>
+                        </div>,
+                        document.body
                     )
                 }
 

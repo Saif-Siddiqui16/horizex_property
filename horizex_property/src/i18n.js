@@ -130,6 +130,9 @@ i18n
                         "manage_desc": "Manage tenant insurance records with full visibility and compliance tracking."
                     },
                     "vehicle": {
+                        "register_title": "Register Vehicle",
+                        "register_desc": "Associate a vehicle with a tenant profile for parking security.",
+                        "edit_title": "Edit Vehicle",
                         "register": "Register Vehicle",
                         "edit_profile": "Edit Vehicle Profile",
                         "plate": "Licence Plate",
@@ -287,6 +290,9 @@ i18n
                         "manage_desc": "Gérer les dossiers d'assurance des locataires avec une visibilité complète et un suivi de conformité."
                     },
                     "vehicle": {
+                        "register_title": "Enregistrer le véhicule",
+                        "register_desc": "Associer un véhicule à un profil de locataire pour la sécurité du stationnement.",
+                        "edit_title": "Modifier le véhicule",
                         "register": "Enregistrer le véhicule",
                         "edit_profile": "Modifier le profil du véhicule",
                         "plate": "Plaque d'immatriculation",

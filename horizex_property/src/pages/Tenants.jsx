@@ -57,7 +57,25 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const [invitingTenant, setInvitingTenant] = useState(null);
   const [inviteMethods, setInviteMethods] = useState({ email: true, sms: true });
   const [isSendingInvite, setIsSendingInvite] = useState(false);
-  const [tenantBuildingFilter, setTenantBuildingFilter] = useState('');
+  const [tenantBuildingFilter, setTenantBuildingFilter] = useState(() => {
+    return localStorage.getItem('global_selected_building_id') || '';
+  });
+
+  useEffect(() => {
+    const handleSync = () => {
+      const globalBuilding = localStorage.getItem('global_selected_building_id') || '';
+      setTenantBuildingFilter(globalBuilding);
+      setPagination(prev => ({ ...prev, page: 1 }));
+    };
+    window.addEventListener('buildingChanged', handleSync);
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('buildingChanged', handleSync);
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
   const [pagination, setPagination] = useState({ page: 1, limit: 25 });
   const [activeCopyMenuId, setActiveCopyMenuId] = useState(null);
   const [copiedState, setCopiedState] = useState({ id: null, type: null });
@@ -496,19 +514,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 />
               </div>
 
-              <div className="flex-1 md:flex-none flex items-center gap-2 bg-slate-50 py-2.5 px-3.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-white hover:shadow-sm transition-all focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10">
-                <Building2 size={16} className="text-slate-400" />
-                <select
-                  value={tenantBuildingFilter}
-                  onChange={(e) => setTenantBuildingFilter(e.target.value)}
-                  className="bg-transparent border-none outline-none text-sm text-slate-700 font-medium cursor-pointer w-full focus:outline-none focus:ring-0"
-                >
-                  <option value="">All Buildings</option>
-                  {properties.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
+
 
               <AccessControl module="Tenant List" action="add">
                 <button 

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-
+import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
 import { Button } from '../components/Button';
 import { 
   Car, 
@@ -14,33 +14,31 @@ import {
   Building2, 
   User, 
   MapPin, 
-  Camera,
-  X,
-  Filter,
-  Eye,
-  Phone
+  X, 
+  Eye, 
+  Phone 
 } from 'lucide-react';
-import api from '../api/client';
 import { VehicleForm } from './VehicleForm';
 import { hasPermission } from '../utils/permissions';
-import clsx from 'clsx';
+import { useGetVehiclesQuery, useDeleteVehicleMutation } from '../store/api/tenantsApi';
+import clsx from 'clsx';
+
 export const Vehicles = () => {
-const { t } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const initialFilter = queryParams.get('filter');
 
-  const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const effectiveCompanyId = useSelector((state) => state.auth?.effectiveCompanyId) || localStorage.getItem('global_selected_company_id') || '';
   const [search, setSearch] = useState('');
-  const [buildingFilter, setBuildingFilter] = useState('');
+  const [buildingFilter, setBuildingFilter] = useState(() => {
+    return localStorage.getItem('global_selected_building_id') || '';
+  });
   const [statusFilter, setStatusFilter] = useState(initialFilter || '');
-  const [properties, setProperties] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
   const [viewingVehicle, setViewingVehicle] = useState(null);
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ total: 0, totalPages: 1, limit: 10 });
   const [forceUpdate, setForceUpdate] = useState(0);
 
   useEffect(() => {
@@ -49,53 +47,43 @@ const { t } = useTranslation();
     return () => window.removeEventListener('permissionsUpdated', handleUpdate);
   }, []);
 
-  const fetchVehicles = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (buildingFilter) params.append('buildingId', buildingFilter);
-      if (statusFilter) params.append('unauthorizedOnly', statusFilter);
-      params.append('page', page);
-      params.append('limit', 10);
-      
-      const res = await api.get(`/api/admin/vehicles?${params.toString()}`);
-      let { data, pagination: pagin } = res.data;
-
-      setVehicles(data);
-      setPagination(pagin || { total: data.length, totalPages: 1, limit: 10 });
-    } catch (e) {
-      console.error('Failed to fetch vehicles', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProperties = async () => {
-    try {
-      const res = await api.get('/api/admin/properties');
-      setProperties(res.data?.data || res.data || []);
-    } catch (e) {
-      console.error('Failed to fetch properties', e);
-    }
-  };
-
+  // Synchronize building filter with Topbar header building selection
   useEffect(() => {
-    fetchProperties();
+    const handleHeaderSync = () => {
+      const globalBuilding = localStorage.getItem('global_selected_building_id') || '';
+      setBuildingFilter(globalBuilding);
+      setPage(1);
+    };
+    window.addEventListener('buildingChanged', handleHeaderSync);
+    window.addEventListener('companyChanged', handleHeaderSync);
+    return () => {
+      window.removeEventListener('buildingChanged', handleHeaderSync);
+      window.removeEventListener('companyChanged', handleHeaderSync);
+    };
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchVehicles();
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [search, buildingFilter, statusFilter, page]);
+  // RTK Query hooks
+  const vehicleQueryParams = useMemo(() => {
+    const p = {};
+    if (effectiveCompanyId && effectiveCompanyId !== 'all') p.companyId = effectiveCompanyId;
+    if (buildingFilter && buildingFilter !== 'all') p.buildingId = buildingFilter;
+    if (search) p.search = search;
+    if (statusFilter) p.unauthorizedOnly = statusFilter;
+    p.page = page;
+    p.limit = 10;
+    return p;
+  }, [effectiveCompanyId, search, buildingFilter, statusFilter, page]);
+
+  const { data: rawVehicles = [], isLoading: loading } = useGetVehiclesQuery(vehicleQueryParams);
+
+  const [deleteVehicle] = useDeleteVehicleMutation();
+
+  const vehicles = Array.isArray(rawVehicles) ? rawVehicles : [];
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to remove this vehicle record?')) {
       try {
-        await api.delete(`/api/admin/vehicles/${id}`);
-        fetchVehicles();
+        await deleteVehicle(id).unwrap();
       } catch (e) {
         alert('Failed to delete vehicle');
       }
@@ -125,24 +113,27 @@ const { t } = useTranslation();
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+
+
             <div className="flex items-center gap-2 bg-slate-50 py-2.5 px-3.5 rounded-xl border border-slate-200 w-full sm:w-auto">
-              <Building2 size={16} className="text-slate-400" />
               <select
-                value={buildingFilter}
-                onChange={(e) => setBuildingFilter(e.target.value)}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
                 className="bg-transparent border-none outline-none text-sm text-slate-700 font-medium cursor-pointer w-full sm:min-w-[150px]"
               >
-                <option value="">{t('sidebar.buildings')}</option>
-                {properties.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
+                <option value="">All Statuses</option>
+                <option value="false">Authorized Only</option>
+                <option value="true">Unauthorized Only</option>
               </select>
             </div>
 
             {hasPermission('Vehicles', 'add') && (
-              <Button variant="primary" onClick={() => { setEditingVehicle(null); setShowForm(true); }} className="whitespace-nowrap rounded-xl shadow-lg shadow-zinc-200 w-full sm:w-auto justify-center">
+              <Button 
+                onClick={() => { setEditingVehicle(null); setShowForm(true); }}
+                className="rounded-xl flex items-center justify-center gap-2 h-11 px-5 shadow-lg shadow-indigo-100 font-bold whitespace-nowrap"
+              >
                 <Plus size={18} />
-                {t('vehicle.register')}
+                <span>Register Vehicle</span>
               </Button>
             )}
           </div>
@@ -195,7 +186,7 @@ const { t } = useTranslation();
                               {v.licensePlate}
                             </div>
                             <div className="text-xs font-semibold text-slate-500 uppercase mt-0.5">
-                              {v.color} {v.make} {v.model}
+                              {v.color !== 'N/A' && v.color ? `${v.color} ` : ''}{v.make} {v.model}
                             </div>
                           </div>
                         </div>
@@ -247,28 +238,28 @@ const { t } = useTranslation();
                           <div className="text-[9px] font-bold text-red-400 uppercase mt-1">Lease Expired: {v.leaseExpiry}</div>
                         )}
                       </td>
-                      <td className="px-6 py-5">
-                        <div className="flex justify-end gap-1">
-                          <button 
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
                             onClick={() => setViewingVehicle(v)}
-                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                             title="View Details"
                           >
                             <Eye size={16} />
                           </button>
                           {hasPermission('Vehicles', 'edit') && (
-                            <button 
+                            <button
                               onClick={() => handleEdit(v)}
-                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                              className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                               title="Edit Vehicle"
                             >
                               <Pencil size={16} />
                             </button>
                           )}
                           {hasPermission('Vehicles', 'delete') && (
-                            <button 
+                            <button
                               onClick={() => handleDelete(v.id)}
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Delete Vehicle"
                             >
                               <Trash2 size={16} />
@@ -280,51 +271,6 @@ const { t } = useTranslation();
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
-
-          {/* PAGINATION */}
-          {!loading && vehicles.length > 0 && (
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-tight">
-                Showing {vehicles.length} of {pagination.total} vehicles
-              </p>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  disabled={page === 1}
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  className="rounded-lg h-8 px-3"
-                >
-                  Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {[...Array(pagination.totalPages)].map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setPage(i + 1)}
-                      className={clsx(
-                        "w-8 h-8 rounded-lg text-xs font-black transition-all",
-                        page === i + 1 
-                          ? "bg-zinc-900 text-white shadow-md shadow-zinc-200" 
-                          : "text-slate-400 hover:bg-white hover:text-slate-600 border border-transparent hover:border-slate-200"
-                      )}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  disabled={page === pagination.totalPages}
-                  onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
-                  className="rounded-lg h-8 px-3"
-                >
-                  Next
-                </Button>
-              </div>
             </div>
           )}
         </section>
@@ -348,89 +294,32 @@ const { t } = useTranslation();
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6 custom-scrollbar">
+            <div className="p-8 space-y-6 overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Make / Model</p>
-                  <p className="text-sm font-bold text-slate-800">{viewingVehicle.make} {viewingVehicle.model}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('vehicle.make')}</p>
+                  <p className="text-base font-bold text-slate-800 mt-1">{viewingVehicle.make}</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Color</p>
-                  <p className="text-sm font-bold text-slate-800">{viewingVehicle.color}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('vehicle.model')}</p>
+                  <p className="text-base font-bold text-slate-800 mt-1">{viewingVehicle.model}</p>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Authorization Status</p>
-                  <span className={clsx(
-                    "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border",
-                    viewingVehicle.isAuthorized 
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
-                      : "bg-red-50 text-red-700 border-red-100"
-                  )}>
-                    {viewingVehicle.isAuthorized ? <CheckCircle size={10} /> : <AlertCircle size={10} />}
-                    {viewingVehicle.isAuthorized ? 'Authorized' : 'Not Authorized'}
-                  </span>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
+                <div className="flex justify-between items-center border-b border-slate-200/50 pb-2">
+                  <span className="text-xs font-semibold text-slate-500">{t('sidebar.tenants')}</span>
+                  <span className="text-xs font-bold text-slate-800">{viewingVehicle.tenantName}</span>
                 </div>
-
-                {viewingVehicle.leaseExpiry && !viewingVehicle.isAuthorized && (
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-red-50/50 border border-red-100">
-                    <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Lease Expiry Notice</p>
-                    <p className="text-xs font-bold text-red-700">Expired: {viewingVehicle.leaseExpiry}</p>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-500"><User size={18} /></div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registrant (Tenant)</p>
-                    <p className="text-sm font-bold text-slate-800">{viewingVehicle.tenantName}</p>
-                    {viewingVehicle.tenantPhone && (
-                      <a href={`tel:${viewingVehicle.tenantPhone}`} className="text-xs font-bold text-indigo-600 flex items-center gap-1 mt-0.5 hover:underline">
-                        <Phone size={10} />
-                        {viewingVehicle.tenantPhone}
-                      </a>
-                    )}
-                  </div>
+                <div className="flex justify-between items-center border-b border-slate-200/50 pb-2">
+                  <span className="text-xs font-semibold text-slate-500">{t('vehicle.location')}</span>
+                  <span className="text-xs font-bold text-slate-800">{viewingVehicle.buildingName} - Unit {viewingVehicle.unitNumber}</span>
                 </div>
-
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-500"><Building2 size={18} /></div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Building & Unit</p>
-                    <p className="text-sm font-bold text-slate-800">{viewingVehicle.buildingName} | Unit {viewingVehicle.unitNumber}</p>
-                  </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-semibold text-slate-500">{t('vehicle.parking')}</span>
+                  <span className="text-xs font-bold text-slate-800">{viewingVehicle.parkingSpace || 'N/A'}</span>
                 </div>
-
-                {viewingVehicle.parkingSpace && (
-                  <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-500"><MapPin size={18} /></div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Parking Space Number</p>
-                      <p className="text-sm font-black text-indigo-600">{viewingVehicle.parkingSpace}</p>
-                    </div>
-                  </div>
-                )}
               </div>
-
-              {(viewingVehicle.photo1Url || viewingVehicle.photo2Url) && (
-                <div className="space-y-2">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Vehicle Media</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    {viewingVehicle.photo1Url && (
-                      <div className="h-40 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100">
-                        <img src={viewingVehicle.photo1Url} alt="Vehicle View 1" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    {viewingVehicle.photo2Url && (
-                      <div className="h-40 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100">
-                        <img src={viewingVehicle.photo2Url} alt="Vehicle View 2" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex shrink-0">
@@ -446,8 +335,9 @@ const { t } = useTranslation();
         <VehicleForm 
           isOpen={showForm} 
           onClose={() => setShowForm(false)} 
-          fetchVehicles={fetchVehicles}
           editingVehicle={editingVehicle}
+          selectedBuildingId={buildingFilter}
+          effectiveCompanyId={effectiveCompanyId}
         />
       )}
     </>

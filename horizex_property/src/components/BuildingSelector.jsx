@@ -81,7 +81,7 @@ export const BuildingSelector = () => {
             const foundBuilding = buildings.find(b => b.id.toString() === val.toString());
             if (foundBuilding && foundBuilding.companyId) {
                 const currentComp = localStorage.getItem('global_selected_company_id');
-                if (currentComp !== foundBuilding.companyId.toString()) {
+                if (currentComp && currentComp !== 'all' && currentComp !== foundBuilding.companyId.toString()) {
                     localStorage.setItem('global_selected_company_id', foundBuilding.companyId.toString());
                     localStorage.setItem('companyContext', foundBuilding.companyId.toString());
                 }

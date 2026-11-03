@@ -67,6 +67,7 @@ export const masterApi = createApi({
     'Units',
     'Readiness',
     'Tenants',
+    'Vehicles',
     'Leases',
     'Renewals',
     'Invoices',
