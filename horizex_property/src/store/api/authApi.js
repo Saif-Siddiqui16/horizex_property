@@ -40,8 +40,27 @@ export const authApi = masterApi.injectEndpoints({
       query: () => '/auth/me',
       providesTags: ['Auth'],
     }),
+    getProfile: builder.query({
+      query: () => '/auth/profile',
+      transformResponse: (response) => response?.data || response,
+      providesTags: ['Profile', 'Auth'],
+    }),
+    updateProfile: builder.mutation({
+      query: (body) => ({
+        url: '/auth/profile',
+        method: 'PATCH',
+        body,
+      }),
+      transformResponse: (response) => response?.data || response,
+      invalidatesTags: ['Profile', 'Auth'],
+    }),
   }),
 });
 
-export const { useLoginMutation, useLogoutMutation, useGetMeQuery } = authApi;
-
+export const {
+  useLoginMutation,
+  useLogoutMutation,
+  useGetMeQuery,
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+} = authApi;

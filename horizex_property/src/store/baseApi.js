@@ -62,6 +62,7 @@ export const masterApi = createApi({
   baseQuery: baseQueryWithReauth,
   tagTypes: [
     'Auth',
+    'Profile',
     'Company',
     'Properties',
     'Units',

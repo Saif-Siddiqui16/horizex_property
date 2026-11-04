@@ -78,3 +78,27 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
+export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user?.userId) {
+      throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+    }
+    const profile = await AuthService.getProfile(req.user.userId);
+    return sendSuccess(res, profile, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user?.userId) {
+      throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+    }
+    const profile = await AuthService.updateProfile(req.user.userId, req.body);
+    return sendSuccess(res, { user: profile, message: 'Profile updated successfully' }, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
