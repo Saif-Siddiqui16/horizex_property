@@ -102,13 +102,7 @@ export class MaintenanceService {
         isActive: true,
         ...(companyId ? { companyId } : {}),
       },
-<<<<<<< HEAD
-      include: {
-        units: true,
-      },
-=======
       include: { units: true },
->>>>>>> 5802a55c4893f4d6f7c5eaf35c82530656886326
     });
 
     if (!property) {
@@ -179,26 +173,26 @@ export class MaintenanceService {
     const description = data.description || data.desc || 'Repair request submitted';
     const rawPriority = data.priority ? String(data.priority).toUpperCase() : 'MEDIUM';
     const priority = ['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY'].includes(rawPriority) ? rawPriority : 'MEDIUM';
-    const tenantId = (data.tenantId && data.tenantId.trim() !== '') ? data.tenantId : undefined;
+    const rawTenantId = (data.tenantId && String(data.tenantId).trim() !== '') ? String(data.tenantId).trim() : undefined;
+
+    // Verify tenantId exists to prevent foreign key violations
+    let verifiedTenantId: string | undefined = undefined;
+    if (rawTenantId) {
+      const existingTenant = await prisma.tenant.findUnique({ where: { id: rawTenantId } });
+      if (existingTenant) {
+        verifiedTenantId = existingTenant.id;
+      }
+    }
 
     const ticket = await prisma.maintenanceTicket.create({
       data: {
-<<<<<<< HEAD
-        propertyId: data.propertyId,
-        unitId: resolvedUnitId,
-        tenantId,
+        propertyId: property.id,
+        unitId: (resolvedUnitId || unitId) as string,
+        tenantId: verifiedTenantId,
         title,
         description,
         priority: priority as any,
-=======
-        propertyId: property.id,
-        unitId,
-        tenantId: data.tenantId || undefined,
-        title: data.title,
-        description: data.description,
-        priority: data.priority ?? 'MEDIUM',
->>>>>>> 5802a55c4893f4d6f7c5eaf35c82530656886326
-        photoUrls: data.photoUrls ?? [],
+        photoUrls: Array.isArray(data.photoUrls) ? data.photoUrls : [],
         status: 'SUBMITTED',
       },
     });
