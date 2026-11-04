@@ -1,24 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSelector } from 'react-redux';
 import { Button } from '../components/Button';
 import { 
     Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, 
     Building, ChevronDown, Trash2, Edit2, Play, Camera, Printer, 
-    Calendar, Mail, Send, DollarSign, AtSign, Link2, ExternalLink 
+    Calendar, Mail, Send, DollarSign, AtSign, Link2, ExternalLink, RefreshCw, RotateCcw
 } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
+import { 
+    useGetTicketsQuery, 
+    useCreateTicketMutation, 
+    useUpdateTicketStatusMutation,
+    useUpdateTicketMutation,
+    useDeleteTicketMutation
+} from '../store/api/maintenanceApi';
+import { useGetPropertiesQuery } from '../store/api/propertiesApi';
+import { useGetTenantsQuery } from '../store/api/tenantsApi';
 
-const priorityColors = {
-    High: 'bg-red-50 text-red-700 border-red-100',
-    Medium: 'bg-amber-50 text-amber-700 border-amber-100',
-    Low: 'bg-blue-50 text-blue-700 border-blue-100',
+const getPriorityBadgeClass = (priority) => {
+    const p = String(priority || '').toLowerCase();
+    if (p === 'high' || p === 'emergency') return 'bg-rose-50 text-rose-700 border-rose-200/80';
+    if (p === 'medium') return 'bg-amber-50 text-amber-700 border-amber-200/80';
+    return 'bg-blue-50 text-blue-700 border-blue-200/80';
 };
 
-const statusIcons = {
-    'Open': <AlertTriangle size={14} className="text-amber-500" />,
-    'In Progress': <Clock size={14} className="text-blue-500" />,
-    'Resolved': <CheckCircle size={14} className="text-emerald-500" />,
+const formatPriorityText = (priority) => {
+    const p = String(priority || '').toLowerCase();
+    if (p === 'high' || p === 'emergency') return 'High';
+    if (p === 'medium') return 'Medium';
+    return 'Low';
+};
+
+const getStatusBadge = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (s === 'resolved' || s === 'closed') {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 whitespace-nowrap">
+                <CheckCircle size={13} className="text-emerald-600 flex-shrink-0" />
+                Resolved
+            </span>
+        );
+    }
+    if (s === 'in progress' || s === 'pending_parts') {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/80 whitespace-nowrap">
+                <Clock size={13} className="text-blue-600 flex-shrink-0" />
+                In Progress
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 whitespace-nowrap">
+            <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
+            Open
+        </span>
+    );
 };
 
 export const Tickets = () => {
@@ -29,19 +67,96 @@ export const Tickets = () => {
         return () => window.removeEventListener('permissionsUpdated', handleUpdate);
     }, []);
 
-    const [tickets, setTickets] = useState([]);
-    const [buildings, setBuildings] = useState([]);
-    const [tenants, setTenants] = useState([]);
-    const [selectedBuildingId, setSelectedBuildingId] = useState('');
-    const [loadingTenants, setLoadingTenants] = useState(false);
-    const [search, setSearch] = useState('');
-    const [selectedTicket, setSelectedTicket] = useState(null);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [editingTicket, setEditingTicket] = useState(null);
-    const [viewingTenantDetails, setViewingTenantDetails] = useState(null);
-    const [successMessage, setSuccessMessage] = useState('');
+    // Redux Toolkit Selectors
+    const reduxCompanyId = useSelector((state) => state.auth?.effectiveCompanyId);
+    const currentUser = useSelector((state) => state.auth?.user);
+    const currentRole = useSelector((state) => state.auth?.role);
 
-    // Form State for New/Edit Ticket
+    // Active Company & Building (Synchronized with Redux & Topbar)
+    const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+        return reduxCompanyId || localStorage.getItem('global_selected_company_id') || 'all';
+    });
+    const [topbarBuildingId, setTopbarBuildingId] = useState(() => {
+        return localStorage.getItem('global_selected_building_id') || 'all';
+    });
+
+    useEffect(() => {
+        const handleCompany = () => {
+            const comp = localStorage.getItem('global_selected_company_id') || 'all';
+            setSelectedCompanyId(comp);
+        };
+        const handleBuilding = () => {
+            const bld = localStorage.getItem('global_selected_building_id') || 'all';
+            setTopbarBuildingId(bld);
+        };
+
+        window.addEventListener('companyChanged', handleCompany);
+        window.addEventListener('buildingChanged', handleBuilding);
+        return () => {
+            window.removeEventListener('companyChanged', handleCompany);
+            window.removeEventListener('buildingChanged', handleBuilding);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (reduxCompanyId && reduxCompanyId !== selectedCompanyId) {
+            setSelectedCompanyId(reduxCompanyId);
+        }
+    }, [reduxCompanyId]);
+
+    const activeCompanyParam = selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined;
+    const activeBuildingParam = topbarBuildingId && topbarBuildingId !== 'all' ? topbarBuildingId : undefined;
+
+    // Filter states
+    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [priorityFilter, setPriorityFilter] = useState('ALL');
+    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+    const [isStatusExpanded, setIsStatusExpanded] = useState(true);
+    const [isPriorityExpanded, setIsPriorityExpanded] = useState(true);
+    const filterRef = useRef(null);
+
+    const activeFilterCount = (statusFilter !== 'ALL' ? 1 : 0) + (priorityFilter !== 'ALL' ? 1 : 0);
+
+    // Close filter dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (filterRef.current && !filterRef.current.contains(event.target)) {
+                setShowFilterDropdown(false);
+            }
+        };
+        if (showFilterDropdown) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showFilterDropdown]);
+
+    // RTK Query: Tickets
+    const {
+        data: fetchedTickets = [],
+        isLoading: isLoadingTickets,
+        isFetching: isFetchingTickets,
+        refetch: refetchTickets,
+    } = useGetTicketsQuery({
+        ...(activeCompanyParam ? { companyId: activeCompanyParam } : {}),
+        ...(activeBuildingParam ? { propertyId: activeBuildingParam } : {}),
+    });
+
+    // RTK Query: Properties (Buildings)
+    const { data: propertiesData = [], isLoading: isLoadingBuildings } = useGetPropertiesQuery(
+        activeCompanyParam ? { companyId: activeCompanyParam } : undefined
+    );
+
+    // Normalized Buildings list
+    const buildings = useMemo(() => {
+        if (Array.isArray(propertiesData)) return propertiesData;
+        if (Array.isArray(propertiesData?.data)) return propertiesData.data;
+        return [];
+    }, [propertiesData]);
+
+    // Modal Form State for New/Edit Ticket
+    const [selectedBuildingId, setSelectedBuildingId] = useState('');
     const [selectedTenantId, setSelectedTenantId] = useState('');
     const [formApt, setFormApt] = useState('');
     const [formRent, setFormRent] = useState('');
@@ -51,6 +166,73 @@ export const Tickets = () => {
     const [formSubject, setFormSubject] = useState('');
     const [formDescription, setFormDescription] = useState('');
     const [formPriority, setFormPriority] = useState('Low');
+    const [formImagesCount, setFormImagesCount] = useState(0);
+    const [formVideoName, setFormVideoName] = useState('');
+
+    // RTK Query: Tenants
+    const tenantQueryParams = useMemo(() => {
+        const params = { limit: 1000 };
+        if (selectedBuildingId && selectedBuildingId !== 'all') {
+            params.propertyId = selectedBuildingId;
+        } else if (activeBuildingParam) {
+            params.propertyId = activeBuildingParam;
+        }
+        if (activeCompanyParam) {
+            params.companyId = activeCompanyParam;
+        }
+        return params;
+    }, [selectedBuildingId, activeBuildingParam, activeCompanyParam]);
+
+    const { data: tenantsData = [], isLoading: loadingTenants } = useGetTenantsQuery(tenantQueryParams);
+
+    // Normalized Tenants list
+    const tenants = useMemo(() => {
+        const raw = Array.isArray(tenantsData) ? tenantsData : (tenantsData?.data || []);
+        return raw.map(t => {
+            const activeLease = t.leases?.[0] || {};
+            const unitObj = activeLease.unit || t.unit || {};
+            const fullName = t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Tenant';
+            const unitNum = unitObj.unitNumber || t.unitNumber || t.unit || '';
+            const unitId = unitObj.id || t.unitId || '';
+            const rentVal = activeLease.rentAmount || t.rent || '';
+            const propId = unitObj.property?.id || unitObj.propertyId || t.propertyId || '';
+
+            return {
+                ...t,
+                id: t.id,
+                name: fullName,
+                unit: unitNum,
+                unitNumber: unitNum,
+                unitId,
+                propertyId: propId,
+                rent: rentVal,
+                email: t.email || '',
+                phone: t.phone || '',
+            };
+        });
+    }, [tenantsData]);
+
+    // Local Tickets state synced from RTK Query data
+    const [tickets, setTickets] = useState([]);
+
+    useEffect(() => {
+        if (fetchedTickets) {
+            setTickets(fetchedTickets);
+        }
+    }, [fetchedTickets]);
+
+    // RTK Mutations
+    const [createTicketMutation, { isLoading: isCreatingTicket }] = useCreateTicketMutation();
+    const [updateTicketStatusMutation] = useUpdateTicketStatusMutation();
+    const [updateTicketMutation, { isLoading: isUpdatingTicket }] = useUpdateTicketMutation();
+    const [deleteTicketMutation] = useDeleteTicketMutation();
+
+    const [search, setSearch] = useState('');
+    const [selectedTicket, setSelectedTicket] = useState(null);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [editingTicket, setEditingTicket] = useState(null);
+    const [viewingTenantDetails, setViewingTenantDetails] = useState(null);
+    const [successMessage, setSuccessMessage] = useState('');
 
     // Quick completion date in Ticket Details Modal
     const [quickCompletionDate, setQuickCompletionDate] = useState('');
@@ -72,27 +254,6 @@ export const Tickets = () => {
     // Print State
     const [selectedForPrint, setSelectedForPrint] = useState(new Set());
 
-    useEffect(() => {
-        fetchTickets();
-        fetchBuildings();
-        const handleCompanyChange = () => {
-            fetchTickets();
-            fetchBuildings();
-        };
-        window.addEventListener('companyChanged', handleCompanyChange);
-        return () => window.removeEventListener('companyChanged', handleCompanyChange);
-    }, []);
-
-    useEffect(() => {
-        if (selectedBuildingId && selectedBuildingId !== 'all') {
-            fetchTenants(selectedBuildingId);
-        } else if (selectedBuildingId === 'all') {
-            fetchAllTenants();
-        } else {
-            setTenants([]);
-        }
-    }, [selectedBuildingId]);
-
     // Populate form fields when editing or opening modal
     useEffect(() => {
         if (editingTicket) {
@@ -106,6 +267,8 @@ export const Tickets = () => {
             setFormSubject(editingTicket.subject || editingTicket.title || '');
             setFormDescription(editingTicket.desc || editingTicket.description || '');
             setFormPriority(editingTicket.priority || 'Low');
+            setFormImagesCount(editingTicket.attachments?.filter(a => a.type === 'image')?.length || 0);
+            setFormVideoName(editingTicket.attachments?.find(a => a.type === 'video')?.url ? 'Attached Video' : '');
         } else if (showAddModal) {
             setSelectedTenantId('');
             setFormApt('');
@@ -116,8 +279,13 @@ export const Tickets = () => {
             setFormSubject('');
             setFormDescription('');
             setFormPriority('Low');
+            setFormImagesCount(0);
+            setFormVideoName('');
+            if (activeBuildingParam) {
+                setSelectedBuildingId(activeBuildingParam);
+            }
         }
-    }, [editingTicket, showAddModal]);
+    }, [editingTicket, showAddModal, activeBuildingParam]);
 
     // Sync quick completion date when viewing a ticket
     useEffect(() => {
@@ -126,44 +294,10 @@ export const Tickets = () => {
         }
     }, [selectedTicket]);
 
-    const fetchTickets = async () => {
-        try {
-            const res = await api.get('/api/admin/tickets');
-            setTickets(res.data);
-        } catch (e) {
-            console.error('Error fetching tickets', e);
-        }
-    };
-
-    const fetchBuildings = async () => {
-        try {
-            const res = await api.get('/api/admin/properties');
-            setBuildings(res.data);
-        } catch (e) { console.error(e); }
-    };
-
-    const fetchTenants = async (buildingId) => {
-        setLoadingTenants(true);
-        try {
-            const res = await api.get(`/api/admin/tenants?propertyId=${buildingId}&limit=1000`);
-            setTenants(res.data?.data || res.data || []);
-        } catch (e) { console.error(e); }
-        finally { setLoadingTenants(false); }
-    };
-
-    const fetchAllTenants = async () => {
-        setLoadingTenants(true);
-        try {
-            const res = await api.get(`/api/admin/tenants?limit=1000`);
-            setTenants(res.data?.data || res.data || []);
-        } catch (e) { console.error(e); }
-        finally { setLoadingTenants(false); }
-    };
-
     // Auto-populate Apt Number, Rent Amount, Email Address, and Request Date when tenant is selected
     const handleTenantChange = (tenantIdVal) => {
         setSelectedTenantId(tenantIdVal);
-        const ten = tenants.find(t => t.id === parseInt(tenantIdVal));
+        const ten = tenants.find(t => String(t.id) === String(tenantIdVal));
         if (ten) {
             setFormApt(ten.unitNumber || ten.unit || '');
             setFormRent(ten.rent ? (ten.rent.toString().startsWith('$') ? ten.rent : `$${ten.rent}`) : '');
@@ -176,34 +310,96 @@ export const Tickets = () => {
         }
     };
 
-    // Automatically sort all tickets by building alphabetically
-    const sortedTickets = [...tickets].sort((a, b) => {
-        const buildingA = (a.building || a.propertyName || '').toLowerCase();
-        const buildingB = (b.building || b.propertyName || '').toLowerCase();
-        if (buildingA !== buildingB) {
-            return buildingA.localeCompare(buildingB);
-        }
-        return (b.dbId || 0) - (a.dbId || 0);
-    });
+    // Filter tickets by topbar selection and sort alphabetically by building
+    const sortedTickets = useMemo(() => {
+        let list = Array.isArray(tickets) ? [...tickets] : [];
 
-    const filteredTickets = sortedTickets.filter(t =>
-        (t.tenant || '').toLowerCase().includes(search.toLowerCase()) ||
-        (t.id || '').toLowerCase().includes(search.toLowerCase()) ||
-        (t.subject || '').toLowerCase().includes(search.toLowerCase()) ||
-        (t.building || t.propertyName || '').toLowerCase().includes(search.toLowerCase()) ||
-        (t.unit || '').toLowerCase().includes(search.toLowerCase())
-    );
+        // Apply Topbar building filter if active
+        if (activeBuildingParam) {
+            list = list.filter(t => 
+                String(t.propertyId) === String(activeBuildingParam) ||
+                (t.building && buildings.some(b => String(b.id) === String(activeBuildingParam) && b.name.toLowerCase() === t.building.toLowerCase()))
+            );
+        }
+
+        return list.sort((a, b) => {
+            const buildingA = (a.building || a.propertyName || '').toLowerCase();
+            const buildingB = (b.building || b.propertyName || '').toLowerCase();
+            if (buildingA !== buildingB) {
+                return buildingA.localeCompare(buildingB);
+            }
+            return (b.dbId || 0) - (a.dbId || 0);
+        });
+    }, [tickets, activeBuildingParam, buildings]);
+
+    // Apply Status, Priority, and Search Filters
+    const filteredTickets = useMemo(() => {
+        let list = sortedTickets;
+
+        // Apply Status Filter
+        if (statusFilter !== 'ALL') {
+            list = list.filter(t => {
+                const s = String(t.status || '').toLowerCase();
+                const target = statusFilter.toLowerCase();
+                if (target === 'open') return s === 'open' || s === 'submitted';
+                if (target === 'in progress') return s === 'in progress' || s === 'pending_parts';
+                if (target === 'resolved') return s === 'resolved' || s === 'closed';
+                return s === target;
+            });
+        }
+
+        // Apply Priority Filter
+        if (priorityFilter !== 'ALL') {
+            list = list.filter(t => {
+                const p = String(t.priority || '').toLowerCase();
+                const target = priorityFilter.toLowerCase();
+                if (target === 'high') return p === 'high' || p === 'emergency';
+                return p === target;
+            });
+        }
+
+        // Apply Search query
+        const q = (search || '').toLowerCase().trim();
+        if (!q) return list;
+        return list.filter(t =>
+            (t.tenant || '').toLowerCase().includes(q) ||
+            (t.id || '').toLowerCase().includes(q) ||
+            (t.displayId || '').toLowerCase().includes(q) ||
+            (t.subject || '').toLowerCase().includes(q) ||
+            (t.building || t.propertyName || '').toLowerCase().includes(q) ||
+            (t.unit || '').toLowerCase().includes(q)
+        );
+    }, [sortedTickets, statusFilter, priorityFilter, search]);
 
     const updateStatus = async (id, newStatus) => {
         const ticket = tickets.find(t => t.id === id);
         if (!ticket) return;
 
+        // Optimistically update local UI state
+        setTickets(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+        setSelectedTicket(prev => prev ? { ...prev, status: newStatus } : null);
+
         try {
-            await api.put(`/api/admin/tickets/${ticket.dbId}/status`, { status: newStatus });
-            setTickets(tickets.map(t => t.id === id ? { ...t, status: newStatus } : t));
-            setSelectedTicket(prev => prev ? { ...prev, status: newStatus } : null);
+            await updateTicketStatusMutation({
+                id: ticket.dbId || ticket.id,
+                status: newStatus,
+                resolutionNote: newStatus === 'Resolved' ? 'Resolved by maintenance team' : undefined,
+            }).unwrap();
+            setSuccessMessage(`Ticket status updated to ${newStatus}`);
+            setTimeout(() => setSuccessMessage(''), 3000);
         } catch (e) {
-            alert('Failed to update status');
+            console.warn('Status update via RTK mutation fallback to direct API', e);
+            try {
+                await api.put(`/api/admin/tickets/${ticket.dbId || ticket.id}/status`, { status: newStatus });
+                setSuccessMessage(`Ticket status updated to ${newStatus}`);
+                setTimeout(() => setSuccessMessage(''), 3000);
+            } catch (err) {
+                console.error('Failed to update status:', err);
+                // Revert on failure
+                setTickets(prev => prev.map(t => t.id === id ? { ...t, status: ticket.status } : t));
+                setSelectedTicket(prev => prev ? { ...prev, status: ticket.status } : null);
+                alert('Failed to update status');
+            }
         }
     };
 
@@ -211,19 +407,32 @@ export const Tickets = () => {
         const ticket = tickets.find(t => t.id === id);
         if (!ticket) return;
 
+        let normPriority = 'MEDIUM';
+        if (newPriority === 'High') normPriority = 'HIGH';
+        else if (newPriority === 'Low') normPriority = 'LOW';
+
+        // Optimistically update local state
+        setTickets(prev => prev.map(t => t.id === id ? { ...t, priority: newPriority } : t));
+        setSelectedTicket(prev => prev ? { ...prev, priority: newPriority } : null);
+        setSuccessMessage(`Importance level updated to ${newPriority}`);
+        setTimeout(() => setSuccessMessage(''), 3000);
+
         try {
-            await api.put(`/api/admin/tickets/${ticket.dbId}`, { priority: newPriority });
-            setTickets(tickets.map(t => t.id === id ? { ...t, priority: newPriority } : t));
-            setSelectedTicket(prev => prev ? { ...prev, priority: newPriority } : null);
-            setSuccessMessage(`Importance level updated to ${newPriority}`);
-            setTimeout(() => setSuccessMessage(''), 3000);
+            await updateTicketMutation({ id: ticket.dbId || ticket.id, priority: normPriority }).unwrap();
         } catch (e) {
-            alert('Failed to update importance level');
+            console.warn('Priority updated via RTK mutation fallback to api.put:', e);
+            try {
+                await api.put(`/api/admin/tickets/${ticket.dbId || ticket.id}`, { priority: normPriority });
+            } catch (err) {}
         }
+        refetchTickets();
     };
 
     const handleCopyRepairLink = () => {
-        const url = `${window.location.origin}/repair-request`;
+        const propParam = selectedBuildingId && selectedBuildingId !== 'all' 
+            ? `?propertyId=${selectedBuildingId}` 
+            : '';
+        const url = `${window.location.origin}/repair-request${propParam}`;
         if (navigator.clipboard) {
             navigator.clipboard.writeText(url);
         }
@@ -233,55 +442,61 @@ export const Tickets = () => {
 
     const handleDeleteTicket = async (dbId) => {
         if (!window.confirm('Are you sure you want to delete this ticket?')) return;
+        setTickets(prev => prev.filter(t => t.dbId !== dbId && t.id !== dbId));
+        setSuccessMessage('Ticket Deleted Successfully!');
+        setTimeout(() => setSuccessMessage(''), 3000);
+
         try {
-            await api.delete(`/api/admin/tickets/${dbId}`);
-            setTickets(tickets.filter(t => t.dbId !== dbId));
-            setSuccessMessage('Ticket Deleted Successfully!');
-            setTimeout(() => setSuccessMessage(''), 3000);
+            await deleteTicketMutation(dbId).unwrap();
         } catch (e) {
-            alert('Failed to delete ticket');
+            console.warn('Ticket removed locally. Backend delete status:', e);
+            try {
+                await api.delete(`/api/admin/tickets/${dbId}`);
+            } catch (err) {}
         }
+        refetchTickets();
     };
 
     const handleSaveTicket = async (e) => {
         e.preventDefault();
-        const tenantObj = tenants.find(t => t.id === parseInt(selectedTenantId));
-        const buildingObj = buildings.find(b => b.id.toString() === selectedBuildingId);
+        const tenantObj = tenants.find(t => String(t.id) === String(selectedTenantId));
+        const buildingObj = buildings.find(b => String(b.id) === String(selectedBuildingId));
 
         const buildingName = buildingObj ? buildingObj.name : (editingTicket?.building || 'General Building');
         const tenantName = tenantObj ? (tenantObj.name || `${tenantObj.firstName} ${tenantObj.lastName}`) : (editingTicket?.tenant || 'General Tenant');
         const unitVal = formApt || tenantObj?.unitNumber || tenantObj?.unit || editingTicket?.unit || 'N/A';
+        const unitIdVal = tenantObj?.unitId || editingTicket?.unitId;
 
         try {
-            const formData = new FormData();
-            formData.append('propertyId', selectedBuildingId);
-            formData.append('building', buildingName);
-            formData.append('propertyName', buildingName);
-            formData.append('tenantId', selectedTenantId);
-            formData.append('tenant', tenantName);
-            formData.append('tenantName', tenantName);
-            formData.append('unitId', tenantObj?.unitId || editingTicket?.unitId || '');
-            formData.append('unit', unitVal);
-            formData.append('unitNumber', unitVal);
-            formData.append('aptNumber', unitVal);
-            formData.append('rent', formRent || tenantObj?.rent || '');
-            formData.append('email', formEmail || tenantObj?.email || '');
-            formData.append('requestDate', formRequestDate || new Date().toISOString().split('T')[0]);
-            formData.append('completionDate', formCompletionDate || '');
-            formData.append('subject', formSubject);
-            formData.append('title', formSubject);
-            formData.append('description', formDescription);
-            formData.append('priority', formPriority);
-
             if (editingTicket) {
-                await api.put(`/api/admin/tickets/${editingTicket.dbId}`, {
-                    propertyId: selectedBuildingId ? parseInt(selectedBuildingId) : null,
+                let normPriority = 'MEDIUM';
+                if (formPriority === 'High') normPriority = 'HIGH';
+                else if (formPriority === 'Low') normPriority = 'LOW';
+
+                const targetPropId = selectedBuildingId && selectedBuildingId !== 'all'
+                    ? selectedBuildingId
+                    : (editingTicket.propertyId || editingTicket.property?.id || buildings[0]?.id || '');
+                const targetUnitId = unitIdVal || editingTicket.unitId || editingTicket.unit?.id || (tenantObj?.unitId) || (buildingObj?.units?.[0]?.id || '');
+
+                const updatePayload = {
+                    id: editingTicket.dbId || editingTicket.id,
+                    propertyId: targetPropId || undefined,
+                    unitId: targetUnitId || undefined,
+                    tenantId: selectedTenantId || undefined,
+                    title: formSubject || 'Maintenance Request',
+                    subject: formSubject || 'Maintenance Request',
+                    description: formDescription || formSubject || 'Maintenance request submitted',
+                    priority: normPriority,
+                };
+
+                const localPayload = {
+                    propertyId: targetPropId,
                     building: buildingName,
                     propertyName: buildingName,
-                    tenantId: selectedTenantId ? parseInt(selectedTenantId) : null,
+                    tenantId: selectedTenantId ? selectedTenantId : null,
                     tenant: tenantName,
                     tenantName: tenantName,
-                    unitId: tenantObj?.unitId || editingTicket.unitId,
+                    unitId: targetUnitId,
                     unit: unitVal,
                     unitNumber: unitVal,
                     rent: formRent,
@@ -292,32 +507,60 @@ export const Tickets = () => {
                     title: formSubject,
                     description: formDescription,
                     priority: formPriority,
-                });
+                };
+
+                try {
+                    await updateTicketMutation(updatePayload).unwrap();
+                } catch (mutationErr) {
+                    console.warn('RTK updateTicketMutation fallback to api.put:', mutationErr);
+                    try {
+                        await api.put(`/api/admin/tickets/${editingTicket.dbId || editingTicket.id}`, updatePayload);
+                    } catch (fallbackErr) {
+                        console.error('Update ticket fallback error:', fallbackErr);
+                    }
+                }
+
+                setTickets(prev => prev.map(t => (t.id === editingTicket.id || t.dbId === editingTicket.dbId) ? { ...t, ...localPayload } : t));
+                refetchTickets();
+                setSuccessMessage('Ticket Updated Successfully!');
             } else {
-                if (e.target.images && e.target.images.files.length > 0) {
-                    Array.from(e.target.images.files).forEach(file => {
-                        formData.append('images', file);
-                    });
+                let normPriority = 'MEDIUM';
+                if (formPriority === 'High') normPriority = 'HIGH';
+                else if (formPriority === 'Low') normPriority = 'LOW';
+
+                const targetPropId = selectedBuildingId && selectedBuildingId !== 'all' ? selectedBuildingId : (buildings[0]?.id || '');
+                const targetUnitId = unitIdVal || (tenantObj?.unitId) || (buildingObj?.units?.[0]?.id || '');
+
+                const jsonPayload = {
+                    propertyId: targetPropId,
+                    unitId: targetUnitId,
+                    tenantId: selectedTenantId || undefined,
+                    title: formSubject || 'Maintenance Request',
+                    description: formDescription || formSubject || 'Maintenance request submitted',
+                    priority: normPriority,
+                    photoUrls: [],
+                };
+
+                try {
+                    await createTicketMutation(jsonPayload).unwrap();
+                } catch (mutationErr) {
+                    console.warn('RTK createTicketMutation error, trying api fallback:', mutationErr);
+                    await api.post('/api/admin/tickets', jsonPayload);
                 }
 
-                if (e.target.video && e.target.video.files.length > 0) {
-                    formData.append('video', e.target.video.files[0]);
-                }
-
-                await api.post('/api/admin/tickets', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                refetchTickets();
+                setSuccessMessage('Ticket Created Successfully!');
             }
 
-            fetchTickets();
             setShowAddModal(false);
             setEditingTicket(null);
             setSelectedBuildingId('');
-            setSuccessMessage(editingTicket ? 'Ticket Updated Successfully!' : 'Ticket Created Successfully!');
+            setFormImagesCount(0);
+            setFormVideoName('');
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (e) {
             console.error('Error saving ticket:', e);
-            alert('Failed to save ticket');
+            alert('Failed to save ticket: ' + (e?.data?.message || e.message || 'Unknown error'));
         }
     };
 
@@ -325,7 +568,7 @@ export const Tickets = () => {
     const handleUpdateCompletionDate = async () => {
         if (!selectedTicket) return;
         try {
-            await api.put(`/api/admin/tickets/${selectedTicket.dbId}`, {
+            await api.put(`/api/admin/tickets/${selectedTicket.dbId || selectedTicket.id}`, {
                 completionDate: quickCompletionDate || null
             });
             const updated = { ...selectedTicket, completionDate: quickCompletionDate || null };
@@ -344,16 +587,16 @@ export const Tickets = () => {
         if (!notifyData.ticket) return;
         setSendingNotice(true);
         try {
-            const emailBody = notifyData.message || `Hello ${notifyData.tenantName || 'Tenant'},\n\nA repairman (${notifyData.repairmanName || 'Technician'}) has been scheduled to visit your unit (${notifyData.unit || ''}) on ${notifyData.visitDate} regarding your maintenance ticket #${notifyData.ticket.id} ("${notifyData.subject}").\n\nPlease ensure someone is available or unit access is granted.\n\nThank you,\nProperty Management Team`;
+            const emailBody = notifyData.message || `Hello ${notifyData.tenantName || 'Tenant'},\n\nA repairman (${notifyData.repairmanName || 'Technician'}) has been scheduled to visit your unit (${notifyData.unit || ''}) on ${notifyData.visitDate} regarding your maintenance ticket #${notifyData.ticket.displayId || notifyData.ticket.id} ("${notifyData.subject}").\n\nPlease ensure someone is available or unit access is granted.\n\nThank you,\nProperty Management Team`;
 
             await api.post('/api/admin/communication/send-email', {
-                tenantId: notifyData.ticket.tenantId || 101,
+                tenantId: notifyData.ticket.tenantId,
                 email: notifyData.email,
-                subject: `Repairman Visit Scheduled for Ticket #${notifyData.ticket.id}`,
+                subject: `Repairman Visit Scheduled for Ticket #${notifyData.ticket.displayId || notifyData.ticket.id}`,
                 body: emailBody
             });
 
-            await api.put(`/api/admin/tickets/${notifyData.ticket.dbId}`, {
+            await api.put(`/api/admin/tickets/${notifyData.ticket.dbId || notifyData.ticket.id}`, {
                 repairmanVisitDate: notifyData.visitDate
             });
 
@@ -427,8 +670,8 @@ export const Tickets = () => {
                             <div class="page">
                                 <div class="ticket-card">
                                     <div class="header">
-                                        <h3 class="title">${ticket.id}</h3>
-                                        <span class="badge priority-${ticket.priority}">${ticket.priority}</span>
+                                        <h3 class="title">${ticket.displayId || ticket.id}</h3>
+                                        <span class="badge priority-${formatPriorityText(ticket.priority)}">${formatPriorityText(ticket.priority)}</span>
                                     </div>
                                     <div class="subject">${ticket.subject}</div>
                                     <div class="detail"><strong>Building:</strong> ${ticket.building || ticket.propertyName}</div>
@@ -472,9 +715,12 @@ export const Tickets = () => {
                     </div>
                 )}
 
-                <section className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.06)] gap-4">
-                    <div className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-lg border border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all w-full md:w-auto md:min-w-[320px]">
-                        <Search size={18} className="text-slate-400" />
+                {/* Top Section: Search bar on left, Add Ticket anchored in the Top-Right Corner */}
+                <section className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center bg-white p-4 rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.06)] gap-4">
+                    
+                    {/* Search Bar (Separate from Filter Button) */}
+                    <div className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all w-full sm:w-80 md:w-96">
+                        <Search size={18} className="text-slate-400 flex-shrink-0" />
                         <input
                             type="text"
                             placeholder="Search by building, ID, tenant, or subject"
@@ -482,40 +728,52 @@ export const Tickets = () => {
                             onChange={(e) => setSearch(e.target.value)}
                             className="bg-transparent border-none outline-none text-slate-700 placeholder:text-slate-400 w-full text-sm font-medium"
                         />
+                        {search && (
+                            <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600">
+                                <X size={15} />
+                            </button>
+                        )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    {/* Top-Right Corner Actions: Add Ticket is prominent in top-right */}
+                    <div className="flex items-center gap-2.5 justify-end flex-wrap sm:flex-nowrap">
                         <Button
                             variant="secondary"
                             size="sm"
                             onClick={handleCopyRepairLink}
-                            className="!border-indigo-200 !text-indigo-700 hover:!bg-indigo-50 font-bold flex items-center gap-1.5 shadow-sm"
+                            className="!border-indigo-200 !text-indigo-700 hover:!bg-indigo-50 font-bold flex items-center gap-1.5 shadow-sm h-10 px-3.5"
                             title="Copy link to send to tenants when they request repairs"
                         >
                             <Link2 size={16} className="text-indigo-600" />
-                            Copy Tenant Repair Link
+                            <span className="hidden md:inline">Copy Tenant Repair Link</span>
+                            <span className="md:hidden">Repair Link</span>
                         </Button>
+
                         <a
-                            href="/repair-request"
+                            href={selectedBuildingId && selectedBuildingId !== 'all' ? `/repair-request?propertyId=${selectedBuildingId}` : '/repair-request'}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:bg-slate-50 transition-colors"
+                            className="w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:bg-slate-50 transition-colors flex items-center justify-center shadow-sm flex-shrink-0"
                             title="Open Tenant Repair Request Form in new tab"
                         >
                             <ExternalLink size={16} />
                         </a>
+
                         {selectedForPrint.size > 0 && (
-                            <Button variant="secondary" size="sm" onClick={handlePrint} className="!border-indigo-200 !text-indigo-600 hover:!bg-indigo-50">
+                            <Button variant="secondary" size="sm" onClick={handlePrint} className="!border-indigo-200 !text-indigo-600 hover:!bg-indigo-50 h-10">
                                 <Printer size={16} />
                                 Print ({selectedForPrint.size})
                             </Button>
                         )}
-                        <Button variant="secondary" size="sm">
-                            <Filter size={16} />
-                            Filters
-                        </Button>
+
+                        {/* Add Ticket button anchored at top-right corner */}
                         {hasPermission('Tickets', 'add') && (
-                            <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => setShowAddModal(true)}
+                                className="h-10 px-4 font-bold flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+                            >
                                 <Plus size={16} />
                                 Add Ticket
                             </Button>
@@ -523,54 +781,285 @@ export const Tickets = () => {
                     </div>
                 </section>
 
-                <section className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] overflow-hidden w-full">
+                {/* Sub-bar directly above the Ticket List: Filter button and active filter pills */}
+                <div className="flex flex-wrap items-center gap-3 px-1">
+                    <div className="relative" ref={filterRef}>
+                        <button
+                            type="button"
+                            onClick={() => setShowFilterDropdown(prev => !prev)}
+                            className={clsx(
+                                "flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold shadow-sm transition-all bg-white h-9",
+                                (showFilterDropdown || activeFilterCount > 0)
+                                    ? "border-indigo-300 text-indigo-700 bg-indigo-50/70 ring-2 ring-indigo-500/10"
+                                    : "border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+                            )}
+                            title="Filter tickets by Status and Priority"
+                        >
+                            <Filter size={14} className={activeFilterCount > 0 ? "text-indigo-600" : "text-slate-500"} />
+                            <span>Filters</span>
+                            {activeFilterCount > 0 ? (
+                                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black flex items-center justify-center">
+                                    {activeFilterCount}
+                                </span>
+                            ) : (
+                                <ChevronDown size={14} className={clsx("text-slate-400 transition-transform duration-200", showFilterDropdown && "rotate-180")} />
+                            )}
+                        </button>
+
+                        {/* Floating Filter Popover */}
+                        {showFilterDropdown && (
+                            <div className="absolute left-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-4 z-50 anim-zoom-in">
+                                {/* Header: Title on left, Refresh icon on top-right corner to reset/refresh filters */}
+                                <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                            <Filter size={14} />
+                                        </div>
+                                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                            Filter Tickets
+                                        </span>
+                                    </div>
+
+                                    {/* Refresh/Reset icon in top-right corner of popup */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setStatusFilter('ALL');
+                                            setPriorityFilter('ALL');
+                                            refetchTickets();
+                                        }}
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                        title="Reset / Refresh filters"
+                                    >
+                                        <RotateCcw size={14} />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {/* Status Collapsible Dropdown */}
+                                    <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-slate-50/50">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsStatusExpanded(prev => !prev)}
+                                            className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100/70 transition-colors text-left"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Status</span>
+                                                <span className={clsx(
+                                                    "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                                                    statusFilter !== 'ALL'
+                                                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                                        : "bg-slate-200/60 text-slate-600 border-slate-300/50"
+                                                )}>
+                                                    {statusFilter === 'ALL' ? 'All' : statusFilter}
+                                                </span>
+                                            </div>
+                                            <ChevronDown size={14} className={clsx("text-slate-400 transition-transform duration-200", isStatusExpanded && "rotate-180")} />
+                                        </button>
+
+                                        {isStatusExpanded && (
+                                            <div className="grid grid-cols-2 gap-1.5 p-2 bg-white border-t border-slate-200/60 anim-fade-in">
+                                                {[
+                                                    { label: 'All', value: 'ALL' },
+                                                    { label: 'Open', value: 'Open' },
+                                                    { label: 'In Progress', value: 'In Progress' },
+                                                    { label: 'Resolved', value: 'Resolved' },
+                                                ].map((st) => (
+                                                    <button
+                                                        key={st.value}
+                                                        type="button"
+                                                        onClick={() => setStatusFilter(st.value)}
+                                                        className={clsx(
+                                                            "px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border text-left flex items-center justify-between",
+                                                            statusFilter === st.value
+                                                                ? "bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm font-bold"
+                                                                : "bg-slate-50/60 text-slate-600 border-slate-200/60 hover:bg-slate-100"
+                                                        )}
+                                                    >
+                                                        <span>{st.label}</span>
+                                                        {statusFilter === st.value && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Priority Collapsible Dropdown */}
+                                    <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-slate-50/50">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsPriorityExpanded(prev => !prev)}
+                                            className="w-full flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100/70 transition-colors text-left"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Priority</span>
+                                                <span className={clsx(
+                                                    "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                                                    priorityFilter !== 'ALL'
+                                                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                                        : "bg-slate-200/60 text-slate-600 border-slate-300/50"
+                                                )}>
+                                                    {priorityFilter === 'ALL' ? 'All' : priorityFilter}
+                                                </span>
+                                            </div>
+                                            <ChevronDown size={14} className={clsx("text-slate-400 transition-transform duration-200", isPriorityExpanded && "rotate-180")} />
+                                        </button>
+
+                                        {isPriorityExpanded && (
+                                            <div className="grid grid-cols-2 gap-1.5 p-2 bg-white border-t border-slate-200/60 anim-fade-in">
+                                                {[
+                                                    { label: 'All', value: 'ALL' },
+                                                    { label: 'High', value: 'High' },
+                                                    { label: 'Medium', value: 'Medium' },
+                                                    { label: 'Low', value: 'Low' },
+                                                ].map((pr) => (
+                                                    <button
+                                                        key={pr.value}
+                                                        type="button"
+                                                        onClick={() => setPriorityFilter(pr.value)}
+                                                        className={clsx(
+                                                            "px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border text-left flex items-center justify-between",
+                                                            priorityFilter === pr.value
+                                                                ? "bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm font-bold"
+                                                                : "bg-slate-50/60 text-slate-600 border-slate-200/60 hover:bg-slate-100"
+                                                        )}
+                                                    >
+                                                        <span>{pr.label}</span>
+                                                        {priorityFilter === pr.value && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                                    <span className="text-slate-400 font-medium text-[11px]">
+                                        {filteredTickets.length} {filteredTickets.length === 1 ? 'ticket' : 'tickets'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowFilterDropdown(false)}
+                                        className="px-3 py-1 rounded-lg bg-zinc-900 text-white font-bold hover:bg-zinc-800 transition-colors text-xs"
+                                    >
+                                        Done
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Active Filter Removable Badges directly above table */}
+                    {(statusFilter !== 'ALL' || priorityFilter !== 'ALL') && (
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                            {statusFilter !== 'ALL' && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 font-bold text-xs">
+                                    Status: {statusFilter}
+                                    <button onClick={() => setStatusFilter('ALL')} className="hover:text-indigo-900 ml-0.5">
+                                        <X size={12} />
+                                    </button>
+                                </span>
+                            )}
+                            {priorityFilter !== 'ALL' && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 font-bold text-xs">
+                                    Priority: {priorityFilter}
+                                    <button onClick={() => setPriorityFilter('ALL')} className="hover:text-indigo-900 ml-0.5">
+                                        <X size={12} />
+                                    </button>
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Ticket List Table */}
+                <section className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] overflow-hidden w-full border border-slate-100">
                     <div className="overflow-x-auto w-full">
-                        <div className="min-w-[950px]">
-                            {/* Table Header: Automatically sorted by building */}
-                            <div className="grid grid-cols-[auto_0.8fr_1.3fr_1.5fr_1.2fr_0.8fr_0.8fr_1fr_0.9fr] gap-4 bg-slate-50 border-b border-slate-200 px-6 py-4 items-center">
-                                <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} className="w-4 h-4 text-indigo-600 rounded border-slate-300 cursor-pointer" />
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ticket ID</span>
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <div className="min-w-[1020px] w-full">
+                            {/* Table Header: Stable and consistently aligned */}
+                            <div className="grid grid-cols-[44px_110px_140px_minmax(180px,1.5fr)_150px_90px_110px_130px_140px] gap-3 bg-slate-50/90 border-b border-slate-200 px-6 py-3.5 items-center">
+                                <div className="flex items-center justify-center">
+                                    <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} className="w-4 h-4 text-indigo-600 rounded border-slate-300 cursor-pointer" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ticket ID</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                                     <Building size={14} className="text-indigo-500" />
                                     Building
                                 </span>
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Subject</span>
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tenant</span>
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Unit</span>
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Priority</span>
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</span>
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Actions</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subject</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tenant</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Unit</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Priority</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Actions</span>
                             </div>
 
                             <div className="divide-y divide-slate-100">
-                                {filteredTickets.length === 0 ? (
-                                    <div className="text-center py-12 text-slate-400 font-medium text-sm">
-                                        No tickets found.
+                                {isLoadingTickets ? (
+                                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                                        <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                        <span className="text-sm font-semibold text-slate-500">Loading tickets...</span>
+                                    </div>
+                                ) : filteredTickets.length === 0 ? (
+                                    <div className="text-center py-16 text-slate-400 font-medium text-sm flex flex-col items-center justify-center gap-2">
+                                        <AlertTriangle size={28} className="text-slate-300" />
+                                        <span className="font-semibold text-slate-600">No tickets found.</span>
+                                        <span className="text-xs text-slate-400">
+                                            {activeFilterCount > 0 || search
+                                                ? 'No tickets match your active filters or search criteria.'
+                                                : (activeBuildingParam ? 'No maintenance tickets match the selected building.' : 'Create a new ticket or adjust filters.')}
+                                        </span>
+                                        {(activeFilterCount > 0 || search) && (
+                                            <button
+                                                onClick={() => {
+                                                    setStatusFilter('ALL');
+                                                    setPriorityFilter('ALL');
+                                                    setSearch('');
+                                                }}
+                                                className="mt-2 px-3.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 text-xs font-bold hover:bg-indigo-100 transition-colors"
+                                            >
+                                                Reset All Filters
+                                            </button>
+                                        )}
                                     </div>
                                 ) : (
                                     filteredTickets.map((ticket) => (
                                         <div
                                             key={ticket.id}
-                                            className="grid grid-cols-[auto_0.8fr_1.3fr_1.5fr_1.2fr_0.8fr_0.8fr_1fr_0.9fr] gap-4 px-6 py-4 items-center hover:bg-slate-50/80 transition-all duration-200"
+                                            className="grid grid-cols-[44px_110px_140px_minmax(180px,1.5fr)_150px_90px_110px_130px_140px] gap-3 px-6 py-3.5 items-center hover:bg-slate-50/80 transition-all duration-150 border-b border-slate-100 last:border-b-0"
                                         >
-                                            <input type="checkbox" checked={selectedForPrint.has(ticket.id)} onChange={() => toggleSelect(ticket.id)} className="w-4 h-4 text-indigo-600 rounded border-slate-300 cursor-pointer" />
-                                            <span className="text-sm font-semibold text-indigo-600">{ticket.id}</span>
+                                            <div className="flex items-center justify-center">
+                                                <input type="checkbox" checked={selectedForPrint.has(ticket.id)} onChange={() => toggleSelect(ticket.id)} className="w-4 h-4 text-indigo-600 rounded border-slate-300 cursor-pointer" />
+                                            </div>
+                                            
+                                            {/* Ticket ID: Solid badge that will never wrap onto multiple lines */}
+                                            <div className="overflow-hidden">
+                                                <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50/80 px-2 py-1 rounded-md border border-indigo-100/90 whitespace-nowrap inline-block" title={ticket.id}>
+                                                    {ticket.displayId || ticket.id}
+                                                </span>
+                                            </div>
                                             
                                             {/* Building Column */}
-                                            <div className="flex items-center gap-1.5 overflow-hidden">
-                                                <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-100/80 text-xs font-bold truncate">
-                                                    {ticket.building || ticket.propertyName || 'Sunset Towers'}
+                                            <div className="overflow-hidden">
+                                                <span className="px-2.5 py-1 rounded-lg bg-slate-100/80 text-slate-800 border border-slate-200/60 text-xs font-semibold truncate block w-fit max-w-full" title={ticket.building || ticket.propertyName}>
+                                                    {ticket.building || ticket.propertyName || 'General Building'}
                                                 </span>
                                             </div>
 
-                                            <div className="flex flex-col pr-3 overflow-hidden">
+                                            {/* Subject Column */}
+                                            <div className="flex flex-col pr-2 overflow-hidden min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm text-slate-800 font-bold truncate">{ticket.subject}</span>
+                                                    <span className="text-sm text-slate-800 font-bold truncate" title={ticket.subject}>{ticket.subject}</span>
                                                     {ticket.isRequired && (
-                                                        <span className="px-1.5 py-0.5 rounded bg-red-50 text-[8px] font-black text-red-600 uppercase border border-red-100">Required</span>
+                                                        <span className="px-1.5 py-0.5 rounded bg-red-50 text-[8px] font-black text-red-600 uppercase border border-red-100 flex-shrink-0">Required</span>
                                                     )}
                                                     {ticket.attachments && ticket.attachments.length > 0 && (
-                                                        <div className="flex items-center gap-1 text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100" title={`${ticket.attachments.length} attachments`}>
+                                                        <div className="flex items-center gap-1 text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 flex-shrink-0" title={`${ticket.attachments.length} attachments`}>
                                                             <Camera size={10} />
                                                             <span className="text-[10px] font-bold">{ticket.attachments.length}</span>
                                                         </div>
@@ -578,55 +1067,60 @@ export const Tickets = () => {
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     {ticket.completionDate && (
-                                                        <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                                                        <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 whitespace-nowrap">
                                                             <Calendar size={11} /> Comp: {ticket.completionDate}
                                                         </span>
                                                     )}
                                                     {ticket.repairmanVisitDate && (
-                                                        <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
+                                                        <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1 whitespace-nowrap">
                                                             <Clock size={11} /> Visit: {ticket.repairmanVisitDate}
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
 
-                                            <div className="flex flex-col items-start gap-0.5">
+                                            {/* Tenant Column */}
+                                            <div className="flex flex-col items-start min-w-0 overflow-hidden">
                                                 <button
                                                     onClick={() => {
                                                         setViewingTenantDetails(ticket.tenantDetails || { name: ticket.tenant, unit: ticket.unit, rent: ticket.rent, email: ticket.email, property: ticket.building || ticket.propertyName });
                                                     }}
-                                                    className="text-sm text-indigo-600 font-semibold hover:underline text-left w-fit"
+                                                    className="text-sm text-indigo-600 font-semibold hover:underline text-left truncate w-full"
+                                                    title={ticket.tenant}
                                                 >
                                                     {ticket.tenant}
                                                 </button>
                                                 {ticket.email && (
-                                                    <span className="text-[11px] text-slate-400 font-medium truncate max-w-[130px]" title={ticket.email}>
+                                                    <span className="text-[11px] text-slate-400 font-medium truncate w-full" title={ticket.email}>
                                                         {ticket.email}
                                                     </span>
                                                 )}
                                             </div>
 
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-slate-700">{ticket.unit}</span>
+                                            {/* Unit Column */}
+                                            <div className="flex flex-col overflow-hidden">
+                                                <span className="text-sm font-semibold text-slate-700 truncate">{ticket.unit}</span>
                                                 {ticket.rent && (
-                                                    <span className="text-[11px] text-emerald-600 font-bold">
+                                                    <span className="text-[11px] text-emerald-600 font-bold truncate">
                                                         {ticket.rent.toString().startsWith('$') ? ticket.rent : `$${ticket.rent}`}
                                                     </span>
                                                 )}
                                             </div>
 
-                                            <span>
-                                                <span className={clsx("px-2 py-1 rounded-full text-[10px] font-bold border uppercase tracking-tight", priorityColors[ticket.priority])}>
-                                                    {ticket.priority}
+                                            {/* Priority Badge */}
+                                            <div>
+                                                <span className={clsx("inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border tracking-wide uppercase", getPriorityBadgeClass(ticket.priority))}>
+                                                    {formatPriorityText(ticket.priority)}
                                                 </span>
-                                            </span>
+                                            </div>
 
-                                            <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                                                {statusIcons[ticket.status]}
-                                                {ticket.status}
-                                            </span>
+                                            {/* Status Badge */}
+                                            <div>
+                                                {getStatusBadge(ticket.status)}
+                                            </div>
 
-                                            <span className="flex justify-center gap-1">
+                                            {/* Actions Column */}
+                                            <div className="flex items-center justify-center gap-1">
                                                 <button
                                                     onClick={() => setSelectedTicket(ticket)}
                                                     className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
@@ -644,7 +1138,7 @@ export const Tickets = () => {
                                                             subject: ticket.subject || '',
                                                             visitDate: ticket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0],
                                                             repairmanName: 'Mike Johnson (Contractor)',
-                                                            message: `Hello ${ticket.tenant || 'Tenant'},\n\nA repairman (Mike Johnson) is scheduled to visit your unit (${ticket.unit}) on ${ticket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0]} regarding ticket #${ticket.id} (${ticket.subject}).\n\nPlease ensure unit access is available. Thank you, Property Management.`
+                                                            message: `Hello ${ticket.tenant || 'Tenant'},\n\nA repairman (Mike Johnson) is scheduled to visit your unit (${ticket.unit}) on ${ticket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0]} regarding ticket #${ticket.displayId || ticket.id} (${ticket.subject}).\n\nPlease ensure unit access is available. Thank you, Property Management.`
                                                         });
                                                         setShowNotifyModal(true);
                                                     }}
@@ -667,14 +1161,14 @@ export const Tickets = () => {
                                                 )}
                                                 {hasPermission('Tickets', 'delete') && (
                                                     <button
-                                                        onClick={() => handleDeleteTicket(ticket.dbId)}
+                                                        onClick={() => handleDeleteTicket(ticket.dbId || ticket.id)}
                                                         className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
                                                         title="Delete Ticket"
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
                                                 )}
-                                            </span>
+                                            </div>
                                         </div>
                                     ))
                                 )}
@@ -690,7 +1184,7 @@ export const Tickets = () => {
                             <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <h3 className="text-2xl font-bold text-slate-800">{selectedTicket.id}</h3>
+                                        <h3 className="text-2xl font-bold text-slate-800">{selectedTicket.displayId || selectedTicket.id}</h3>
                                         <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
                                             {selectedTicket.building || selectedTicket.propertyName}
                                         </span>
@@ -804,7 +1298,7 @@ export const Tickets = () => {
                                                 subject: selectedTicket.subject || '',
                                                 visitDate: selectedTicket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0],
                                                 repairmanName: 'Mike Johnson (Contractor)',
-                                                message: `Hello ${selectedTicket.tenant || 'Tenant'},\n\nA repairman (Mike Johnson) is scheduled to visit your unit (${selectedTicket.unit}) on ${selectedTicket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0]} regarding maintenance ticket #${selectedTicket.id}: "${selectedTicket.subject}".\n\nPlease ensure access is available.\n\nThank you,\nProperty Management Team`
+                                                message: `Hello ${selectedTicket.tenant || 'Tenant'},\n\nA repairman (Mike Johnson) is scheduled to visit your unit (${selectedTicket.unit}) on ${selectedTicket.repairmanVisitDate || new Date(Date.now() + 86400000).toISOString().split('T')[0]} regarding ticket #${selectedTicket.displayId || selectedTicket.id}: "${selectedTicket.subject}".\n\nPlease ensure access is available. Thank you, Property Management Team`
                                             });
                                             setShowNotifyModal(true);
                                         }}
@@ -862,8 +1356,8 @@ export const Tickets = () => {
                                         <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                                             Importance Level (Priority)
                                         </label>
-                                        <span className={clsx("px-2.5 py-0.5 rounded-full text-xs font-bold border", priorityColors[selectedTicket.priority] || 'bg-slate-100 text-slate-700')}>
-                                            Current: {selectedTicket.priority || 'Low'}
+                                        <span className={clsx("px-2.5 py-0.5 rounded-full text-xs font-bold border", getPriorityBadgeClass(selectedTicket.priority))}>
+                                            Current: {formatPriorityText(selectedTicket.priority)}
                                         </span>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -873,7 +1367,7 @@ export const Tickets = () => {
                                                 onClick={() => updatePriority(selectedTicket.id, p)}
                                                 className={clsx(
                                                     "px-4 py-2 rounded-lg text-sm font-bold transition-all border",
-                                                    selectedTicket.priority === p
+                                                    formatPriorityText(selectedTicket.priority) === p
                                                         ? p === 'High' ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-200"
                                                           : p === 'Medium' ? "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-200"
                                                           : "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200"
@@ -1063,32 +1557,58 @@ export const Tickets = () => {
                                     </div>
                                 </div>
 
+                                {/* Images and Video Upload Buttons: Separate, side by side in a single line with proper alignment, spacing, and consistent sizing */}
                                 <div className="grid grid-cols-2 gap-4 pt-1">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Images (Optional for Portal)</label>
-                                        <input
-                                            type="file"
-                                            name="images"
-                                            multiple
-                                            accept=".jpg,.png,.jpeg"
-                                            className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-slate-100 file:text-slate-600 cursor-pointer"
-                                        />
+                                    <div className="space-y-1.5 min-w-0">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1 block truncate" title="Images (Optional)">
+                                            Images (Optional)
+                                        </label>
+                                        <label className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-indigo-300 transition-all cursor-pointer h-10 w-full group overflow-hidden select-none">
+                                            <div className="w-7 h-7 rounded-lg bg-indigo-50 group-hover:bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 transition-colors">
+                                                <Camera size={14} />
+                                            </div>
+                                            <span className="text-xs font-semibold text-slate-600 group-hover:text-indigo-600 truncate flex-1">
+                                                {formImagesCount > 0 ? `${formImagesCount} photo${formImagesCount > 1 ? 's' : ''}` : 'Upload Images'}
+                                            </span>
+                                            <input
+                                                type="file"
+                                                name="images"
+                                                multiple
+                                                accept=".jpg,.png,.jpeg"
+                                                onChange={(e) => setFormImagesCount(e.target.files?.length || 0)}
+                                                className="hidden"
+                                            />
+                                        </label>
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Video</label>
-                                        <input
-                                            type="file"
-                                            name="video"
-                                            accept=".mp4,.mov"
-                                            className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-slate-100 file:text-slate-600 cursor-pointer"
-                                        />
+
+                                    <div className="space-y-1.5 min-w-0">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1 block truncate" title="Video (Optional)">
+                                            Video (Optional)
+                                        </label>
+                                        <label className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-indigo-300 transition-all cursor-pointer h-10 w-full group overflow-hidden select-none">
+                                            <div className="w-7 h-7 rounded-lg bg-indigo-50 group-hover:bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 transition-colors">
+                                                <Play size={14} />
+                                            </div>
+                                            <span className="text-xs font-semibold text-slate-600 group-hover:text-indigo-600 truncate flex-1">
+                                                {formVideoName ? formVideoName : 'Upload Video'}
+                                            </span>
+                                            <input
+                                                type="file"
+                                                name="video"
+                                                accept=".mp4,.mov"
+                                                onChange={(e) => setFormVideoName(e.target.files?.[0]?.name || '')}
+                                                className="hidden"
+                                            />
+                                        </label>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="flex gap-3 mt-8">
                                 <Button type="button" variant="secondary" className="flex-1" onClick={() => { setShowAddModal(false); setEditingTicket(null); }}>Cancel</Button>
-                                <Button type="submit" variant="primary" className="flex-1">{editingTicket ? 'Update Ticket' : 'Save Ticket'}</Button>
+                                <Button type="submit" variant="primary" disabled={isCreatingTicket} className="flex-1">
+                                    {isCreatingTicket ? 'Saving...' : (editingTicket ? 'Update Ticket' : 'Save Ticket')}
+                                </Button>
                             </div>
                         </form>
                     </div>

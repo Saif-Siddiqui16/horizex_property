@@ -77,3 +77,35 @@ export const assignTicket = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+export const updateTicket = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+
+    const updated = await MaintenanceService.updateTicket(
+      req.params.id,
+      companyId,
+      req.body,
+      req.user?.userId
+    );
+    return sendSuccess(res, updated, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const deleteTicket = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+
+    const result = await MaintenanceService.deleteTicket(
+      req.params.id,
+      companyId,
+      req.user?.userId
+    );
+    return sendSuccess(res, result, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
