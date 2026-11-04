@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-
 import api from '../api/client';
-import { User, Mail, Lock, Phone, Save, CheckCircle, AlertCircle, Eye, EyeOff, MapPin, X } from 'lucide-react';
+import { useGetProfileQuery, useUpdateProfileMutation } from '../store/api/authApi';
+import { User, Mail, Lock, Phone, Save, CheckCircle, AlertCircle, Eye, EyeOff, MapPin, X } from 'lucide-react';
+
 export const Profile = () => {
-const [__forceUpdate, __setForceUpdate] = useState(0);
+    const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
         return () => window.removeEventListener('permissionsUpdated', handleUpdate);
     }, []);
+
+    // RTK Query hooks
+    const { data: profileApiData, isLoading: isProfileLoading, refetch: refetchProfile } = useGetProfileQuery();
+    const [updateProfileMutation, { isLoading: isMutationSaving }] = useUpdateProfileMutation();
 
     const [profile, setProfile] = useState({
         name: '',
@@ -21,7 +26,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         state: '',
         country: '',
         companyName: '',
-        companyDetails: ''
+        companyDetails: '',
+        profilePictureUrl: null,
     });
     const [passwordData, setPasswordData] = useState({
         newPassword: '',
@@ -34,6 +40,29 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const fileInputRef = React.useRef(null);
+
+    // Sync RTK Query data when available
+    useEffect(() => {
+        if (profileApiData) {
+            setProfile(prev => ({
+                ...prev,
+                ...profileApiData,
+                firstName: profileApiData.firstName ?? prev.firstName,
+                lastName: profileApiData.lastName ?? prev.lastName,
+                name: profileApiData.name ?? prev.name,
+                email: profileApiData.email ?? prev.email,
+                phone: profileApiData.phone ?? prev.phone,
+                role: profileApiData.role ?? prev.role,
+                city: profileApiData.city ?? prev.city ?? '',
+                state: profileApiData.state ?? prev.state ?? '',
+                country: profileApiData.country ?? prev.country ?? '',
+                companyName: profileApiData.companyName ?? prev.companyName ?? '',
+                companyDetails: profileApiData.companyDetails ?? prev.companyDetails ?? '',
+                profilePictureUrl: profileApiData.profilePictureUrl ?? prev.profilePictureUrl ?? null,
+            }));
+            setLoading(false);
+        }
+    }, [profileApiData]);
 
     useEffect(() => {
         fetchProfile();
@@ -51,11 +80,45 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     const fetchProfile = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/api/auth/profile');
-            setProfile(res.data);
+            if (refetchProfile) {
+                const res = await refetchProfile();
+                if (res?.data) {
+                    const data = res.data?.data || res.data;
+                    setProfile(prev => ({ ...prev, ...data }));
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // Fallback via axios client
+            const res = await api.get('/auth/profile');
+            const data = res.data?.data || res.data;
+            if (data) {
+                setProfile(prev => ({ ...prev, ...data }));
+            }
         } catch (err) {
             console.error('Error fetching profile:', err);
-            setMessage({ type: 'error', text: 'Failed to load profile details.' });
+            // Fallback from localStorage
+            try {
+                const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+                if (storedUser && storedUser.email) {
+                    const fullName = `${storedUser.firstName || ''} ${storedUser.lastName || ''}`.trim();
+                    setProfile(prev => ({
+                        ...prev,
+                        ...storedUser,
+                        name: storedUser.name || fullName || storedUser.email.split('@')[0],
+                        city: storedUser.city || '',
+                        state: storedUser.state || '',
+                        country: storedUser.country || '',
+                        companyName: storedUser.company?.name || storedUser.companyName || '',
+                        companyDetails: storedUser.companyDetails || '',
+                    }));
+                } else {
+                    setMessage({ type: 'error', text: 'Failed to load profile details.' });
+                }
+            } catch (e) {
+                setMessage({ type: 'error', text: 'Failed to load profile details.' });
+            }
         } finally {
             setLoading(false);
         }
@@ -106,52 +169,61 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             setSaving(true);
             setMessage({ type: '', text: '' });
 
-            const formData = new FormData();
-            formData.append('name', profile.name);
-            formData.append('email', profile.email);
-            formData.append('firstName', profile.firstName || '');
-            formData.append('lastName', profile.lastName || '');
-            formData.append('phone', profile.phone || '');
-            formData.append('city', profile.city || '');
-            formData.append('state', profile.state || '');
-            formData.append('country', profile.country || '');
-            formData.append('companyName', profile.companyName || '');
-            formData.append('companyDetails', profile.companyDetails || '');
+            const payload = {
+                name: profile.name,
+                email: profile.email,
+                firstName: profile.firstName || '',
+                lastName: profile.lastName || '',
+                phone: profile.phone || '',
+                city: profile.city || '',
+                state: profile.state || '',
+                country: profile.country || '',
+                companyName: profile.companyName || '',
+                companyDetails: profile.companyDetails || '',
+                profilePictureUrl: imagePreview || profile.profilePictureUrl || null,
+                ...(passwordData.newPassword ? { password: passwordData.newPassword } : {})
+            };
 
-            if (passwordData.newPassword) {
-                formData.append('password', passwordData.newPassword);
+            let updatedUser = null;
+            try {
+                const res = await updateProfileMutation(payload).unwrap();
+                updatedUser = res?.user || res?.data?.user || res?.data || res;
+            } catch (rtkErr) {
+                console.warn('RTK updateProfile fallback to axios:', rtkErr);
+                const res = await api.patch('/auth/profile', payload);
+                updatedUser = res.data?.data?.user || res.data?.user || res.data;
             }
-
-            if (imageFile) {
-                formData.append('profilePicture', imageFile);
-            }
-
-            const res = await api.patch('/api/auth/profile', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
 
             // Update local storage user info
             const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-            const updatedUser = { ...storedUser, ...res.data.user };
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+            const mergedUser = { ...storedUser, ...(updatedUser || payload) };
+            localStorage.setItem('user', JSON.stringify(mergedUser));
 
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
             setPasswordData({ newPassword: '', confirmPassword: '' });
 
             // Refresh local profile
-            setProfile(prev => ({ ...prev, ...res.data.user }));
+            if (updatedUser) {
+                setProfile(prev => ({ ...prev, ...updatedUser }));
+            }
+            if (refetchProfile) {
+                refetchProfile();
+            }
         } catch (err) {
             console.error('Update Error:', err);
             setMessage({
                 type: 'error',
-                text: err.response?.data?.message || 'Failed to update profile.'
+                text: err.response?.data?.message || err.data?.message || err.message || 'Failed to update profile.'
             });
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) {
+    const isCompanyEditable = ['ADMIN', 'SUPER_ADMIN'].includes(profile.role);
+    const isSaveInProgress = saving || isMutationSaving;
+
+    if (loading && !profile.email) {
         return (
             <>
                 <div className="flex items-center justify-center min-h-[400px]">
@@ -337,8 +409,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         name="city"
                                         value={profile.city || ''}
                                         onChange={handleProfileChange}
-                                        disabled={profile.role !== 'ADMIN'}
-                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        disabled={!isCompanyEditable}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Toronto"
                                     />
                                 </div>
@@ -349,8 +421,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         name="state"
                                         value={profile.state || ''}
                                         onChange={handleProfileChange}
-                                        disabled={profile.role !== 'ADMIN'}
-                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        disabled={!isCompanyEditable}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Ontario"
                                     />
                                 </div>
@@ -361,8 +433,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         name="country"
                                         value={profile.country || ''}
                                         onChange={handleProfileChange}
-                                        disabled={profile.role !== 'ADMIN'}
-                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        disabled={!isCompanyEditable}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Canada"
                                     />
                                 </div>
@@ -383,8 +455,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         name="companyName"
                                         value={profile.companyName || ''}
                                         onChange={handleProfileChange}
-                                        disabled={profile.role !== 'ADMIN'}
-                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        disabled={!isCompanyEditable}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="e.g. Horizex Properties"
                                     />
                                 </div>
@@ -394,9 +466,9 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         name="companyDetails"
                                         value={profile.companyDetails || ''}
                                         onChange={handleProfileChange}
-                                        disabled={profile.role !== 'ADMIN'}
+                                        disabled={!isCompanyEditable}
                                         rows={3}
-                                        className={`w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 min-h-[100px] ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        className={`w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 min-h-[100px] ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Mention your company address, registration number, tax details, or mission statement..."
                                     />
                                 </div>
@@ -452,15 +524,15 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                         <div className="flex justify-end gap-4 pt-4">
                             <button
                                 type="submit"
-                                disabled={saving}
+                                disabled={isSaveInProgress}
                                 className="h-12 px-8 bg-primary-600 text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg shadow-primary-200 hover:bg-primary-700 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                             >
-                                {saving ? (
+                                {isSaveInProgress ? (
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                 ) : (
                                     <Save size={18} />
                                 )}
-                                {saving ? 'Saving...' : 'Save Changes'}
+                                {isSaveInProgress ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>
 
