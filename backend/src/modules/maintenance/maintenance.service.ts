@@ -165,7 +165,8 @@ export class MaintenanceService {
       resolvedUnitId = anyUnit?.id;
     }
 
-    if (!resolvedUnitId) {
+    const finalUnitId = (resolvedUnitId || unitId) as string;
+    if (!finalUnitId) {
       throw new AppError('No unit found for this property', 400, 'UNIT_REQUIRED');
     }
 
@@ -187,12 +188,12 @@ export class MaintenanceService {
     const ticket = await prisma.maintenanceTicket.create({
       data: {
         propertyId: property.id,
-        unitId: (resolvedUnitId || unitId) as string,
-        tenantId: verifiedTenantId,
+        unitId: finalUnitId,
+        tenantId: verifiedTenantId || undefined,
         title,
         description,
         priority: priority as any,
-        photoUrls: Array.isArray(data.photoUrls) ? data.photoUrls : [],
+        photoUrls: data.photoUrls ?? [],
         status: 'SUBMITTED',
       },
     });
