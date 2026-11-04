@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 
 import GoogleTranslate from '../components/GoogleTranslate';
-import api from '../api/client';
+import api from '../api/client';
+import { useGetSettingsQuery, useSaveSettingsMutation } from '../store/api/settingsApi';
 const Settings = () => {
 const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
@@ -27,17 +28,19 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     lastBackup: 'Never'
   });
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
+  // RTK Query integration
+  const selectedCompanyId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+  const queryParams = selectedCompanyId && selectedCompanyId !== 'all' ? { companyId: selectedCompanyId } : undefined;
 
-  const fetchSettings = async () => {
-    try {
-      const res = await api.get('/api/admin/settings');
-      // Merge backend settings with defaults
-      const backendSettings = res.data.settings || {};
+  const { data: apiData } = useGetSettingsQuery(queryParams, {
+    refetchOnMountOrArgChange: true,
+  });
+  const [saveSettingsMutation] = useSaveSettingsMutation();
+
+  useEffect(() => {
+    if (apiData) {
+      const backendSettings = apiData.settings || {};
       const parsedSettings = {};
-      // Parse "true"/"false" strings to booleans
       Object.keys(backendSettings).forEach(k => {
         if (backendSettings[k] === 'true') parsedSettings[k] = true;
         else if (backendSettings[k] === 'false') parsedSettings[k] = false;
@@ -45,7 +48,29 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
       });
 
       setSettings(prev => ({ ...prev, ...parsedSettings }));
-      setStats(res.data.stats);
+      if (apiData.stats) {
+        setStats(apiData.stats);
+      }
+    } else {
+      fetchSettings();
+    }
+  }, [apiData]);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await api.get('/api/admin/settings');
+      const backendSettings = res.data?.settings || res.data || {};
+      const parsedSettings = {};
+      Object.keys(backendSettings).forEach(k => {
+        if (backendSettings[k] === 'true') parsedSettings[k] = true;
+        else if (backendSettings[k] === 'false') parsedSettings[k] = false;
+        else parsedSettings[k] = backendSettings[k];
+      });
+
+      setSettings(prev => ({ ...prev, ...parsedSettings }));
+      if (res.data?.stats) {
+        setStats(res.data.stats);
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -53,8 +78,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     // Optimistic update
     setSettings(prev => ({ ...prev, [key]: val }));
     try {
-      await api.post('/api/admin/settings', { [key]: val });
-    } catch (e) { console.error(e); }
+      await saveSettingsMutation({ [key]: val }).unwrap();
+    } catch (e) {
+      try {
+        await api.post('/api/admin/settings', { [key]: val });
+      } catch (err) {
+        console.error('Settings save notice:', err);
+      }
+    }
   };
 
   const toggle = (key) => {
