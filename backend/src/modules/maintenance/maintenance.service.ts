@@ -102,13 +102,7 @@ export class MaintenanceService {
         isActive: true,
         ...(companyId ? { companyId } : {}),
       },
-<<<<<<< HEAD
-      include: {
-        units: true,
-      },
-=======
       include: { units: true },
->>>>>>> 5802a55c4893f4d6f7c5eaf35c82530656886326
     });
 
     if (!property) {
@@ -171,7 +165,8 @@ export class MaintenanceService {
       resolvedUnitId = anyUnit?.id;
     }
 
-    if (!resolvedUnitId) {
+    const finalUnitId = (resolvedUnitId || unitId) as string;
+    if (!finalUnitId) {
       throw new AppError('No unit found for this property', 400, 'UNIT_REQUIRED');
     }
 
@@ -183,21 +178,12 @@ export class MaintenanceService {
 
     const ticket = await prisma.maintenanceTicket.create({
       data: {
-<<<<<<< HEAD
-        propertyId: data.propertyId,
-        unitId: resolvedUnitId,
+        propertyId: property.id,
+        unitId: finalUnitId,
         tenantId,
         title,
         description,
         priority: priority as any,
-=======
-        propertyId: property.id,
-        unitId,
-        tenantId: data.tenantId || undefined,
-        title: data.title,
-        description: data.description,
-        priority: data.priority ?? 'MEDIUM',
->>>>>>> 5802a55c4893f4d6f7c5eaf35c82530656886326
         photoUrls: data.photoUrls ?? [],
         status: 'SUBMITTED',
       },

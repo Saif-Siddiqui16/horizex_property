@@ -2,9 +2,8 @@ import { z } from 'zod';
 
 export const createTicketSchema = z.object({
   body: z.object({
-<<<<<<< HEAD
-    propertyId: z.string().uuid('Invalid property ID'),
-    unitId: z.string().uuid('Invalid unit ID').optional().or(z.literal('')),
+    propertyId: z.string().uuid('Invalid property ID').or(z.string().min(1)),
+    unitId: z.string().uuid('Invalid unit ID').optional().nullable().or(z.literal('')),
     unit: z.string().optional(),
     unitNumber: z.string().optional(),
     aptNumber: z.string().optional(),
@@ -25,22 +24,6 @@ export const createTicketSchema = z.object({
     photoUrls: z.array(z.string()).optional().default([]),
     status: z.string().optional(),
   }).passthrough(),
-=======
-    propertyId: z.string().min(1, 'Property ID is required'),
-    unitId: z.string().min(1, 'Unit ID is required').optional().nullable().or(z.literal('')),
-    tenantId: z.string().optional().nullable().or(z.literal('')),
-    title: z.string().min(2, 'Title is required'),
-    description: z.string().min(3, 'Detailed description is required'),
-    priority: z
-      .preprocess(
-        (val) => (typeof val === 'string' ? val.toUpperCase() : val),
-        z.enum(['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY'])
-      )
-      .optional()
-      .default('MEDIUM'),
-    photoUrls: z.array(z.string()).optional().default([]),
-  }),
->>>>>>> 5802a55c4893f4d6f7c5eaf35c82530656886326
 });
 
 export const updateTicketStatusSchema = z.object({
