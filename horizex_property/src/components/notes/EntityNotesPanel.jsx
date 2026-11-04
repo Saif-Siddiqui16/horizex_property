@@ -158,7 +158,19 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    await api.post('/admin/notes', { entityType, entityId, title: newNote.title, content: newNote.content, category: newNote.category, priority: newNote.priority, isPrivate: newNote.isPrivate }).catch(() => {});
+    await api.post('/admin/notes', {
+      entityType,
+      entityId,
+      title: form.title,
+      content: form.content,
+      category: form.category,
+      priority: form.priority,
+      isPinned: form.isPinned,
+      isPrivate: form.isPrivate,
+      mentions: form.mentions ? form.mentions.split(',').map(m => m.trim()).filter(Boolean) : [],
+    }).catch((err) => {
+      console.error('Failed to create note in panel:', err);
+    });
     setForm({ title: '', content: '', category: 'GENERAL', priority: 'MEDIUM', isPinned: false, isPrivate: false, mentions: '' });
     setShowForm(false);
     load();
@@ -171,7 +183,9 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
   };
 
   const handleTogglePin = async (id) => {
-    await api.put(`/admin/notes/${id}`, { isPinned: true }).catch(() => {});
+    const currentNote = notes.find(n => n.id === id);
+    const isCurrentlyPinned = Boolean(currentNote?.isPinned);
+    await api.put(`/admin/notes/${id}`, { isPinned: !isCurrentlyPinned }).catch(() => {});
     load();
   };
 

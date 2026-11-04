@@ -76,9 +76,9 @@ export const notesHubService = {
     }
   },
 
-  togglePin: async (id) => {
+  togglePin: async (id, currentPinned) => {
     try {
-      const res = await api.put(`/admin/notes/${id}`, { isPinned: true });
+      const res = await api.put(`/admin/notes/${id}`, { isPinned: !currentPinned });
       return res.data?.data || res.data;
     } catch {
       return null;

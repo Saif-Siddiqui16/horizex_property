@@ -8,6 +8,9 @@ import {
   createInsurance,
   listNotes,
   createNote,
+  getNote,
+  updateNote,
+  deleteNote,
   listClockLogs,
   clockIn,
   clockOut,
@@ -32,6 +35,9 @@ router.post('/insurance', authorizeRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'PROPER
 // Notes Hub
 router.get('/notes', listNotes);
 router.post('/notes', createNote);
+router.get('/notes/:id', getNote);
+router.put('/notes/:id', updateNote);
+router.delete('/notes/:id', deleteNote);
 
 // Clock Logs & Timesheet
 router.get('/clock-logs', listClockLogs);

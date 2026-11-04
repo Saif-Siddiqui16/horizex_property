@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { hasPermission } from '../utils/permissions';
-import { notesHubService } from '../services/notesHubService';
 import { EntityBadge } from '../components/notes/EntityBadge';
 import { CommunicationTimeline } from '../components/notes/CommunicationTimeline';
-import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../constants/notes';
-import {  ArrowLeft,
+import { NOTE_CATEGORIES, NOTE_PRIORITIES, NOTE_ENTITY_TYPES } from '../constants/notes';
+import {
+  ArrowLeft,
   Pin,
   Lock,
   MessageSquare,
@@ -18,70 +18,171 @@ import {  ArrowLeft,
   ShieldAlert,
 } from 'lucide-react';
 
+import {
+  useGetNoteByIdQuery,
+  useUpdateNoteMutation,
+  useDeleteNoteMutation,
+} from '../store/api/extraApi';
+import { useGetTenantsQuery } from '../store/api/tenantsApi';
+import { useGetPropertiesQuery } from '../store/api/propertiesApi';
+import { useGetLeasesQuery } from '../store/api/leasesApi';
+
 export const NoteDetail = () => {
-const { id } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [note, setNote] = useState(null);
-  const [loading, setLoading] = useState(true);
+
   const [commentText, setCommentText] = useState('');
   const [fileName, setFileName] = useState('');
+  const [localComments, setLocalComments] = useState([]);
+  const [localAttachments, setLocalAttachments] = useState([]);
 
   const canView = hasPermission('Notes Hub', 'view');
   const canEdit = hasPermission('Notes Hub', 'edit');
   const canDelete = hasPermission('Notes Hub', 'delete');
 
-  const loadNote = () => {
-    try {
-      setLoading(true);
-      const data = notesHubService.getNoteDetail(id);
-      setNote(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
+  // RTK Queries
+  const { data: rawNote, isLoading, isError } = useGetNoteByIdQuery(id, {
+    skip: !id,
+  });
+  const { data: tenantsData = [] } = useGetTenantsQuery(undefined, { skip: !rawNote });
+  const { data: propertiesData = [] } = useGetPropertiesQuery(undefined, { skip: !rawNote });
+  const { data: leasesData = [] } = useGetLeasesQuery(undefined, { skip: !rawNote });
+
+  // RTK Mutations
+  const [updateNoteMutation] = useUpdateNoteMutation();
+  const [deleteNoteMutation] = useDeleteNoteMutation();
+
+  // Enriched note with entity resolution
+  const note = useMemo(() => {
+    if (!rawNote) return null;
+
+    const typeKey = rawNote.entityType || rawNote.targetType || 'TENANT';
+    const meta = NOTE_ENTITY_TYPES[typeKey] || {
+      label: typeKey,
+      icon: 'FileText',
+      color: 'bg-slate-100 text-slate-600 border-slate-200',
+    };
+
+    let label = `${meta.label} #${rawNote.entityId ? String(rawNote.entityId).slice(0, 8) : ''}`;
+    let subtitle = '';
+    let route = null;
+    let exists = false;
+
+    if (typeKey === 'TENANT') {
+      const t = (tenantsData || []).find((x) => String(x.id) === String(rawNote.entityId || rawNote.targetId));
+      if (t) {
+        label = `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Tenant';
+        subtitle = t.unitNumber || '';
+        route = `/tenants/${t.id}`;
+        exists = true;
+      }
+    } else if (typeKey === 'BUILDING') {
+      const p = (propertiesData || []).find((x) => String(x.id) === String(rawNote.entityId || rawNote.targetId));
+      if (p) {
+        label = p.name || 'Building';
+        subtitle = p.address || '';
+        route = `/properties/${p.id}`;
+        exists = true;
+      }
+    } else if (typeKey === 'LEASE') {
+      const l = (leasesData || []).find((x) => String(x.id) === String(rawNote.entityId || rawNote.targetId));
+      if (l) {
+        label = l.tenantName ? `${l.tenantName} (${l.unitNumber || 'Lease'})` : `Lease #${String(l.id).slice(0, 6)}`;
+        subtitle = l.propertyName || '';
+        route = '/leases';
+        exists = true;
+      }
     }
-  };
 
-  useEffect(() => {
-    loadNote();
-  }, [id]);
+    const timeline = [
+      {
+        id: `created-${rawNote.id}`,
+        eventType: 'NOTE_CREATED',
+        description: `Note titled "${rawNote.title}" created`,
+        actorName: rawNote.createdBy || rawNote.authorName || 'Staff',
+        createdAt: rawNote.createdAt,
+      },
+    ];
 
-  useEffect(() => {
-    const handleCompanyChange = () => loadNote();
-    window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, [id]);
+    if (rawNote.isPinned) {
+      timeline.unshift({
+        id: `pinned-${rawNote.id}`,
+        eventType: 'NOTE_PINNED',
+        description: `Note pinned by ${rawNote.createdBy || 'Staff'}`,
+        actorName: rawNote.createdBy || 'Staff',
+        createdAt: rawNote.updatedAt || rawNote.createdAt,
+      });
+    }
+
+    return {
+      ...rawNote,
+      entity: {
+        entityType: typeKey,
+        entityId: rawNote.entityId || rawNote.targetId,
+        typeLabel: meta.label,
+        icon: meta.icon,
+        color: meta.color,
+        route,
+        exists,
+        label,
+        subtitle,
+      },
+      comments: [...(rawNote.comments || []), ...localComments],
+      attachments: [...(rawNote.attachments || []), ...localAttachments],
+      timeline,
+    };
+  }, [rawNote, tenantsData, propertiesData, leasesData, localComments, localAttachments]);
 
   const handleAddComment = (e) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-    notesHubService.addComment(id, commentText);
+    const newComment = {
+      id: Date.now(),
+      content: commentText.trim(),
+      createdBy: 'Admin User',
+      createdAt: new Date().toISOString(),
+    };
+    setLocalComments((prev) => [...prev, newComment]);
     setCommentText('');
-    loadNote();
   };
 
   const handleUpload = (e) => {
     e.preventDefault();
     if (!fileName.trim()) return;
     const ext = fileName.split('.').pop()?.toUpperCase() || 'FILE';
-    notesHubService.uploadAttachment(id, {
-      name: fileName,
+    const newAttachment = {
+      id: Date.now(),
+      name: fileName.trim(),
       type: ext,
-      size: '1 KB',
-    });
+      size: '12 KB',
+      uploadedBy: 'Admin User',
+    };
+    setLocalAttachments((prev) => [...prev, newAttachment]);
     setFileName('');
-    loadNote();
   };
 
-  const handleTogglePin = () => {
-    notesHubService.togglePin(id);
-    loadNote();
+  const handleTogglePin = async () => {
+    if (!note) return;
+    try {
+      await updateNoteMutation({
+        id: note.id,
+        isPinned: !note.isPinned,
+      }).unwrap();
+    } catch (err) {
+      console.error('Failed to toggle pin:', err);
+      alert('Error updating note pin status: ' + (err?.data?.message || err.message));
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!window.confirm('Delete this note permanently?')) return;
-    notesHubService.deleteNote(id);
-    navigate('/notes-hub');
+    try {
+      await deleteNoteMutation(id).unwrap();
+      navigate('/notes-hub');
+    } catch (err) {
+      console.error('Failed to delete note:', err);
+      alert('Error deleting note: ' + (err?.data?.message || err.message));
+    }
   };
 
   if (!canView) {
@@ -92,7 +193,7 @@ const { id } = useParams();
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <>
         <div className="flex items-center justify-center min-h-[300px]">
@@ -102,7 +203,7 @@ const { id } = useParams();
     );
   }
 
-  if (!note) {
+  if (isError || !note) {
     return (
       <>
         <div className="text-center py-20">
@@ -159,10 +260,10 @@ const { id } = useParams();
               </div>
               <div className="flex flex-wrap gap-2 mb-4">
                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${cat.color || ''}`}>
-                  {cat.label}
+                  {cat.label || note.category}
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${pri.color || ''}`}>
-                  {pri.label}
+                  {pri.label || note.priority}
                 </span>
                 {(note.tags || []).map((tag) => (
                   <span key={tag} className="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-600">
