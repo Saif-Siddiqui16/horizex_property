@@ -85,6 +85,7 @@ export const masterApi = createApi({
     'Leaves',
     'Overtime',
     'Payroll',
+    'Settings',
   ],
   endpoints: () => ({}),
 });

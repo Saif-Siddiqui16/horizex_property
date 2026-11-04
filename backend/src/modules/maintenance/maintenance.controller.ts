@@ -5,7 +5,8 @@ import { sendSuccess } from '../../utils/apiResponse.util';
 export const listTickets = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
-    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+    const effectiveCompanyId = (req.query.companyId as string) || req.user?.effectiveCompanyId;
+    const companyId = isSuperAdmin ? ((req.query.companyId as string) || undefined) : effectiveCompanyId;
 
     const tickets = await MaintenanceService.listTickets({
       companyId,
@@ -22,7 +23,8 @@ export const listTickets = async (req: Request, res: Response, next: NextFunctio
 export const getTicket = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
-    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+    const effectiveCompanyId = (req.query.companyId as string) || req.user?.effectiveCompanyId;
+    const companyId = isSuperAdmin ? ((req.query.companyId as string) || undefined) : effectiveCompanyId;
 
     const ticket = await MaintenanceService.getTicketById(req.params.id, companyId);
     return sendSuccess(res, ticket, 200);
@@ -34,7 +36,8 @@ export const getTicket = async (req: Request, res: Response, next: NextFunction)
 export const createTicket = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
-    const companyId = isSuperAdmin ? undefined : req.user?.effectiveCompanyId;
+    const effectiveCompanyId = req.body.companyId || (req.query.companyId as string) || req.user?.effectiveCompanyId;
+    const companyId = isSuperAdmin ? (req.body.companyId || undefined) : effectiveCompanyId;
 
     const ticket = await MaintenanceService.createTicket(req.body, companyId, req.user?.userId);
     return sendSuccess(res, ticket, 201);

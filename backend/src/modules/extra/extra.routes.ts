@@ -14,6 +14,8 @@ import {
   listClockLogs,
   clockIn,
   clockOut,
+  getSettings,
+  saveSettings,
 } from './extra.controller';
 import { authenticate } from '../../middlewares/auth.middleware';
 import { authorizeRoles } from '../../middlewares/rbac.middleware';
@@ -43,6 +45,10 @@ router.delete('/notes/:id', deleteNote);
 router.get('/clock-logs', listClockLogs);
 router.post('/clock-in', clockIn);
 router.post('/clock-out', clockOut);
+
+// System Settings
+router.get('/settings', getSettings);
+router.post('/settings', saveSettings);
 
 export default router;
 
