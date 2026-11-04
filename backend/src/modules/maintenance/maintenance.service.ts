@@ -81,10 +81,15 @@ export class MaintenanceService {
   static async createTicket(
     data: {
       propertyId: string;
-      unitId: string;
+      unitId?: string;
+      unit?: string;
+      unitNumber?: string;
+      aptNumber?: string;
       tenantId?: string;
-      title: string;
-      description: string;
+      title?: string;
+      subject?: string;
+      description?: string;
+      desc?: string;
       priority?: any;
       photoUrls?: string[];
     },
@@ -97,7 +102,13 @@ export class MaintenanceService {
         isActive: true,
         ...(companyId ? { companyId } : {}),
       },
+<<<<<<< HEAD
+      include: {
+        units: true,
+      },
+=======
       include: { units: true },
+>>>>>>> 5802a55c4893f4d6f7c5eaf35c82530656886326
     });
 
     if (!property) {
@@ -135,14 +146,58 @@ export class MaintenanceService {
       }
     }
 
+    // Resolve unitId if not directly provided
+    let resolvedUnitId = data.unitId && data.unitId.trim() !== '' ? data.unitId : undefined;
+    if (!resolvedUnitId) {
+      const searchUnitNumber = (data.unitNumber || data.unit || data.aptNumber || '')
+        .trim()
+        .toLowerCase()
+        .replace(/^apt\.?\s*/i, '');
+      if (searchUnitNumber && property.units) {
+        const matchedUnit = property.units.find(
+          (u) => (u.unitNumber || '').trim().toLowerCase().replace(/^apt\.?\s*/i, '') === searchUnitNumber
+        );
+        if (matchedUnit) {
+          resolvedUnitId = matchedUnit.id;
+        }
+      }
+      if (!resolvedUnitId && property.units && property.units.length > 0) {
+        resolvedUnitId = property.units[0].id;
+      }
+    }
+
+    if (!resolvedUnitId) {
+      const anyUnit = await prisma.unit.findFirst({ where: { propertyId: property.id } });
+      resolvedUnitId = anyUnit?.id;
+    }
+
+    if (!resolvedUnitId) {
+      throw new AppError('No unit found for this property', 400, 'UNIT_REQUIRED');
+    }
+
+    const title = data.title || data.subject || 'Repair Request';
+    const description = data.description || data.desc || 'Repair request submitted';
+    const rawPriority = data.priority ? String(data.priority).toUpperCase() : 'MEDIUM';
+    const priority = ['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY'].includes(rawPriority) ? rawPriority : 'MEDIUM';
+    const tenantId = (data.tenantId && data.tenantId.trim() !== '') ? data.tenantId : undefined;
+
     const ticket = await prisma.maintenanceTicket.create({
       data: {
+<<<<<<< HEAD
+        propertyId: data.propertyId,
+        unitId: resolvedUnitId,
+        tenantId,
+        title,
+        description,
+        priority: priority as any,
+=======
         propertyId: property.id,
         unitId,
         tenantId: data.tenantId || undefined,
         title: data.title,
         description: data.description,
         priority: data.priority ?? 'MEDIUM',
+>>>>>>> 5802a55c4893f4d6f7c5eaf35c82530656886326
         photoUrls: data.photoUrls ?? [],
         status: 'SUBMITTED',
       },
@@ -239,5 +294,121 @@ export class MaintenanceService {
 
     return updated;
   }
-}
 
+  static async updateTicket(
+    id: string,
+    companyId: string | null | undefined,
+    data: {
+      title?: string;
+      subject?: string;
+      description?: string;
+      desc?: string;
+      priority?: any;
+      status?: any;
+      propertyId?: string | null;
+      unitId?: string | null;
+      tenantId?: string | null;
+      photoUrls?: string[];
+    },
+    actorUserId?: string
+  ) {
+    const ticket = await this.getTicketById(id, companyId);
+
+    const updateData: any = {};
+
+    const resolvedTitle = data.title ?? data.subject;
+    if (resolvedTitle !== undefined && resolvedTitle.trim() !== '') {
+      updateData.title = resolvedTitle;
+    }
+
+    const resolvedDesc = data.description ?? data.desc;
+    if (resolvedDesc !== undefined) {
+      updateData.description = resolvedDesc;
+    }
+
+    if (data.priority !== undefined) {
+      const p = String(data.priority).toUpperCase();
+      if (['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY'].includes(p)) {
+        updateData.priority = p;
+      }
+    }
+
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+      if (data.status === 'RESOLVED' || data.status === 'CLOSED') {
+        updateData.resolvedAt = new Date();
+      }
+    }
+
+    if (data.propertyId && data.propertyId.trim() !== '' && data.propertyId !== ticket.propertyId) {
+      const property = await prisma.property.findFirst({
+        where: {
+          id: data.propertyId,
+          isActive: true,
+          ...(companyId ? { companyId } : {}),
+        },
+      });
+      if (property) {
+        updateData.propertyId = data.propertyId;
+      }
+    }
+
+    if (data.unitId && data.unitId.trim() !== '' && data.unitId !== ticket.unitId) {
+      updateData.unitId = data.unitId;
+    }
+
+    if (data.tenantId !== undefined) {
+      updateData.tenantId = (data.tenantId && data.tenantId.trim() !== '') ? data.tenantId : null;
+    }
+
+    if (data.photoUrls !== undefined && Array.isArray(data.photoUrls)) {
+      updateData.photoUrls = data.photoUrls;
+    }
+
+    const updated = await prisma.maintenanceTicket.update({
+      where: { id: ticket.id },
+      data: updateData,
+      include: {
+        property: true,
+        unit: true,
+        tenant: true,
+        assignee: {
+          include: { user: true },
+        },
+      },
+    });
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'UPDATE_MAINTENANCE_TICKET',
+      entityType: 'MaintenanceTicket',
+      entityId: id,
+      oldData: ticket,
+      newData: updated,
+    });
+
+    return updated;
+  }
+
+  static async deleteTicket(
+    id: string,
+    companyId: string | null | undefined,
+    actorUserId?: string
+  ) {
+    const ticket = await this.getTicketById(id, companyId);
+
+    await prisma.maintenanceTicket.delete({
+      where: { id: ticket.id },
+    });
+
+    await createAuditLog({
+      userId: actorUserId,
+      action: 'DELETE_MAINTENANCE_TICKET',
+      entityType: 'MaintenanceTicket',
+      entityId: id,
+      oldData: ticket,
+    });
+
+    return { success: true, id };
+  }
+}

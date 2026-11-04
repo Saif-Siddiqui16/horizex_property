@@ -2,6 +2,30 @@ import { z } from 'zod';
 
 export const createTicketSchema = z.object({
   body: z.object({
+<<<<<<< HEAD
+    propertyId: z.string().uuid('Invalid property ID'),
+    unitId: z.string().uuid('Invalid unit ID').optional().or(z.literal('')),
+    unit: z.string().optional(),
+    unitNumber: z.string().optional(),
+    aptNumber: z.string().optional(),
+    tenantId: z.string().uuid().optional().nullable().or(z.literal('')),
+    tenant: z.string().optional(),
+    tenantName: z.string().optional(),
+    building: z.string().optional(),
+    propertyName: z.string().optional(),
+    email: z.string().optional(),
+    title: z.string().min(1, 'Title is required').optional(),
+    subject: z.string().optional(),
+    description: z.string().min(1, 'Detailed description is required').optional(),
+    desc: z.string().optional(),
+    priority: z.preprocess(
+      (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+      z.enum(['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY']).optional().default('MEDIUM')
+    ),
+    photoUrls: z.array(z.string()).optional().default([]),
+    status: z.string().optional(),
+  }).passthrough(),
+=======
     propertyId: z.string().min(1, 'Property ID is required'),
     unitId: z.string().min(1, 'Unit ID is required').optional().nullable().or(z.literal('')),
     tenantId: z.string().optional().nullable().or(z.literal('')),
@@ -16,6 +40,7 @@ export const createTicketSchema = z.object({
       .default('MEDIUM'),
     photoUrls: z.array(z.string()).optional().default([]),
   }),
+>>>>>>> 5802a55c4893f4d6f7c5eaf35c82530656886326
 });
 
 export const updateTicketStatusSchema = z.object({
@@ -50,3 +75,23 @@ export const assignTicketSchema = z.object({
   }),
 });
 
+export const updateTicketSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid ticket ID'),
+  }),
+  body: z.object({
+    title: z.string().optional(),
+    subject: z.string().optional(),
+    description: z.string().optional(),
+    desc: z.string().optional(),
+    priority: z.preprocess(
+      (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+      z.enum(['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY']).optional()
+    ),
+    status: z.enum(['SUBMITTED', 'IN_REVIEW', 'SCHEDULED', 'IN_PROGRESS', 'PENDING_PARTS', 'RESOLVED', 'CLOSED', 'CANCELLED']).optional(),
+    propertyId: z.string().uuid().optional().nullable().or(z.literal('')),
+    unitId: z.string().uuid().optional().nullable().or(z.literal('')),
+    tenantId: z.string().uuid().optional().nullable().or(z.literal('')),
+    photoUrls: z.array(z.string()).optional(),
+  }).passthrough(),
+});

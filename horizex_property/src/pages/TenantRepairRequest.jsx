@@ -13,6 +13,13 @@ const SUBJECT_OPTIONS = [
     'Other'
 ];
 
+const fileToBase64 = (file) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+});
+
 export const TenantRepairRequest = () => {
     const [properties, setProperties] = useState([]);
     const [tenants, setTenants] = useState([]);
@@ -42,12 +49,37 @@ export const TenantRepairRequest = () => {
     const loadInitialData = async () => {
         setLoadingData(true);
         try {
-            const [propsRes, tenantsRes] = await Promise.all([
-                api.get('/api/admin/properties'),
-                api.get('/api/admin/tenants?limit=1000')
-            ]);
-            setProperties(propsRes.data || []);
-            setTenants(tenantsRes.data?.data || tenantsRes.data || []);
+            let props = [];
+            let tList = [];
+            try {
+                const [propsRes, tenantsRes] = await Promise.all([
+                    api.get('/api/admin/properties'),
+                    api.get('/api/admin/tenants?limit=1000')
+                ]);
+                props = propsRes.data || [];
+                tList = tenantsRes.data?.data || tenantsRes.data || [];
+            } catch (authErr) {
+                try {
+                    const pubRes = await api.get('/api/admin/tickets/public-properties');
+                    props = pubRes.data?.data || pubRes.data || [];
+                } catch (pubErr) {
+                    console.warn('Could not load public properties fallback:', pubErr);
+                }
+            }
+
+            setProperties(props);
+            setTenants(tList);
+
+            // Pre-select building from URL parameter if present
+            const searchParams = new URLSearchParams(window.location.search);
+            const urlPropId = searchParams.get('propertyId');
+            if (urlPropId) {
+                const matched = props.find(p => String(p.id) === String(urlPropId));
+                if (matched) {
+                    setSelectedPropertyId(urlPropId);
+                    setSelectedBuilding(matched);
+                }
+            }
         } catch (e) {
             console.error('Error loading property/tenant data:', e);
         } finally {
@@ -179,40 +211,63 @@ export const TenantRepairRequest = () => {
             const finalTenantName = tenantName.trim() || (matchedTenant ? (matchedTenant.name || `${matchedTenant.firstName} ${matchedTenant.lastName}`) : 'Tenant');
             const finalTenantEmail = tenantEmail.trim() || matchedTenant?.email || '';
 
-            const formData = new FormData();
-            formData.append('propertyId', selectedPropertyId);
-            formData.append('building', buildingName);
-            formData.append('propertyName', buildingName);
-            formData.append('address', propertyAddress);
-            formData.append('tenantId', matchedTenant?.id ? matchedTenant.id.toString() : '');
-            formData.append('tenant', finalTenantName);
-            formData.append('tenantName', finalTenantName);
-            formData.append('unit', aptNumber);
-            formData.append('unitNumber', aptNumber);
-            formData.append('aptNumber', aptNumber);
-            formData.append('email', finalTenantEmail);
-            formData.append('subject', subject);
-            formData.append('title', subject);
-            formData.append('description', details);
-            formData.append('desc', details);
-            // Tenants do NOT set importance level - default to Medium for admin to review
-            formData.append('priority', 'Medium');
-            formData.append('status', 'Open');
-            formData.append('requestDate', new Date().toISOString().split('T')[0]);
+            // Convert images to base64 Data URLs so Express can parse without Multer
+            const photoUrls = (await Promise.all(images.map(img => fileToBase64(img)))).filter(Boolean);
 
-            images.forEach(img => {
-                formData.append('images', img);
-            });
+            // Resolve unitId if available
+            let resolvedUnitId = matchedTenant?.unitId;
+            if (!resolvedUnitId && selectedBuilding?.units && Array.isArray(selectedBuilding.units)) {
+                const cleanApt = aptNumber.trim().toLowerCase().replace(/^apt\.?\s*/i, '');
+                const foundUnit = selectedBuilding.units.find(u => 
+                    (u.unitNumber || '').trim().toLowerCase().replace(/^apt\.?\s*/i, '') === cleanApt
+                );
+                if (foundUnit) {
+                    resolvedUnitId = foundUnit.id;
+                }
+            }
 
-            const res = await api.post('/api/admin/tickets', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const jsonPayload = {
+                propertyId: selectedPropertyId,
+                unitId: resolvedUnitId || undefined,
+                unit: aptNumber,
+                unitNumber: aptNumber,
+                aptNumber: aptNumber,
+                tenantId: matchedTenant?.id ? matchedTenant.id.toString() : undefined,
+                tenant: finalTenantName,
+                tenantName: finalTenantName,
+                building: buildingName,
+                propertyName: buildingName,
+                address: propertyAddress,
+                email: finalTenantEmail,
+                title: subject,
+                subject: subject,
+                description: details,
+                desc: details,
+                priority: 'MEDIUM',
+                status: 'SUBMITTED',
+                photoUrls,
+                requestDate: new Date().toISOString().split('T')[0],
+            };
 
-            setSubmittedTicket(res.data || {
-                ticketNumber: 'TKT-PENDING',
+            let res;
+            try {
+                res = await api.post('/api/admin/tickets', jsonPayload);
+            } catch (adminErr) {
+                console.warn('POST /api/admin/tickets error, trying public endpoint:', adminErr);
+                res = await api.post('/api/admin/tickets/public-request', jsonPayload);
+            }
+
+            const resultTicket = res?.data?.data || res?.data;
+            const ticketIdStr = String(resultTicket?.id || '');
+            const displayId = resultTicket?.displayId || (ticketIdStr.length > 8 ? `TCK-${ticketIdStr.slice(0, 6).toUpperCase()}` : (ticketIdStr || 'TCK-PENDING'));
+
+            setSubmittedTicket({
+                ...resultTicket,
+                ticketNumber: displayId,
+                id: displayId,
                 subject,
                 unit: aptNumber,
-                building: buildingName
+                building: buildingName,
             });
         } catch (err) {
             console.error('Failed to submit repair request:', err);
