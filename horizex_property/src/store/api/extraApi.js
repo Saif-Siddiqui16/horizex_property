@@ -26,11 +26,31 @@ export const extraApi = masterApi.injectEndpoints({
       transformResponse: (response) => response.data || [],
       providesTags: ['Notes'],
     }),
+    getNoteById: builder.query({
+      query: (id) => `/admin/notes/${id}`,
+      transformResponse: (response) => response.data || response,
+      providesTags: (result, error, id) => [{ type: 'Notes', id }],
+    }),
     createNote: builder.mutation({
       query: (body) => ({
         url: '/admin/notes',
         method: 'POST',
         body,
+      }),
+      invalidatesTags: ['Notes'],
+    }),
+    updateNote: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/admin/notes/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Notes', id }, 'Notes'],
+    }),
+    deleteNote: builder.mutation({
+      query: (id) => ({
+        url: `/admin/notes/${id}`,
+        method: 'DELETE',
       }),
       invalidatesTags: ['Notes'],
     }),
@@ -98,7 +118,10 @@ export const {
   useGetInsuranceQuery,
   useCreateInsuranceMutation,
   useGetNotesQuery,
+  useGetNoteByIdQuery,
   useCreateNoteMutation,
+  useUpdateNoteMutation,
+  useDeleteNoteMutation,
   useGetClockLogsQuery,
   useClockInMutation,
   useClockOutMutation,

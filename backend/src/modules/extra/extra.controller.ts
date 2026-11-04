@@ -120,21 +120,99 @@ export const createInsurance = async (req: Request, res: Response, next: NextFun
 };
 
 // Notes Hub
+const formatNote = (note: any) => {
+  let meta: any = {};
+  try {
+    if (note.content && typeof note.content === 'string' && note.content.startsWith('{') && note.content.endsWith('}')) {
+      meta = JSON.parse(note.content);
+    }
+  } catch {
+    meta = {};
+  }
+
+  const rawText = meta.text !== undefined ? meta.text : note.content;
+  const authorName = note.author
+    ? `${note.author.firstName || ''} ${note.author.lastName || ''}`.trim() || 'Admin User'
+    : 'Admin User';
+
+  return {
+    ...note,
+    content: rawText,
+    entityType: meta.entityType || note.targetType || 'TENANT',
+    entityId: meta.entityId || note.targetId || '',
+    targetType: meta.entityType || note.targetType || 'TENANT',
+    targetId: meta.entityId || note.targetId || '',
+    companyId: meta.companyId || (note.author as any)?.companyId || null,
+    category: meta.category || 'GENERAL',
+    priority: meta.priority || 'MEDIUM',
+    isPinned: meta.isPinned !== undefined ? Boolean(meta.isPinned) : false,
+    isPrivate: meta.isPrivate !== undefined ? Boolean(meta.isPrivate) : false,
+    mentions: meta.mentions || [],
+    authorName,
+    createdBy: authorName,
+    noteNumber: `NOTE-${note.id.slice(0, 8).toUpperCase()}`,
+  };
+};
+
 export const listNotes = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { targetType, targetId } = req.query;
+    const { targetType, targetId, entityType, entityId, companyId: queryCompanyId } = req.query;
+    const filterType = targetType || entityType;
+    const filterId = targetId || entityId;
+
+    const effectiveCompanyId = (queryCompanyId as string) || req.user?.effectiveCompanyId;
+
     const where: any = {};
-    if (targetType) where.targetType = String(targetType);
-    if (targetId) where.targetId = String(targetId);
+    if (filterType) where.targetType = String(filterType);
+    if (filterId) where.targetId = String(filterId);
 
     const notes = await prisma.note.findMany({
       where,
       include: {
-        author: { select: { id: true, firstName: true, lastName: true, role: true } },
+        author: { select: { id: true, firstName: true, lastName: true, role: true, companyId: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
-    return sendSuccess(res, notes, 200);
+
+    let formatted = notes.map(formatNote);
+
+    if (effectiveCompanyId && effectiveCompanyId !== 'all') {
+      const compIdStr = String(effectiveCompanyId);
+      const companyProperties = await prisma.property.findMany({
+        where: { companyId: compIdStr },
+        select: { id: true },
+      });
+      const propIdSet = new Set(companyProperties.map((p) => String(p.id)));
+
+      formatted = formatted.filter((n) => {
+        if (n.companyId) return String(n.companyId) === compIdStr;
+        if (n.author?.companyId) return String(n.author.companyId) === compIdStr;
+        if (n.entityType === 'COMPANY') return String(n.entityId) === compIdStr;
+        if ((n.entityType === 'BUILDING' || n.entityType === 'PROPERTY') && propIdSet.has(String(n.entityId))) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    return sendSuccess(res, formatted, 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const getNote = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const note = await prisma.note.findUnique({
+      where: { id: req.params.id },
+      include: {
+        author: { select: { id: true, firstName: true, lastName: true, role: true, companyId: true } },
+      },
+    });
+    if (!note) {
+      throw new AppError('Note not found', 404, 'NOTE_NOT_FOUND');
+    }
+    return sendSuccess(res, formatNote(note), 200);
   } catch (err) {
     return next(err);
   }
@@ -146,19 +224,122 @@ export const createNote = async (req: Request, res: Response, next: NextFunction
       throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
     }
 
+    const entityType = req.body.entityType || req.body.targetType || 'TENANT';
+    const entityId = String(req.body.entityId || req.body.targetId || '');
+
+    let companyId = req.body.companyId || req.user?.effectiveCompanyId || (req.user as any)?.companyId || null;
+
+    if (!companyId && entityType === 'COMPANY' && entityId && entityId !== '0') {
+      companyId = entityId;
+    } else if (!companyId && (entityType === 'BUILDING' || entityType === 'PROPERTY') && entityId && entityId !== '0') {
+      const prop = await prisma.property.findUnique({
+        where: { id: entityId },
+        select: { companyId: true },
+      });
+      if (prop?.companyId) companyId = prop.companyId;
+    }
+
+    const meta = {
+      text: req.body.content || '',
+      category: req.body.category || 'GENERAL',
+      priority: req.body.priority || 'MEDIUM',
+      isPinned: Boolean(req.body.isPinned),
+      isPrivate: Boolean(req.body.isPrivate),
+      mentions: req.body.mentions || [],
+      companyId: companyId ? String(companyId) : null,
+      entityType,
+      entityId,
+    };
+
     const note = await prisma.note.create({
       data: {
         authorId: req.user.userId,
-        targetType: req.body.targetType || 'GENERAL',
-        targetId: req.body.targetId || '0',
-        title: req.body.title,
-        content: req.body.content,
+        targetType: entityType,
+        targetId: entityId || '0',
+        title: req.body.title || 'Untitled Note',
+        content: JSON.stringify(meta),
       },
       include: {
-        author: { select: { firstName: true, lastName: true } },
+        author: { select: { id: true, firstName: true, lastName: true, role: true, companyId: true } },
       },
     });
-    return sendSuccess(res, note, 201);
+    return sendSuccess(res, formatNote(note), 201);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const updateNote = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const existing = await prisma.note.findUnique({
+      where: { id: req.params.id },
+      include: {
+        author: { select: { id: true, firstName: true, lastName: true, role: true, companyId: true } },
+      },
+    });
+    if (!existing) {
+      throw new AppError('Note not found', 404, 'NOTE_NOT_FOUND');
+    }
+
+    let currentMeta: any = {};
+    try {
+      if (existing.content && existing.content.startsWith('{') && existing.content.endsWith('}')) {
+        currentMeta = JSON.parse(existing.content);
+      }
+    } catch {
+      currentMeta = {};
+    }
+
+    const entityType = req.body.entityType || req.body.targetType || currentMeta.entityType || existing.targetType;
+    const entityId = String(req.body.entityId || req.body.targetId || currentMeta.entityId || existing.targetId);
+
+    const updatedCompanyId = req.body.companyId !== undefined
+      ? req.body.companyId
+      : (currentMeta.companyId || (existing.author as any)?.companyId || null);
+
+    const updatedMeta = {
+      text: req.body.content !== undefined ? req.body.content : (currentMeta.text || existing.content),
+      category: req.body.category !== undefined ? req.body.category : (currentMeta.category || 'GENERAL'),
+      priority: req.body.priority !== undefined ? req.body.priority : (currentMeta.priority || 'MEDIUM'),
+      isPinned: req.body.isPinned !== undefined ? Boolean(req.body.isPinned) : (currentMeta.isPinned || false),
+      isPrivate: req.body.isPrivate !== undefined ? Boolean(req.body.isPrivate) : (currentMeta.isPrivate || false),
+      mentions: req.body.mentions !== undefined ? req.body.mentions : (currentMeta.mentions || []),
+      companyId: updatedCompanyId ? String(updatedCompanyId) : null,
+      entityType,
+      entityId,
+    };
+
+    const updatedNote = await prisma.note.update({
+      where: { id: req.params.id },
+      data: {
+        title: req.body.title !== undefined ? req.body.title : existing.title,
+        content: JSON.stringify(updatedMeta),
+        targetType: updatedMeta.entityType,
+        targetId: updatedMeta.entityId || '0',
+      },
+      include: {
+        author: { select: { id: true, firstName: true, lastName: true, role: true, companyId: true } },
+      },
+    });
+
+    return sendSuccess(res, formatNote(updatedNote), 200);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const deleteNote = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const existing = await prisma.note.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!existing) {
+      throw new AppError('Note not found', 404, 'NOTE_NOT_FOUND');
+    }
+    await prisma.note.delete({
+      where: { id: req.params.id },
+    });
+    return sendSuccess(res, { message: 'Note deleted successfully' }, 200);
   } catch (err) {
     return next(err);
   }

@@ -1,10 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Pin, MessageSquare, Paperclip, Lock, Eye } from 'lucide-react';
+import { Pin, MessageSquare, Paperclip, Lock, Eye, Trash2, Edit2 } from 'lucide-react';
 import { EntityBadge } from './EntityBadge';
 import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../../constants/notes';
 
-export const NotesTable = ({ notes = [], categories = NOTE_CATEGORIES, priorities = NOTE_PRIORITIES }) => {
+export const NotesTable = ({
+  notes = [],
+  categories = NOTE_CATEGORIES,
+  priorities = NOTE_PRIORITIES,
+  onTogglePin,
+  onEdit,
+  onDelete,
+}) => {
   if (!notes.length) {
     return (
       <div className="py-16 text-center text-sm font-semibold text-slate-400 bg-white rounded-[22px] border border-slate-200">
@@ -73,12 +80,49 @@ export const NotesTable = ({ notes = [], categories = NOTE_CATEGORIES, prioritie
                     {new Date(note.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <Link
-                      to={`/notes-hub/${note.id}`}
-                      className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-indigo-600 hover:text-indigo-800 no-underline"
-                    >
-                      <Eye size={12} /> View
-                    </Link>
+                    <div className="flex items-center justify-end gap-2">
+                      {onTogglePin && (
+                        <button
+                          type="button"
+                          onClick={() => onTogglePin(note)}
+                          title={note.isPinned ? 'Unpin Note' : 'Pin Note'}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            note.isPinned
+                              ? 'text-orange-500 bg-orange-50 hover:bg-orange-100'
+                              : 'text-slate-400 hover:text-orange-500 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Pin size={13} className={note.isPinned ? 'fill-orange-500' : ''} />
+                        </button>
+                      )}
+                      <Link
+                        to={`/notes-hub/${note.id}`}
+                        title="View Note Details"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors inline-flex items-center justify-center"
+                      >
+                        <Eye size={14} />
+                      </Link>
+                      {onEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(note)}
+                          title="Edit Note"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          type="button"
+                          onClick={() => onDelete(note.id)}
+                          title="Delete Note"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
