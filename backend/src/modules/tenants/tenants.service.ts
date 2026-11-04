@@ -100,6 +100,7 @@ export class TenantsService {
         emergencyContact: meta.emergencyContact || null,
       };
     });
+
   }
 
   static async getTenantById(id: string, companyId?: string | null) {
@@ -470,7 +471,7 @@ export class TenantsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return vehicles.map((v) => {
+    const result = vehicles.map((v) => {
       const activeLease = v.tenant?.leases?.[0];
       const isAuthorized = !!activeLease;
       return {
@@ -494,6 +495,15 @@ export class TenantsService {
         unit: v.unit,
       };
     });
+
+    if (query?.unauthorizedOnly === 'true') {
+      return result.filter((v) => !v.isAuthorized);
+    }
+    if (query?.unauthorizedOnly === 'false') {
+      return result.filter((v) => v.isAuthorized);
+    }
+
+    return result;
   }
 
   static async createVehicle(

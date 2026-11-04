@@ -78,7 +78,16 @@ export const Vehicles = () => {
 
   const [deleteVehicle] = useDeleteVehicleMutation();
 
-  const vehicles = Array.isArray(rawVehicles) ? rawVehicles : [];
+  const vehicles = useMemo(() => {
+    const list = Array.isArray(rawVehicles) ? rawVehicles : [];
+    if (statusFilter === 'true') {
+      return list.filter((v) => !v.isAuthorized);
+    }
+    if (statusFilter === 'false') {
+      return list.filter((v) => v.isAuthorized);
+    }
+    return list;
+  }, [rawVehicles, statusFilter]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to remove this vehicle record?')) {
