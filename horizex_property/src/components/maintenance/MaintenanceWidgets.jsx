@@ -91,7 +91,7 @@ export const MaintenanceRequestTable = ({ requests, onSelect, onStatusChange }) 
               requests.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-50/20">
                   <td className="px-4 py-3 font-mono font-bold text-slate-700">{req.id}</td>
-                  <td className="px-4 py-3">{req.buildingId} - Apt {req.apartmentId}</td>
+                  <td className="px-4 py-3">{req.buildingName || req.buildingId} - Apt {String(req.apartmentId).replace(/^unit-/i, '')}</td>
                   <td className="px-4 py-3">{req.category}</td>
                   <td className="px-4 py-3 truncate max-w-[180px]">{req.description}</td>
                   <td className="px-4 py-3">
@@ -176,7 +176,7 @@ export const WorkOrderTable = ({ workOrders, onCreate }) => {
                 <td className="px-4 py-3 text-right font-mono text-indigo-600">${(wo.actualCost || 0).toFixed(2)}</td>
                 <td className="px-4 py-3 text-right font-mono">{wo.hoursWorked} hrs</td>
                 <td className="px-4 py-3 text-slate-400 font-medium">
-                  {wo.receipts.length > 0 ? (
+                  {(wo.receipts || []).length > 0 ? (
                     <span className="flex items-center gap-1 text-[10px] text-indigo-600 font-bold">
                       <FileText size={12} /> {wo.receipts[0]}
                     </span>
@@ -268,7 +268,7 @@ export const VendorTable = ({ vendors }) => {
               <tr key={v.id} className="hover:bg-slate-50/20">
                 <td className="px-4 py-3 font-mono font-bold text-slate-700">{v.vendorNo}</td>
                 <td className="px-4 py-3">{v.name}</td>
-                <td className="px-4 py-3 truncate max-w-[120px]">{v.services.join(', ')}</td>
+                <td className="px-4 py-3 truncate max-w-[120px]">{(v.services || []).join(', ')}</td>
                 <td className="px-4 py-3">{v.contact}</td>
                 <td className="px-4 py-3">
                   <span className="text-amber-500 font-black">★ {v.rating}</span>
@@ -434,28 +434,28 @@ export const InventoryTable = ({ parts, onLogMovement }) => {
           <p className="text-[10px] text-slate-400 font-medium">Double-entry stock movement tracking ledger</p>
         </div>
 
-        <div className="overflow-x-auto w-full">
-          <table className="w-full border-collapse text-left text-xs">
+        <div className="overflow-x-auto w-full scrollbar-hide">
+          <table className="w-full no-responsive-scroll border-collapse text-left text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase">Part Number</th>
-                <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase">Name</th>
-                <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase">Category</th>
-                <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase text-right">Unit Cost</th>
-                <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase text-center">Min Stock</th>
-                <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase text-center font-bold">Current Stock</th>
+                <th className="px-3 py-2.5 text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">Part No</th>
+                <th className="px-3 py-2.5 text-[10px] font-black text-slate-400 uppercase">Name</th>
+                <th className="px-3 py-2.5 text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">Category</th>
+                <th className="px-3 py-2.5 text-[10px] font-black text-slate-400 uppercase text-right whitespace-nowrap">Unit Cost</th>
+                <th className="px-3 py-2.5 text-[10px] font-black text-slate-400 uppercase text-center whitespace-nowrap">Min Stock</th>
+                <th className="px-3 py-2.5 text-[10px] font-black text-slate-400 uppercase text-center font-bold whitespace-nowrap">Current Stock</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 font-semibold text-slate-600">
               {parts.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50/20">
-                  <td className="px-4 py-3 font-mono font-bold text-slate-700">{p.partNo}</td>
-                  <td className="px-4 py-3">{p.name}</td>
-                  <td className="px-4 py-3">{p.category}</td>
-                  <td className="px-4 py-3 text-right font-mono">${(p.unitCost || 0).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-center">{p.minimumStock}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-0.5 rounded-lg text-xs font-black ${
+                  <td className="px-3 py-3 font-mono font-bold text-slate-700 whitespace-nowrap">{p.partNo}</td>
+                  <td className="px-3 py-3">{p.name}</td>
+                  <td className="px-3 py-3 whitespace-nowrap">{p.category}</td>
+                  <td className="px-3 py-3 text-right font-mono whitespace-nowrap">${(p.unitCost || 0).toFixed(2)}</td>
+                  <td className="px-3 py-3 text-center whitespace-nowrap">{p.minimumStock}</td>
+                  <td className="px-3 py-3 text-center whitespace-nowrap">
+                    <span className={`px-2 py-0.5 rounded-lg text-xs font-black inline-block ${
                       p.isLowStock 
                         ? 'bg-rose-50 text-rose-600 border border-rose-100 animate-pulse'
                         : 'text-slate-800'
