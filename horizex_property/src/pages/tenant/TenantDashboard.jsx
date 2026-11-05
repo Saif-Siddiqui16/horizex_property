@@ -1,81 +1,58 @@
 import React from 'react';
-
-import { CreditCard, FileText, Wrench, ShieldCheck, ArrowRight, AlertCircle, Car } from 'lucide-react';
+import { CreditCard, FileText, Wrench, ShieldCheck, ArrowRight, AlertCircle, Car, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import api from '../../api/client';
-// ... dashboard cards defined in state below
+import { useGetTenantDashboardQuery } from '../../store';
 
 export const TenantDashboard = () => {
-const [name, setName] = React.useState('Tenant');
-    const [recentTickets, setRecentTickets] = React.useState([]);
-    const [unreadCount, setUnreadCount] = React.useState(0);
-    const [nextDue, setNextDue] = React.useState('');
+    const { data, isLoading } = useGetTenantDashboardQuery();
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    const [dashboardCards, setDashboardCards] = React.useState([
-        { title: 'Current Rent', value: 'Loading...', subValue: '-', icon: CreditCard, color: 'bg-blue-500', path: '/tenant/invoices' },
-        { title: 'Lease Status', value: 'Loading...', subValue: '-', icon: FileText, color: 'bg-emerald-500', path: '/tenant/lease' },
-        { title: 'Maintenance', value: '0 Open', subValue: 'Check Tickets', icon: Wrench, color: 'bg-amber-500', path: '/tenant/tickets' },
-        { title: 'My Vehicles', value: '0', subValue: 'Registered', icon: Car, color: 'bg-indigo-500', path: '/tenant/vehicles' }
-    ]);
 
-    React.useEffect(() => {
-        const fetchDashboard = async () => {
-            try {
-                const res = await api.get('/api/tenant/dashboard');
-                const { tenantName, stats } = res.data;
+    const tenantName = data?.tenantName || 'Tenant';
+    const stats = data?.stats || {};
+    const recentTickets = stats.recentTickets || [];
+    const unreadCount = stats.unreadCount || 0;
 
-                setName(tenantName || 'Tenant');
-                setRecentTickets(stats.recentTickets || []);
-                setUnreadCount(stats.unreadCount || 0);
+    let nextDue = 'No upcoming rent payments due.';
+    if (stats.nextDueDate) {
+        const d = new Date(stats.nextDueDate);
+        nextDue = `Your next rent payment is due on ${d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}.`;
+    }
 
-                if (stats.nextDueDate) {
-                    const d = new Date(stats.nextDueDate);
-                    setNextDue(`Your next rent payment is due on ${d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}.`);
-                } else {
-                    setNextDue('No upcoming rent payments due.');
-                }
-
-                setDashboardCards([
-                    {
-                        title: 'Current Rent',
-                        value: stats.currentRent > 0 ? `$${stats.currentRent.toLocaleString('en-CA')}` : '$0.00',
-                        subValue: stats.rentDueStatus,
-                        icon: CreditCard,
-                        color: 'bg-blue-500',
-                        path: '/tenant/invoices'
-                    },
-                    {
-                        title: 'Lease Status',
-                        value: stats.leaseStatus,
-                        subValue: stats.leaseExpiry ? `Ends ${new Date(stats.leaseExpiry).toLocaleDateString()}` : 'N/A',
-                        icon: FileText,
-                        color: 'bg-emerald-500',
-                        path: '/tenant/lease'
-                    },
-                    {
-                        title: 'Maintenance',
-                        value: `${stats.openTickets} Open`,
-                        subValue: 'Check Tickets',
-                        icon: Wrench,
-                        color: 'bg-amber-500',
-                        path: '/tenant/tickets'
-                    },
-                    {
-                        title: 'My Vehicles',
-                        value: `${stats.vehicleCount || 0} Registered`,
-                        subValue: stats.unauthorizedVehicles > 0 ? `${stats.unauthorizedVehicles} Unauthorized` : 'Status: OK',
-                        icon: Car,
-                        color: 'bg-indigo-500',
-                        path: '/tenant/vehicles'
-                    }
-                ]);
-            } catch (e) {
-                console.error(e);
-            }
-        };
-        fetchDashboard();
-    }, []);
+    const dashboardCards = [
+        {
+            title: 'Current Rent',
+            value: stats.currentRent > 0 ? `$${Number(stats.currentRent).toLocaleString('en-CA')}` : (isLoading ? 'Loading...' : '$0.00'),
+            subValue: stats.rentDueStatus || '-',
+            icon: CreditCard,
+            color: 'bg-blue-500',
+            path: '/tenant/invoices'
+        },
+        {
+            title: 'Lease Status',
+            value: stats.leaseStatus || (isLoading ? 'Loading...' : 'Active'),
+            subValue: stats.leaseExpiry ? `Ends ${new Date(stats.leaseExpiry).toLocaleDateString()}` : 'N/A',
+            icon: FileText,
+            color: 'bg-emerald-500',
+            path: '/tenant/lease'
+        },
+        {
+            title: 'Maintenance',
+            value: `${stats.openTickets ?? 0} Open`,
+            subValue: 'Check Tickets',
+            icon: Wrench,
+            color: 'bg-amber-500',
+            path: '/tenant/tickets'
+        },
+        {
+            title: 'My Vehicles',
+            value: `${stats.vehicleCount || 0} Registered`,
+            subValue: stats.unauthorizedVehicles > 0 ? `${stats.unauthorizedVehicles} Unauthorized` : 'Status: OK',
+            icon: Car,
+            color: 'bg-indigo-500',
+            path: '/tenant/vehicles'
+        }
+    ];
 
     return (
         <>
@@ -84,7 +61,7 @@ const [name, setName] = React.useState('Tenant');
                 {/* WELCOME BANNER */}
                 <section className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[22px] p-8 text-white relative overflow-hidden shadow-xl shadow-blue-200">
                     <div className="relative z-10 space-y-2">
-                        <h2 className="text-3xl font-bold">{greeting}, {name.split(' ')[0]}! 👋</h2>
+                        <h2 className="text-3xl font-bold">{greeting}, {tenantName.split(' ')[0]}! 👋</h2>
                         <p className="text-blue-100 font-medium text-lg">{nextDue}</p>
                         <div className="pt-4">
                             <Link to="/tenant/payments" className="inline-flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition-all shadow-lg hover:translate-y-[-2px] active:scale-95">

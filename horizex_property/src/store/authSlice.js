@@ -9,6 +9,7 @@ const initialState = {
   role: storedUser ? JSON.parse(storedUser).role : null,
   isAuthenticated: !!storedToken,
   effectiveCompanyId: null,
+  permissions: [], // Secure in-memory permissions matrix (never persisted in unencrypted localStorage)
 };
 
 const authSlice = createSlice({
@@ -16,14 +17,20 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setCredentials: (state, action) => {
-      const { user, accessToken } = action.payload;
+      const { user, accessToken, permissions } = action.payload;
       state.user = user;
       state.accessToken = accessToken;
       state.role = user?.role || null;
       state.isAuthenticated = true;
+      if (permissions) {
+        state.permissions = permissions;
+      }
 
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('accessToken', accessToken);
+    },
+    setPermissions: (state, action) => {
+      state.permissions = action.payload || [];
     },
     tokenRefreshed: (state, action) => {
       const { accessToken } = action.payload;
@@ -38,21 +45,23 @@ const authSlice = createSlice({
       state.user = null;
       state.accessToken = null;
       state.role = null;
+      state.permissions = [];
       state.isAuthenticated = false;
       state.effectiveCompanyId = null;
 
       localStorage.removeItem('user');
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('permissions'); // Clear any legacy localstorage key
     },
   },
 });
 
-export const { setCredentials, tokenRefreshed, setCompanyContext, loggedOut } = authSlice.actions;
+export const { setCredentials, setPermissions, tokenRefreshed, setCompanyContext, loggedOut } = authSlice.actions;
 
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectCurrentToken = (state) => state.auth.accessToken;
 export const selectCurrentRole = (state) => state.auth.role;
+export const selectUserPermissions = (state) => state.auth.permissions;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 
 export default authSlice.reducer;
-

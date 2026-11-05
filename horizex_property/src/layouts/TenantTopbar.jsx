@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, Globe, LogOut, ArrowLeft } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import api from '../api/client';
+import { useDispatch } from 'react-redux';
+import { useGetTenantProfileQuery, loggedOut } from '../store';
 
 export const TenantTopbar = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const location = useLocation();
+    const dispatch = useDispatch();
     const [title, setTitle] = useState('Dashboard');
-    const [tenantName, setTenantName] = useState('Tenant');
-    const [buildingInfo, setBuildingInfo] = useState('');
-    const [initials, setInitials] = useState('TN');
     const [language, setLanguage] = useState('EN');
+
+    const { data: profile } = useGetTenantProfileQuery();
+
+    const tenantName = profile?.name || 'Tenant';
+    const initials = profile?.name
+        ? profile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+        : 'TN';
+    const buildingInfo = profile?.unitNumber
+        ? `${profile.buildingName || 'Horizex Group'} – ${profile.unitNumber}`
+        : (profile?.buildingName || 'Horizex Group');
 
     useEffect(() => {
         const handleTitleChange = (e) => setTitle(e.detail);
@@ -30,31 +39,13 @@ export const TenantTopbar = ({ onMenuClick }) => {
     };
 
     const handleLogout = () => {
+        dispatch(loggedOut());
         localStorage.removeItem('tenantLoggedIn');
         localStorage.removeItem('currentTenantId');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
         navigate('/tenant/login');
     };
-
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const res = await api.get('/api/tenant/profile');
-                if (res.data.name) {
-                    setTenantName(res.data.name);
-                    const inits = res.data.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                    setInitials(inits);
-                }
-                const bName = res.data.buildingName || 'Horizex Group';
-                const uNum = res.data.unitNumber || '';
-                setBuildingInfo(uNum ? `${bName} – ${uNum}` : bName);
-            } catch (err) {
-                setTenantName('Tenant');
-                setInitials('TN');
-                setBuildingInfo('Horizex Group');
-            }
-        };
-        fetchProfile();
-    }, []);
 
     useEffect(() => {
         const syncWithMaster = () => {

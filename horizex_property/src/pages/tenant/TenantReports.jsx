@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-import api from '../../api/client';
+import { useGetTenantReportsQuery } from '../../store';
 import {
     FileText,
     CreditCard,
@@ -13,52 +12,33 @@ import {
     Eye,
     ArrowLeft
 } from 'lucide-react';
-import { Button } from '../../components/Button';
+import { Button } from '../../components/Button';
+
 const ICON_MAP = {
     payment_history: CreditCard,
     invoice_summary: Receipt
 };
+
 const COLOR_MAP = {
     payment_history: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
     invoice_summary: { color: 'text-indigo-600', bg: 'bg-indigo-50' }
 };
 
 export const TenantReports = () => {
-const navigate = useNavigate();
-    const [reports, setReports] = useState([]);
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const navigate = useNavigate();
+    const { data, isLoading, isFetching, error: queryError, refetch } = useGetTenantReportsQuery();
     const [selectedReport, setSelectedReport] = useState(null);
 
-    const fetchReports = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const res = await api.get('/api/tenant/reports');
-            const payload = res.data;
-            const list = Array.isArray(payload?.reports) ? payload.reports : (Array.isArray(payload) ? payload : []);
-            const mapped = list.map(r => ({
-                ...r,
-                id: r.id || r.type,
-                icon: ICON_MAP[r.type] || FileBarChart,
-                ...COLOR_MAP[r.type]
-            }));
-            setReports(mapped);
-            setStats(payload?.stats || null);
-        } catch (e) {
-            console.error(e);
-            setError(e.response?.data?.message || 'Failed to load reports.');
-            setReports([]);
-            setStats(null);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchReports();
-    }, []);
+    const list = Array.isArray(data?.reports) ? data.reports : (Array.isArray(data) ? data : []);
+    const reports = list.map(r => ({
+        ...r,
+        id: r.id || r.type,
+        icon: ICON_MAP[r.type] || FileBarChart,
+        ...COLOR_MAP[r.type]
+    }));
+    const stats = data?.stats || null;
+    const loading = isLoading || isFetching;
+    const error = queryError ? (queryError.data?.message || queryError.error || 'Failed to load reports.') : '';
 
     const statsRows = stats
         ? [
@@ -163,7 +143,7 @@ const navigate = useNavigate();
                                 <h3 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight italic uppercase">Account Reports</h3>
                                 <p className="text-slate-500 font-medium mt-1 text-sm md:text-base">Your invoice and payment history at a glance.</p>
                             </div>
-                            <Button variant="secondary" onClick={fetchReports} disabled={loading}>
+                            <Button variant="secondary" onClick={() => refetch()} disabled={loading}>
                                 <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                                 Refresh
                             </Button>
@@ -230,4 +210,3 @@ const navigate = useNavigate();
         </>
     );
 };
-

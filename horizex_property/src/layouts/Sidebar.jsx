@@ -1,5 +1,7 @@
 import { clearWorkspaceTabs } from '../context/WorkspaceContext';
 import React, { useState, useEffect } from "react";
+import { useSelector } from 'react-redux';
+import { selectCurrentUser, selectUserPermissions } from '../store/authSlice';
 import { NavLink, useLocation, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import {
@@ -348,8 +350,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Main Menu</p>
           </div>
           {(() => {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
+            const reduxUser = useSelector(selectCurrentUser);
+            const reduxPermissions = useSelector(selectUserPermissions);
+            const user = reduxUser || JSON.parse(localStorage.getItem('user') || '{}');
+            const permissions = (reduxPermissions && reduxPermissions.length > 0) ? reduxPermissions : JSON.parse(localStorage.getItem('permissions') || '[]');
 
             // Re-render trigger from custom event
             const [forceUpdate, setForceUpdate] = React.useState(0);
@@ -367,7 +371,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               'Properties': 'Properties',
               'Buildings': 'Buildings',
               'Units': 'Units',
-              'Unit Readiness': 'Unit Readiness', // Now using its own independent permission
+              'Unit Readiness': 'Unit Readiness',
               'Tenants': 'Tenants',
               'Tenant List': 'Tenant List',
               'Vehicle Management': 'Vehicles',
@@ -411,7 +415,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               if (user.role === 'ADMIN') return true;
               if (navItem.label === 'Profile') return true;
 
-              // Hide admin-only accounting and configuration panels from coworkers entirely
+              // Hide admin-only configuration panels from coworkers entirely
               const adminOnlyLabels = ['QuickBooks Sync', 'Chart of Accounts', 'Tax Settings', 'Team Access Control', 'Settings'];
               if (adminOnlyLabels.includes(navItem.label)) return false;
 
@@ -461,7 +465,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
                 </div>
                 <div className="overflow-hidden flex-1">
                   <p className="text-xs font-semibold text-zinc-100 truncate leading-tight group-hover:text-white transition-colors">{JSON.parse(localStorage.getItem('user') || '{}').firstName ? `${JSON.parse(localStorage.getItem('user') || '{}').firstName} ${JSON.parse(localStorage.getItem('user') || '{}').lastName || ''}` : 'Admin User'}</p>
-                  <p className="text-[10px] text-zinc-500 font-medium truncate mt-0.5">{JSON.parse(localStorage.getItem('user') || '{}').title || (JSON.parse(localStorage.getItem('user') || '{}').role === 'ADMIN' ? 'Super Admin' : 'Staff')}</p>
+                  <p className="text-[10px] text-zinc-500 font-medium truncate mt-0.5">{JSON.parse(localStorage.getItem('user') || '{}').title || (JSON.parse(localStorage.getItem('user') || '{}').role === 'ADMIN' ? 'Admin' : 'Staff')}</p>
                 </div>
               </div>
             </div>

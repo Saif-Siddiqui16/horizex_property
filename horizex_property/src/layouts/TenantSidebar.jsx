@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { NavLink } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import {
     LayoutDashboard,
     FileText,
@@ -15,6 +16,7 @@ import {
     Car
 } from "lucide-react";
 import clsx from "clsx";
+import { loggedOut } from "../store";
 
 const TENANT_NAV_ITEMS = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/tenant/dashboard" },
@@ -30,8 +32,14 @@ const TENANT_NAV_ITEMS = [
 ];
 
 export const TenantSidebar = ({ isOpen, onClose }) => {
+    const dispatch = useDispatch();
+
     const handleLogout = () => {
+        dispatch(loggedOut());
         localStorage.removeItem("tenantLoggedIn");
+        localStorage.removeItem("currentTenantId");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
         window.location.href = "/tenant/login";
     };
 
@@ -80,7 +88,7 @@ export const TenantSidebar = ({ isOpen, onClose }) => {
                                             : "text-slate-400 hover:bg-[#1F2937] hover:text-white"
                                     )
                                 }
-                              >
+                            >
                                 <item.icon size={18} />
                                 <span>{item.label}</span>
                             </NavLink>

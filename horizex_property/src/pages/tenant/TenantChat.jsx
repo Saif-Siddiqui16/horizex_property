@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-
+import { useSelector } from 'react-redux';
 import { communicationService } from '../../services/communicationService';
-import { Send, RefreshCw, User, MessageSquare } from 'lucide-react';
+import { Send, RefreshCw, User, MessageSquare } from 'lucide-react';
+
 export const TenantChat = () => {
-const [messages, setMessages] = useState([]);
+    const authUser = useSelector((state) => state.auth?.user);
+    const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [adminUser, setAdminUser] = useState(null);
-    const [currentTenantId, setCurrentTenantId] = useState(null);
     const [sending, setSending] = useState(false);
     const messagesEndRef = useRef(null);
     const intervalRef = useRef(null);
 
+    const currentUserId = authUser?.id || authUser?.userId || localStorage.getItem('userId');
+
     useEffect(() => {
-        const id = localStorage.getItem('currentTenantId');
-        if (id) setCurrentTenantId(parseInt(id));
         fetchAdmins();
         return () => clearInterval(intervalRef.current);
     }, []);
@@ -22,7 +23,7 @@ const [messages, setMessages] = useState([]);
         try {
             // "Conversations" for non-admin returns Admin list
             const admins = await communicationService.getConversations();
-            if (admins.length > 0) {
+            if (admins && admins.length > 0) {
                 setAdminUser(admins[0]); // Auto-select first admin
             }
         } catch (error) {
@@ -42,10 +43,10 @@ const [messages, setMessages] = useState([]);
         if (!adminUser) return;
         try {
             const history = await communicationService.getHistory(adminUser.id);
-            setMessages(history);
+            setMessages(history || []);
 
             // Mark as read if there are unread messages from admin
-            const unreadExist = history.some(m => !m.isRead && m.senderId === adminUser.id);
+            const unreadExist = (history || []).some(m => !m.isRead && m.senderId === adminUser.id);
             if (unreadExist) {
                 await communicationService.markAsRead(adminUser.id);
             }
@@ -90,7 +91,7 @@ const [messages, setMessages] = useState([]);
                     <div>
                         <h2 className="font-bold text-slate-800">Support Chat</h2>
                         <p className="text-xs font-medium text-slate-500">
-                            {adminUser ? `Chatting with ${adminUser.name}` : 'Connecting...'}
+                            {adminUser ? `Chatting with ${adminUser.name || adminUser.firstName || 'Property Admin'}` : 'Connecting...'}
                         </p>
                     </div>
                 </div>
@@ -104,16 +105,16 @@ const [messages, setMessages] = useState([]);
                     )}
 
                     {messages.map((msg, index) => {
-                        const isMe = msg.senderId === currentTenantId;
+                        const isMe = msg.senderId === currentUserId;
                         return (
                             <div key={index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[85%] sm:max-w-[80%] px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-sm font-medium shadow-sm ${isMe
                                         ? 'bg-zinc-900 text-white rounded-br-none'
                                         : 'bg-slate-100 text-slate-700 rounded-bl-none'
                                     }`}>
-                                    {msg.content}
+                                    {msg.content || msg.message}
                                     <div className="text-[10px] mt-1 text-right opacity-70">
-                                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                     </div>
                                 </div>
                             </div>

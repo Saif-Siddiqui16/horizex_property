@@ -1,60 +1,47 @@
 import React, { useState } from 'react';
-
 import { CreditCard, Wallet, Banknote, CheckCircle, ArrowRight, ShieldCheck, X } from 'lucide-react';
 import { Button } from '../../components/Button';
+import { useGetTenantInvoicesQuery, usePayTenantInvoiceMutation } from '../../store';
 
-import api from '../../api/client';
 export const TenantPayments = () => {
-const [selectedMethod, setSelectedMethod] = useState('card');
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
+    const { data: rawInvoices = [], isLoading } = useGetTenantInvoicesQuery();
+    const [payInvoice, { isLoading: isProcessing }] = usePayTenantInvoiceMutation();
 
-    const [unpaidInvoices, setUnpaidInvoices] = useState([]);
+    const [selectedMethod, setSelectedMethod] = useState('card');
+    const [showSuccess, setShowSuccess] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+
+    const unpaidInvoices = (Array.isArray(rawInvoices) ? rawInvoices : []).filter(inv =>
+        inv.status === 'Due' ||
+        inv.status === 'Overdue' ||
+        inv.status === 'Partial'
+    );
 
     React.useEffect(() => {
-        const fetchInvoices = async () => {
-            try {
-                const res = await api.get('/api/tenant/invoices');
-                const unpaid = res.data.filter(inv =>
-                    inv.status === 'Due' ||
-                    inv.status === 'Overdue' ||
-                    inv.status === 'Partial'
-                );
-                setUnpaidInvoices(unpaid);
-                if (unpaid.length > 0) setSelectedInvoice(unpaid[0]);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchInvoices();
-    }, []);
+        if (!selectedInvoice && unpaidInvoices.length > 0) {
+            setSelectedInvoice(unpaidInvoices[0]);
+        }
+    }, [unpaidInvoices, selectedInvoice]);
 
     const handlePayment = async (e) => {
         e.preventDefault();
         if (!selectedInvoice) return;
 
-        setIsProcessing(true);
         try {
-            await api.post('/api/tenant/pay', {
+            await payInvoice({
                 invoiceId: selectedInvoice.dbId,
                 amount: selectedInvoice.balanceDue || selectedInvoice.amount,
                 paymentMethod: selectedMethod
-            });
+            }).unwrap();
 
-            setIsProcessing(false);
             setShowSuccess(true);
         } catch (error) {
             console.error(error);
-            setIsProcessing(false);
             alert('Payment failed. Please try again.');
         }
     };
 
-    if (isLoading) return <div className="p-10 text-center">Loading payment details...</div>;
+    if (isLoading) return <div className="p-10 text-center font-medium text-slate-500">Loading payment details...</div>;
 
     if (unpaidInvoices.length === 0 && !showSuccess) {
         return (
@@ -82,7 +69,7 @@ const [selectedMethod, setSelectedMethod] = useState('card');
                                 <h3 className="text-xl font-black text-slate-800 tracking-tight">Select Invoice</h3>
                                 <p className="text-sm text-slate-500 font-medium">Choose which outstanding payment you want to settle now.</p>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {unpaidInvoices.map((inv) => (
                                     <button
@@ -101,7 +88,7 @@ const [selectedMethod, setSelectedMethod] = useState('card');
                                         </div>
                                         <h4 className="font-bold text-slate-800">{inv.month}</h4>
                                         <div className="mt-auto pt-4 flex items-end justify-between">
-                                            <span className="text-lg font-black text-slate-900">${(inv.balanceDue || inv.amount).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
+                                            <span className="text-lg font-black text-slate-900">${Number(inv.balanceDue || inv.amount).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
                                             {selectedInvoice?.id === inv.id && (
                                                 <div className="bg-zinc-900 text-white rounded-full p-1 shadow-md">
                                                     <CheckCircle size={14} />
@@ -157,7 +144,7 @@ const [selectedMethod, setSelectedMethod] = useState('card');
                                         </>
                                     ) : (
                                         <>
-                                            Pay ${(selectedInvoice?.balanceDue || selectedInvoice?.amount)?.toLocaleString('en-CA', { minimumFractionDigits: 2 })}
+                                            Pay ${Number(selectedInvoice?.balanceDue || selectedInvoice?.amount || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}
                                             <ArrowRight size={20} />
                                         </>
                                     )}
@@ -178,7 +165,7 @@ const [selectedMethod, setSelectedMethod] = useState('card');
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center text-slate-400 font-medium text-sm">
                                     <span>{selectedInvoice?.status === 'Partial' ? 'Remaining Balance' : 'Rent'} ({selectedInvoice?.month || '---'})</span>
-                                    <span className="text-white font-bold tracking-tight">${(selectedInvoice?.balanceDue || selectedInvoice?.amount || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
+                                    <span className="text-white font-bold tracking-tight">${Number(selectedInvoice?.balanceDue || selectedInvoice?.amount || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-slate-400 font-medium text-sm">
                                     <span>Processing Fee</span>
@@ -189,7 +176,7 @@ const [selectedMethod, setSelectedMethod] = useState('card');
                             <div className="pt-8 border-t border-slate-800 space-y-1">
                                 <p className="text-xs text-slate-500 font-black uppercase tracking-widest">{selectedInvoice?.status === 'Partial' ? 'Balance to Pay' : 'Total to Pay'}</p>
                                 <div className="flex justify-between items-end">
-                                    <span className="text-4xl font-black tracking-tighter">${(selectedInvoice?.balanceDue || selectedInvoice?.amount || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
+                                    <span className="text-4xl font-black tracking-tighter">${Number(selectedInvoice?.balanceDue || selectedInvoice?.amount || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
                                     <span className="text-xs font-bold text-slate-500 mb-2 underline decoration-slate-700 underline-offset-4">USD</span>
                                 </div>
                             </div>
@@ -228,7 +215,7 @@ const [selectedMethod, setSelectedMethod] = useState('card');
                                 <span className="text-slate-700 uppercase">{selectedMethod}</span>
                             </div>
                         </div>
-                        <Button variant="primary" className="w-full rounded-2xl h-12 h-auto font-bold mt-2" onClick={() => window.location.reload()}>
+                        <Button variant="primary" className="w-full rounded-2xl h-12 h-auto font-bold mt-2" onClick={() => setShowSuccess(false)}>
                             Great, thanks!
                         </Button>
                     </div>

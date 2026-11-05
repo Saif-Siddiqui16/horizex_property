@@ -17,6 +17,7 @@ import employeesRouter from './modules/employees/employees.routes';
 import payrollRouter, { shiftsRouter, leavesRouter, overtimeRouter, runsRouter } from './modules/payroll/payroll.routes';
 import tenantPortalRouter from './modules/tenantPortal/tenantPortal.routes';
 import ownerPortalRouter from './modules/ownerPortal/ownerPortal.routes';
+import coworkersRouter from './modules/coworkers/coworkers.routes';
 import { getDashboardStats } from './modules/analytics/analytics.controller';
 import {
   getReadinessDashboard,
@@ -102,6 +103,7 @@ router.use('/admin/leaves', leavesRouter);
 router.use('/admin/overtime', overtimeRouter);
 router.use('/admin/payroll/runs', runsRouter);
 router.use('/admin/payroll', payrollRouter);
+router.use('/admin', coworkersRouter); // Mounts /admin/coworkers and /admin/my-permissions
 
 // Communication
 router.use('/communication', communicationsRouter);

@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
-
 import api from '../api/client';
 import { useTranslation } from 'react-i18next';
-import {   Users, 
+import {
+  useGetCoworkersQuery,
+  useCreateCoworkerMutation,
+  useUpdateCoworkerMutation,
+  useUpdatePermissionsMutation,
+  useDeleteCoworkerMutation,
+  useSendInviteMutation,
+} from '../store';
+import {   Users, 
   UserPlus, 
   Mail, 
   Phone, 
@@ -99,8 +106,20 @@ const sortPermissions = (perms) => {
 
 export const TeamManagement = () => {
   const { t } = useTranslation();
+
+  const {
+    data: serverCoworkers = [],
+    isLoading: coworkersLoading,
+    refetch: refetchCoworkers,
+  } = useGetCoworkersQuery();
+
+  const [createCoworkerMutation] = useCreateCoworkerMutation();
+  const [updateCoworkerMutation] = useUpdateCoworkerMutation();
+  const [updatePermissionsMutation] = useUpdatePermissionsMutation();
+  const [deleteCoworkerMutation] = useDeleteCoworkerMutation();
+  const [sendInviteMutation] = useSendInviteMutation();
+
   const [coworkers, setCoworkers] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -125,31 +144,26 @@ export const TeamManagement = () => {
   const [memberToInvite, setMemberToInvite] = useState(null);
 
   useEffect(() => {
-    fetchCoworkers();
+    if (serverCoworkers && Array.isArray(serverCoworkers)) {
+      setCoworkers(serverCoworkers);
+      if (selectedMember) {
+        const updated = serverCoworkers.find(c => c.id === selectedMember.id);
+        if (updated) setSelectedMember(updated);
+      }
+    }
+  }, [serverCoworkers]);
+
+  useEffect(() => {
     fetchInvitationTemplates();
   }, []);
 
   const fetchInvitationTemplates = async () => {
     try {
       const res = await api.get('/api/admin/email/templates');
-      // Only show templates marked as INVITATION type
-      const inviteOnly = res.data.filter(t => t.type === 'INVITATION');
+      const inviteOnly = (res.data || []).filter(t => t.type === 'INVITATION');
       setInvitationTemplates(inviteOnly);
     } catch (err) {
       console.error('Error fetching invitation templates:', err);
-    }
-  };
-
-  const fetchCoworkers = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/api/admin/coworkers');
-      setCoworkers(res.data);
-    } catch (error) {
-      console.error('Error fetching coworkers:', error);
-      alert('Failed to load team members');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -161,18 +175,17 @@ export const TeamManagement = () => {
     e.preventDefault();
     try {
       if (isEditing) {
-        await api.put(`/api/admin/coworkers/${selectedMember.id}`, formData);
+        await updateCoworkerMutation({ id: selectedMember.id, ...formData }).unwrap();
         alert('Member updated successfully');
       } else {
-        await api.post('/api/admin/coworkers', formData);
+        await createCoworkerMutation(formData).unwrap();
         alert('Team member created with selected permissions');
       }
       setShowModal(false);
       resetForm();
-      fetchCoworkers();
     } catch (error) {
       console.error('Error saving coworker:', error);
-      alert(error.response?.data?.message || 'Error saving member');
+      alert(error.data?.message || error.message || 'Error saving member');
     }
   };
 
@@ -231,22 +244,17 @@ export const TeamManagement = () => {
 
   const handlePermissionChange = async (permissionId, field, value) => {
     try {
-        // Find member and update locally for snappy UI
         const updatedCoworkers = coworkers.map(c => {
             if (c.id === selectedMember.id) {
-                let permissionExists = c.permissions.some(p => p.id === permissionId || p.moduleName === p.moduleName);
                 let newPermissions = [];
                 
                 if (c.permissions.some(p => p.id === permissionId)) {
-                    // Update existing
                     newPermissions = c.permissions.map(p => 
                         p.id === permissionId ? { ...p, [field]: value } : p
                     );
                 } else {
-                    // Find module name from permissionId if it's temp-
                     const moduleName = permissionId.startsWith('temp-') ? permissionId.replace('temp-', '') : null;
                     if (moduleName) {
-                        // Create and add
                         newPermissions = [...c.permissions, {
                             id: permissionId,
                             moduleName,
@@ -266,35 +274,33 @@ export const TeamManagement = () => {
         });
         setCoworkers(updatedCoworkers);
 
-        // Find the full permission object to get the moduleName
         const member = updatedCoworkers.find(c => c.id === selectedMember.id);
         const permObj = member.permissions.find(p => p.id === permissionId);
         setSelectedMember(member);
 
-        // Sync with backend - include moduleName for new permissions (temp- IDs)
-        await api.put(`/api/admin/coworkers/${selectedMember.id}/permissions`, {
+        await updatePermissionsMutation({
+            id: selectedMember.id,
             permissions: [{ 
                 id: permissionId, 
-                moduleName: permObj.moduleName,
+                moduleName: permObj ? permObj.moduleName : undefined,
                 [field]: value 
             }]
-        });
+        }).unwrap();
     } catch (error) {
         console.error('Error updating permission:', error);
         alert('Failed to update permission');
-        fetchCoworkers(); // Revert to server state
+        refetchCoworkers();
     }
   };
 
   const sendInvitation = async (id, templateId = null) => {
     try {
-      const res = await api.post(`/api/admin/coworkers/${id}/send-invite`, { templateId });
-      alert(res.data.message || 'Invitation email sent successfully');
+      const res = await sendInviteMutation({ id, templateId }).unwrap();
+      alert(res.message || 'Invitation email sent successfully');
       setShowInviteModal(false);
-      fetchCoworkers();
     } catch (error) {
       console.error('Send invite error:', error);
-      alert(error.response?.data?.message || 'Failed to send invitation');
+      alert(error.data?.message || 'Failed to send invitation');
     }
   };
 
@@ -302,12 +308,11 @@ export const TeamManagement = () => {
     try {
       if (!member?.id) return alert('Member ID is missing');
       
-      const res = await api.put(`/api/admin/coworkers/${member.id}`, { isActive: !member.isActive });
-      const newState = res.data.isActive;
+      const res = await updateCoworkerMutation({ id: member.id, isActive: !member.isActive }).unwrap();
+      const newState = res.isActive;
       
       alert(`Member ${newState ? 'enabled' : 'disabled'} successfully`);
       
-      // Update local state to show change immediately
       setCoworkers(prev => prev.map(c => c.id === member.id ? { ...c, isActive: newState } : c));
       if (selectedMember?.id === member.id) {
         setSelectedMember(prev => ({ ...prev, isActive: newState }));
@@ -321,10 +326,9 @@ export const TeamManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to permanently delete this team member? This cannot be undone.')) {
         try {
-            await api.delete(`/api/admin/coworkers/${id}`);
+            await deleteCoworkerMutation(id).unwrap();
             alert('Member deleted permanently');
             setSelectedMember(null);
-            fetchCoworkers();
         } catch (error) {
             alert('Failed to delete member');
         }
@@ -361,7 +365,7 @@ export const TeamManagement = () => {
                     <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">{coworkers.length} {t('common.total')}</span>
                 </div>
 
-                {loading ? (
+                {coworkersLoading ? (
                     <div className="p-8 text-center text-slate-400 font-medium italic">Loading coworkers...</div>
                 ) : coworkers.length === 0 ? (
                     <div className="p-8 text-center text-slate-400 font-medium italic">No coworkers found.</div>
@@ -431,12 +435,12 @@ export const TeamManagement = () => {
                                     </div>
                                     <div className="flex flex-wrap items-center gap-4 mt-2 text-slate-400">
                                         <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                                            <Shield size={14} className="text-primary-600" />
-                                            <span className="text-[11px] font-bold uppercase tracking-tight text-slate-600">{selectedMember.title || 'COWORKER'}</span>
+                                             <Shield size={14} className="text-primary-600" />
+                                             <span className="text-[11px] font-bold uppercase tracking-tight text-slate-600">{selectedMember.title || 'COWORKER'}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
-                                            <Mail size={14} />
-                                            <span className="text-xs font-medium truncate max-w-[200px]">{selectedMember.email}</span>
+                                             <Mail size={14} />
+                                             <span className="text-xs font-medium truncate max-w-[200px]">{selectedMember.email}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -784,7 +788,6 @@ export const TeamManagement = () => {
                     <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
                         {invitationTemplates
                             .filter(t => {
-                                // Filter templates by coworker language code
                                 const targetLang = memberToInvite.preferredLanguage?.toLowerCase().includes('french') ? 'fr' : 'en';
                                 return t.language === targetLang;
                             })

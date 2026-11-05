@@ -87,7 +87,17 @@ export const masterApi = createApi({
     'Overtime',
     'Payroll',
     'Settings',
+    'Coworkers',
+    'Permissions',
+    'TenantProfile',
+    'TenantDashboard',
+    'TenantLease',
+    'TenantInvoices',
+    'TenantTickets',
+    'TenantVehicles',
+    'TenantDocuments',
+    'TenantInsurance',
+    'TenantReports',
   ],
   endpoints: () => ({}),
 });
-

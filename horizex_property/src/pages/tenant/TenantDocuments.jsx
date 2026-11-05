@@ -1,39 +1,18 @@
-import React, { useState } from 'react';
-
+import React, { useState, useRef } from 'react';
 import { Files, Download, Eye, Upload, X, FileText, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../components/Button';
-import api from '../../api/client';
-const initialDocs = [
-    { id: 1, name: 'Lease_Agreement_2025.pdf', type: 'Agreement', date: '2025-01-01' },
-    { id: 2, name: 'Move_In_Inspection.pdf', type: 'Inspection', date: '2025-01-02' },
-    { id: 3, name: 'ID_Proof_John_Smith.jpg', type: 'ID Proof', date: '2025-01-01' },
-];
+import { useGetTenantDocumentsQuery, useUploadTenantDocumentMutation } from '../../store';
+import api from '../../api/client';
 
 export const TenantDocuments = () => {
-const [docs, setDocs] = useState([]);
-    const [showUpload, setShowUpload] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
+    const { data: rawDocs = [], isLoading } = useGetTenantDocumentsQuery();
+    const [uploadDoc, { isLoading: isUploading }] = useUploadTenantDocumentMutation();
 
-    // Add file input ref
-    const fileInputRef = React.useRef(null);
+    const [showUpload, setShowUpload] = useState(false);
+    const fileInputRef = useRef(null);
     const [selectedFile, setSelectedFile] = useState(null);
 
-    React.useEffect(() => {
-        fetchDocs();
-    }, []);
-
-    const fetchDocs = async () => {
-        try {
-            const res = await api.get('/api/tenant/documents');
-            if (res.data.length > 0) {
-                setDocs(res.data);
-            } else {
-                setDocs([]);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
+    const docs = Array.isArray(rawDocs) ? rawDocs : [];
 
     const handleFileSelect = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -43,12 +22,10 @@ const [docs, setDocs] = useState([]);
 
     const handleUpload = async (e) => {
         e.preventDefault();
-        setIsUploading(true);
         const form = e.target;
 
         if (!selectedFile) {
             alert("Please select a file");
-            setIsUploading(false);
             return;
         }
 
@@ -58,27 +35,20 @@ const [docs, setDocs] = useState([]);
             formData.append('type', form.docType.value);
             formData.append('file', selectedFile);
 
-            const res = await api.post('/api/tenant/documents', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-
-            setDocs([res.data, ...docs]);
+            await uploadDoc(formData).unwrap();
             setShowUpload(false);
             setSelectedFile(null);
+            form.reset();
         } catch (e) {
             console.error(e);
             alert('Upload failed');
-        } finally {
-            setIsUploading(false);
         }
     };
 
     const handleView = (url) => {
         let fileUrl = url;
         if (!fileUrl.startsWith('http')) {
-            const base = api.defaults.baseURL.replace(/\/$/, '');
+            const base = (api.defaults?.baseURL || 'http://localhost:5000/api').replace(/\/$/, '');
             const path = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
             fileUrl = `${base}${path}`;
         }
@@ -87,7 +57,7 @@ const [docs, setDocs] = useState([]);
 
     const handleDownload = (docId, url) => {
         const token = localStorage.getItem('accessToken');
-        const base = api.defaults.baseURL.replace(/\/$/, '');
+        const base = (api.defaults?.baseURL || 'http://localhost:5000/api').replace(/\/$/, '');
         const baseUrl = url.includes('?') ? url.split('?')[0] : url;
         const cleanPath = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
         const finalUrl = `${base}${cleanPath}?disposition=attachment&token=${token}`;
@@ -121,58 +91,66 @@ const [docs, setDocs] = useState([]);
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {docs.map((doc) => (
-                                    <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-8 py-5">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center shrink-0 border border-primary-100">
-                                                    <FileText size={20} />
-                                                </div>
-                                                <span className="font-bold text-slate-700 tracking-tight">{doc.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            <span className="text-sm font-bold text-slate-500">{doc.type}</span>
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            <span className="text-sm font-medium text-slate-400">{doc.date}</span>
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            {doc.expiryDate ? (
-                                                <span className="text-sm font-medium text-slate-600">
-                                                    {new Date(doc.expiryDate).toLocaleDateString()}
-                                                </span>
-                                            ) : (
-                                                <span className="text-sm text-slate-300">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-8 py-5 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {doc.fileUrl && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => handleView(doc.fileUrl)}
-                                                            className="p-2.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all"
-                                                            title="View Document"
-                                                        >
-                                                            <Eye size={20} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDownload(doc.id, doc.fileUrl)}
-                                                            className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
-                                                            title="Download PDF"
-                                                        >
-                                                            <Download size={20} />
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-medium">
+                                            Loading document vault...
                                         </td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    docs.map((doc) => (
+                                        <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="px-8 py-5">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center shrink-0 border border-primary-100">
+                                                        <FileText size={20} />
+                                                    </div>
+                                                    <span className="font-bold text-slate-700 tracking-tight">{doc.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <span className="text-sm font-bold text-slate-500">{doc.type}</span>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <span className="text-sm font-medium text-slate-400">{doc.date}</span>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                {doc.expiryDate ? (
+                                                    <span className="text-sm font-medium text-slate-600">
+                                                        {new Date(doc.expiryDate).toLocaleDateString()}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-sm text-slate-300">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {doc.fileUrl && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleView(doc.fileUrl)}
+                                                                className="p-2.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all"
+                                                                title="View Document"
+                                                            >
+                                                                <Eye size={20} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDownload(doc.id, doc.fileUrl)}
+                                                                className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                                                title="Download PDF"
+                                                            >
+                                                                <Download size={20} />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
-                        {docs.length === 0 && (
+                        {!isLoading && docs.length === 0 && (
                             <div className="p-20 text-center space-y-4">
                                 <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto text-slate-200">
                                     <Files size={40} />

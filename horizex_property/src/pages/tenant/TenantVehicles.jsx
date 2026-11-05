@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-
+import React from 'react';
 import { 
   Car, 
   Search, 
@@ -9,26 +8,12 @@ import {
   Camera,
   Info
 } from 'lucide-react';
-import api from '../../api/client';
-import clsx from 'clsx';
-export const TenantVehicles = () => {
-const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(true);
+import clsx from 'clsx';
+import { useGetTenantVehiclesQuery } from '../../store';
 
-  useEffect(() => {
-    const fetchMyVehicles = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get('/api/tenant/vehicles');
-        setVehicles(res.data);
-      } catch (e) {
-        console.error('Failed to fetch your vehicles', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMyVehicles();
-  }, []);
+export const TenantVehicles = () => {
+  const { data: rawVehicles = [], isLoading: loading } = useGetTenantVehiclesQuery();
+  const vehicles = Array.isArray(rawVehicles) ? rawVehicles : [];
 
   return (
     <>

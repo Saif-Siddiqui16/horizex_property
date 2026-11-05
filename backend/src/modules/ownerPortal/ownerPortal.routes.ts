@@ -13,7 +13,7 @@ router.get('/profile', async (req: Request, res: Response) => {
       select: { firstName: true, lastName: true, email: true, phone: true }
     });
     return res.json({
-      name: user ? `${user.firstName} ${user.lastName}` : 'Demo Owner',
+      name: user ? `${user.firstName} ${user.lastName}`.trim() : 'Demo Owner',
       email: user?.email || '',
       phone: user?.phone || '+1 (514) 555-0192'
     });
@@ -28,36 +28,58 @@ router.get('/dashboard/stats', async (req: Request, res: Response) => {
     const totalProperties = await prisma.property.count({ where: { isActive: true } });
     const totalUnits = await prisma.unit.count({ where: { isActive: true } });
     const occupiedUnits = await prisma.unit.count({ where: { isActive: true, status: 'OCCUPIED' } });
+    const vacantUnits = Math.max(0, totalUnits - occupiedUnits);
     const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 1000) / 10 : 85.0;
 
+    const activeLeases = await prisma.lease.findMany({
+      where: { isActive: true },
+      include: {
+        tenant: true,
+        unit: { include: { property: true } }
+      },
+      take: 6
+    });
+
+    const tenantsList = activeLeases.map(l => ({
+      name: `${l.tenant.firstName} ${l.tenant.lastName}`.trim(),
+      email: l.tenant.email,
+      property: l.unit.property?.name || 'Property',
+      unit: l.unit.unitNumber || '101'
+    }));
+
     return res.json({
-      totalProperties: totalProperties || 1,
-      totalUnits: totalUnits || 12,
-      occupiedUnits: occupiedUnits || 10,
+      propertyCount: totalProperties,
+      totalProperties,
+      unitCount: totalUnits,
+      totalUnits,
+      occupiedUnits,
       monthlyRevenue: 15400,
-      occupancyRate
+      occupancyRate,
+      occupancy: {
+        vacantUnits,
+        vacantUnitsList: [],
+        vacantBedrooms: 0,
+        vacantBedroomsList: []
+      },
+      outstandingDues: 0,
+      insuranceExpiryCount: 0,
+      recentActivity: [],
+      tenants: tenantsList
     });
   } catch (err: any) {
     return res.status(500).json({ message: err.message });
   }
 });
 
-// Financial Pulse
+// Financial Pulse (returns array of monthly records expected by OwnerDashboard)
 router.get('/dashboard/financial-pulse', async (req: Request, res: Response) => {
   try {
-    return res.json({
-      collected: 15400,
-      outstandingDues: 0,
-      netEarnings: 14200,
-      trajectory: [
-        { month: 'Jun', amount: 14000 },
-        { month: 'Jul', amount: 14500 },
-        { month: 'Aug', amount: 14800 },
-        { month: 'Sep', amount: 15000 },
-        { month: 'Oct', amount: 15200 },
-        { month: 'Nov', amount: 15400 },
-      ]
-    });
+    return res.json([
+      { month: 'November 2025', expected: 15400, collected: 15400, dues: 0 },
+      { month: 'December 2025', expected: 15400, collected: 15400, dues: 0 },
+      { month: 'January 2026', expected: 15400, collected: 15400, dues: 0 },
+      { month: 'February 2026', expected: 15400, collected: 15400, dues: 0 }
+    ]);
   } catch (err: any) {
     return res.status(500).json({ message: err.message });
   }
@@ -114,4 +136,3 @@ router.get('/reports', (req, res) => res.json({ reports: [] }));
 router.get('/communication', (req, res) => res.json([]));
 
 export default router;
-

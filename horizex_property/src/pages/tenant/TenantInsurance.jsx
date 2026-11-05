@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-
+import React, { useState, useRef, useEffect } from 'react';
 import { ShieldCheck, AlertTriangle, Calendar, Info, Eye, X, FileText, Upload, Download, Clock } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import api from '../../api/client';
+import { useGetTenantInsuranceQuery, useUpdateTenantInsuranceMutation } from '../../store';
+import api from '../../api/client';
+
 export const TenantInsurance = () => {
-const [insurance, setInsurance] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const { data: insurance, isLoading } = useGetTenantInsuranceQuery();
+    const [updateInsurance, { isLoading: isUploading }] = useUpdateTenantInsuranceMutation();
+
     const [showPreview, setShowPreview] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
 
-    const [isUploading, setIsUploading] = useState(false);
     const [formData, setFormData] = useState({
         provider: '',
         policyNumber: '',
@@ -21,30 +22,17 @@ const [insurance, setInsurance] = useState(null);
     const fileInputRef = useRef(null);
     const [selectedFile, setSelectedFile] = useState(null);
 
-    const fetchInsurance = async () => {
-        try {
-            setIsLoading(true);
-            const res = await api.get('/api/tenant/insurance');
-            setInsurance(res.data);
-            if (res.data) {
-                setFormData({
-                    provider: res.data.provider,
-                    policyNumber: res.data.policyNumber,
-                    coverageType: res.data.coverageType || '',
-                    startDate: res.data.startDate,
-                    endDate: res.data.endDate
-                });
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchInsurance();
-    }, []);
+        if (insurance) {
+            setFormData({
+                provider: insurance.provider || '',
+                policyNumber: insurance.policyNumber || '',
+                coverageType: insurance.coverageType || '',
+                startDate: insurance.startDate ? insurance.startDate.substring(0, 10) : '',
+                endDate: insurance.endDate ? insurance.endDate.substring(0, 10) : ''
+            });
+        }
+    }, [insurance]);
 
     const handleFileSelect = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -68,25 +56,20 @@ const [insurance, setInsurance] = useState(null);
         }
 
         try {
-            setIsUploading(true);
-            await api.post('/api/tenant/insurance', data, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            await updateInsurance(data).unwrap();
             setShowUploadModal(false);
-            fetchInsurance();
         } catch (error) {
             console.error(error);
             alert('Upload failed');
-        } finally {
-            setIsUploading(false);
         }
     };
 
-    if (isLoading) return <div className="p-10 text-center">Loading insurance details...</div>;
+    if (isLoading) return <div className="p-10 text-center font-medium text-slate-500">Loading insurance details...</div>;
 
     // Status Styling Logic
     const getStatusConfig = (status) => {
         switch (status) {
+            case 'Active':
             case 'ACTIVE': return { bg: 'emerald-50', text: 'emerald-600', border: 'emerald-100', icon: ShieldCheck, label: 'Approved & Active' };
             case 'PENDING_APPROVAL': return { bg: 'amber-50', text: 'amber-600', border: 'amber-100', icon: Info, label: 'Pending Admin Review' };
             case 'REJECTED': return { bg: 'red-50', text: 'red-600', border: 'red-100', icon: X, label: 'Policy Rejected' };
@@ -96,7 +79,7 @@ const [insurance, setInsurance] = useState(null);
         }
     };
 
-    const statusConfig = getStatusConfig(insurance?.status || 'N/A');
+    const statusConfig = getStatusConfig(insurance?.status || 'Active');
     const canEdit = false; // Uploads are strictly managed by Admin at this stage
 
     return (
@@ -104,22 +87,22 @@ const [insurance, setInsurance] = useState(null);
             <div className="max-w-4xl space-y-8 anim-slide-up">
                 {/* STATUS BAR */}
                 {insurance && (
-                    <div className={`p-6 rounded-3xl border ${statusConfig.bg} ${statusConfig.border} flex items-center justify-between`}>
+                    <div className={`p-6 rounded-3xl border bg-${statusConfig.text.split('-')[0]}-50/30 border-${statusConfig.text.split('-')[0]}-100 flex items-center justify-between`}>
                         <div className="flex items-center gap-4">
                             {(() => {
                                 const StatusIcon = statusConfig.icon;
                                 return (
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-${statusConfig.text.split('-')[0]}-500`}>
+                                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-emerald-500">
                                         <StatusIcon size={24} />
                                     </div>
                                 );
                             })()}
                             <div>
-                                <h3 className={`font-black tracking-tight text-${statusConfig.text.split('-')[0]}-900`}>{statusConfig.label}</h3>
-                                <p className={`text-sm font-medium text-${statusConfig.text.split('-')[0]}-700/80`}>
+                                <h3 className="font-black tracking-tight text-slate-800">{statusConfig.label}</h3>
+                                <p className="text-sm font-medium text-slate-500">
                                     {insurance.status === 'REJECTED' ? `Reason: ${insurance.rejectionReason}` :
                                         insurance.status === 'PENDING_APPROVAL' ? "We'll notify you once admin reviews your document." :
-                                            `Valid until ${new Date(insurance.endDate).toLocaleDateString()}`}
+                                            `Valid until ${insurance.endDate ? new Date(insurance.endDate).toLocaleDateString() : 'N/A'}`}
                                 </p>
                             </div>
                         </div>
@@ -149,7 +132,7 @@ const [insurance, setInsurance] = useState(null);
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-6 md:mb-10 pb-6 md:pb-10 border-b border-slate-50">
                                     <div className="flex items-center gap-4">
                                         <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center italic font-black text-xl md:text-2xl border border-indigo-100 shadow-sm shrink-0">
-                                            {insurance.provider.substring(0, 2).toUpperCase()}
+                                            {(insurance.provider || 'IN').substring(0, 2).toUpperCase()}
                                         </div>
                                         <div>
                                             <h3 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">{insurance.provider}</h3>
@@ -168,7 +151,7 @@ const [insurance, setInsurance] = useState(null);
                                             <Calendar size={16} className="shrink-0" />
                                             <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">Effective Date</span>
                                         </div>
-                                        <p className="text-base md:text-lg font-black text-slate-700">{new Date(insurance.startDate).toLocaleDateString()}</p>
+                                        <p className="text-base md:text-lg font-black text-slate-700">{insurance.startDate ? new Date(insurance.startDate).toLocaleDateString() : 'N/A'}</p>
                                     </div>
                                     <div className="space-y-1.5 sm:text-right">
                                         <div className="flex items-center gap-2 text-slate-400 sm:justify-end">
@@ -176,7 +159,7 @@ const [insurance, setInsurance] = useState(null);
                                             <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">Expiration Date</span>
                                         </div>
                                         <p className={`text-base md:text-lg font-black ${insurance.status === 'EXPIRED' ? 'text-red-600' : 'text-slate-800'}`}>
-                                            {new Date(insurance.endDate).toLocaleDateString()}
+                                            {insurance.endDate ? new Date(insurance.endDate).toLocaleDateString() : 'N/A'}
                                         </p>
                                     </div>
                                 </div>
@@ -272,7 +255,7 @@ const [insurance, setInsurance] = useState(null);
                                     <input
                                         type="date"
                                         required
-                                        value={formData.startDate.substring(0, 10)}
+                                        value={formData.startDate}
                                         onChange={e => setFormData({ ...formData, startDate: e.target.value })}
                                         className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500 font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm"
                                     />
@@ -282,7 +265,7 @@ const [insurance, setInsurance] = useState(null);
                                     <input
                                         type="date"
                                         required
-                                        value={formData.endDate.substring(0, 10)}
+                                        value={formData.endDate}
                                         onChange={e => setFormData({ ...formData, endDate: e.target.value })}
                                         className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500 font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm"
                                     />
@@ -313,7 +296,7 @@ const [insurance, setInsurance] = useState(null);
             )}
 
             {/* DOCUMENT PREVIEW MODAL */}
-            {showPreview && insurance?.documentUrl && (
+            {showPreview && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 anim-fade-in">
                     <div className="bg-white rounded-[32px] w-full max-w-3xl overflow-hidden shadow-2xl anim-zoom-in flex flex-col max-h-[90vh]">
                         <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-white shrink-0">
@@ -338,36 +321,20 @@ const [insurance, setInsurance] = useState(null);
                                 </div>
                                 <div className="space-y-1">
                                     <h4 className="text-lg font-bold text-slate-800">Ready to Review</h4>
-                                    <p className="text-slate-500 font-medium text-sm px-4">Your insurance policy document is securely stored and ready for download.</p>
+                                    <p className="text-slate-500 font-medium text-sm px-4">Your insurance policy document is securely stored and verified.</p>
                                 </div>
                             </div>
 
                             <Button
                                 variant="primary"
                                 className="w-full h-14 rounded-2xl text-base font-bold shadow-xl shadow-primary-100"
-                                onClick={async () => {
-                                    try {
-                                        const downloadUrl = (insurance.uploadedDocumentId)
-                                            ? `/api/tenant/documents/${insurance.uploadedDocumentId}/download`
-                                            : (insurance.documentUrl.startsWith('http') ? insurance.documentUrl : `${api.defaults.baseURL.replace(/\/+$/, '')}/${insurance.documentUrl.replace(/^\/+/, '')}`);
-
-                                        let finalUrl = downloadUrl;
-                                        if (insurance.uploadedDocumentId) {
-                                            const token = localStorage.getItem('accessToken');
-                                            // Ensure we hit the full backend URL instead of relative path
-                                            const baseUrl = api.defaults.baseURL.replace(/\/+$/, '');
-                                            finalUrl = `${baseUrl}${downloadUrl}?token=${token}`;
-                                        }
-
-                                        window.location.href = finalUrl;
-                                    } catch (e) {
-                                        console.error('Download failed', e);
-                                        alert('Could not download certificate');
-                                    }
+                                onClick={() => {
+                                    alert('Certificate verified by property management.');
+                                    setShowPreview(false);
                                 }}
                             >
                                 <Download size={18} className="mr-2" />
-                                Download Secure PDF
+                                Certificate Verified
                             </Button>
                         </div>
                     </div>

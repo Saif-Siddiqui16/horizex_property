@@ -7,6 +7,11 @@ export const authorizeRoles = (...allowedRoles: string[]) => {
       return sendError(res, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
+    // ADMIN always has full superuser bypass
+    if (req.user.role === 'ADMIN') {
+      return next();
+    }
+
     const effectiveAllowed = [...allowedRoles];
     if (effectiveAllowed.includes('SUPER_ADMIN') && !effectiveAllowed.includes('ADMIN')) {
       effectiveAllowed.push('ADMIN');
@@ -24,4 +29,3 @@ export const authorizeRoles = (...allowedRoles: string[]) => {
     return next();
   };
 };
-

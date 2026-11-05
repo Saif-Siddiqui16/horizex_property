@@ -12,7 +12,7 @@ generator client {
 // ----------------------------------------------------
 enum Role {
   ADMIN
-  SUPER_ADMIN
+  COWORKER
   COMPANY_ADMIN
   PROPERTY_MANAGER
   ACCOUNTANT
@@ -145,6 +145,7 @@ model User {
   notes        Note[]
   auditLogs    AuditLog[]
   sentMessages CommunicationMessage[]
+  permissions  Permission[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -496,3 +497,18 @@ model AuditLog {
   @@index([timestamp])
 }
 
+
+model Permission {
+  id         String   @id @default(uuid())
+  userId     String
+  moduleName String
+  canView    Boolean  @default(false)
+  canAdd     Boolean  @default(false)
+  canEdit    Boolean  @default(false)
+  canDelete  Boolean  @default(false)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleName])
+  @@index([userId])
+  @@map("permissions")
+}
