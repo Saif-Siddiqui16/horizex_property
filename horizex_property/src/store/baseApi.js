@@ -4,8 +4,11 @@ import { tokenRefreshed, loggedOut } from './authSlice';
 
 const mutex = new Mutex();
 
+const rawBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+const apiBaseUrl = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl}/api`;
+
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://localhost:5000/api',
+  baseUrl: apiBaseUrl,
   credentials: 'include', // Automatically passes HttpOnly cookies
   prepareHeaders: (headers, { getState }) => {
     const token = getState()?.auth?.accessToken || localStorage.getItem('accessToken');
@@ -24,7 +27,13 @@ const baseQuery = fetchBaseQuery({
 
 const baseQueryWithReauth = async (args, api, extraOptions) => {
   await mutex.waitForUnlock();
-  let result = await baseQuery(args, api, extraOptions);
+  let normalizedArgs = args;
+  if (typeof args === 'string' && args.startsWith('/api/')) {
+    normalizedArgs = args.replace(/^\/api/, '');
+  } else if (typeof args === 'object' && args?.url && args.url.startsWith('/api/')) {
+    normalizedArgs = { ...args, url: args.url.replace(/^\/api/, '') };
+  }
+  let result = await baseQuery(normalizedArgs, api, extraOptions);
 
   if (result.error && result.error.status === 401) {
     if (!mutex.isLocked()) {
@@ -39,7 +48,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         if (refreshResult.data && refreshResult.data.data?.accessToken) {
           api.dispatch(tokenRefreshed({ accessToken: refreshResult.data.data.accessToken }));
           // Retry original query with new token
-          result = await baseQuery(args, api, extraOptions);
+          result = await baseQuery(normalizedArgs, api, extraOptions);
         } else {
           api.dispatch(loggedOut());
         }
@@ -50,7 +59,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
       }
     } else {
       await mutex.waitForUnlock();
-      result = await baseQuery(args, api, extraOptions);
+      result = await baseQuery(normalizedArgs, api, extraOptions);
     }
   }
 

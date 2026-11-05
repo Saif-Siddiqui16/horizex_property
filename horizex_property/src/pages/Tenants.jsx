@@ -2186,9 +2186,9 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
                             <button
                               onClick={() => {
                                 const token = localStorage.getItem('accessToken');
-                                const baseURL = api.defaults.baseURL || 'http://localhost:5000';
-                                const normalizedBaseURL = baseURL.replace(/\/$/, "");
-                                window.open(`${normalizedBaseURL}/api/admin/documents/${doc.id}/download?disposition=inline&token=${token}`, '_blank');
+                                const baseURL = (api.defaults?.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, "");
+                                const baseWithoutApi = baseURL.replace(/\/api$/, "");
+                                window.open(`${baseWithoutApi}/api/admin/documents/${doc.id}/download?disposition=inline&token=${token}`, '_blank');
                               }}
                               className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                               title="View"

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 
 const UnitPrepDashboard = () => {
 const navigate = useNavigate();

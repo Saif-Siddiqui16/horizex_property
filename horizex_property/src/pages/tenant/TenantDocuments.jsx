@@ -48,19 +48,21 @@ export const TenantDocuments = () => {
     const handleView = (url) => {
         let fileUrl = url;
         if (!fileUrl.startsWith('http')) {
-            const base = (api.defaults?.baseURL || 'http://localhost:5000/api').replace(/\/$/, '');
+            const base = (api.defaults?.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
             const path = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
-            fileUrl = `${base}${path}`;
+            const normalizedPath = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
+            fileUrl = `${base}${normalizedPath}`;
         }
         window.open(fileUrl, '_blank');
     };
 
     const handleDownload = (docId, url) => {
         const token = localStorage.getItem('accessToken');
-        const base = (api.defaults?.baseURL || 'http://localhost:5000/api').replace(/\/$/, '');
+        const base = (api.defaults?.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
         const baseUrl = url.includes('?') ? url.split('?')[0] : url;
         const cleanPath = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
-        const finalUrl = `${base}${cleanPath}?disposition=attachment&token=${token}`;
+        const normalizedPath = cleanPath.startsWith('/api/') ? cleanPath.replace(/^\/api/, '') : cleanPath;
+        const finalUrl = `${base}${normalizedPath}?disposition=attachment&token=${token}`;
         window.open(finalUrl, '_blank');
     };
 
@@ -166,7 +168,7 @@ export const TenantDocuments = () => {
             {showUpload && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-0 md:p-6 overflow-y-auto anim-fade-in">
                     <div className="bg-white w-full max-w-md rounded-none md:rounded-3xl shadow-2xl flex flex-col overflow-hidden anim-zoom-in my-auto h-[100dvh] md:h-auto md:max-h-[90vh]">
-                        
+
                         {/* Sticky Modal Header */}
                         <div className="sticky top-0 bg-white border-b border-slate-50 p-6 flex items-center justify-between shrink-0 z-10">
                             <h3 className="text-xl font-black text-slate-800">Upload New Document</h3>
@@ -174,7 +176,7 @@ export const TenantDocuments = () => {
                                 <X size={24} />
                             </button>
                         </div>
-                        
+
                         {/* Scrollable Form Body */}
                         <div className="flex-1 overflow-y-auto p-6 md:p-8">
                             <form id="upload-doc-form" onSubmit={handleUpload} className="space-y-6">
@@ -218,7 +220,7 @@ export const TenantDocuments = () => {
                                 </div>
                             </form>
                         </div>
-                        
+
                         {/* Sticky Modal Footer */}
                         <div className="sticky bottom-0 bg-white border-t border-slate-50 p-6 flex items-center justify-end shrink-0 z-10 w-full">
                             <Button form="upload-doc-form" type="submit" variant="primary" className="w-full h-14 rounded-2xl font-black text-lg" disabled={isUploading || !selectedFile}>
