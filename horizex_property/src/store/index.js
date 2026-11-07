@@ -21,6 +21,7 @@ import './api/employeesApi';
 import './api/payrollApi';
 import './api/coworkersApi';
 import './api/tenantPortalApi';
+import './api/ownerPortalApi';
 
 export const store = configureStore({
   reducer: {
@@ -58,3 +59,4 @@ export * from './api/employeesApi';
 export * from './api/payrollApi';
 export * from './api/coworkersApi';
 export * from './api/tenantPortalApi';
+export * from './api/ownerPortalApi';

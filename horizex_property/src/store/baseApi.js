@@ -107,6 +107,13 @@ export const masterApi = createApi({
     'TenantDocuments',
     'TenantInsurance',
     'TenantReports',
+    'OwnerProfile',
+    'OwnerDashboard',
+    'OwnerProperties',
+    'OwnerFinancials',
+    'OwnerReports',
+    'OwnerRentRoll',
+    'OwnerChat',
   ],
   endpoints: () => ({}),
 });

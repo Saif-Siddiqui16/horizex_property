@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-
 import { Eye, CreditCard, X, Search, Filter } from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
-import { hasPermission } from '../utils/permissions';
+import { hasPermission } from '../utils/permissions';
+
 const OutstandingDues = () => {
-const [__forceUpdate, __setForceUpdate] = useState(0);
+  const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
     window.addEventListener('permissionsUpdated', handleUpdate);
@@ -56,13 +56,30 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     }
   };
 
+  const getTenantName = (t) => {
+    if (!t) return '';
+    if (typeof t === 'string') return t;
+    return `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.name || '';
+  };
+
+  const getUnitName = (u) => {
+    if (!u) return '';
+    if (typeof u === 'string') return u;
+    return u.unitNumber ? `Unit ${u.unitNumber}` : u.name || '';
+  };
+
   // Filter Logic
   const filteredDues = dues.filter(d => {
-    const matchesSearch = (d.tenant?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
-                          (d.unit?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                          (d.invoice?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    const tenantStr = getTenantName(d.tenant || d.tenantObj);
+    const unitStr = getUnitName(d.unit || d.lease?.unit);
+    const invoiceStr = (d.invoice || d.invoiceNumber || '').toString();
+
+    const matchesSearch = tenantStr.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          unitStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          invoiceStr.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesBuilding = !selectedBuilding || d.propertyId?.toString() === selectedBuilding.toString();
+    const propId = d.propertyId || d.lease?.unit?.propertyId || d.lease?.unit?.property?.id;
+    const matchesBuilding = !selectedBuilding || propId?.toString() === selectedBuilding.toString();
     
     return matchesSearch && matchesBuilding;
   });
@@ -84,7 +101,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     try {
       await api.post('/api/admin/payments', {
         invoiceId: selectedInvoice.id,
-        amount: paymentForm.amount,
+        amount: parseFloat(paymentForm.amount),
         paymentMethod: paymentForm.paymentMethod
       });
       alert('Payment recorded successfully');
@@ -160,58 +177,65 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
               <tbody className="divide-y divide-slate-50">
                 {currentDues.length > 0 ? (
-                  currentDues.map((d) => (
-                    <tr key={d.invoice} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 text-sm text-slate-700 font-mono font-medium whitespace-nowrap">{d.invoice}</td>
-                      <td className="p-4 text-sm text-slate-700 whitespace-nowrap">{d.tenant}</td>
-                      <td className="p-4 text-sm text-slate-700 whitespace-nowrap">{d.unit}</td>
-                      <td className="p-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                          d.category === 'DEPOSIT' || d.category === 'SECURITY_DEPOSIT'
-                            ? 'bg-purple-50 text-purple-700 border-purple-200'
-                            : d.category === 'SERVICE'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                        }`}>
-                          { (d.category === 'DEPOSIT' || d.category === 'SECURITY_DEPOSIT') ? 'Deposit' : d.category === 'SERVICE' ? 'Service' : 'Rent'}
-                        </span>
-                      </td>
-                      <td className="p-4 text-sm text-slate-500 whitespace-nowrap">{d.leaseType}</td>
-                      <td className="p-4 text-sm font-bold font-mono text-slate-900 whitespace-nowrap italic">$ {d.amount.toLocaleString('en-CA')}</td>
-                      <td className="p-4 text-sm text-slate-600 whitespace-nowrap">{d.dueDate}</td>
-                      <td className="p-4 text-sm">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border whitespace-nowrap ${d.status === 'Overdue'
-                          ? 'bg-rose-50 text-rose-700 border-rose-100'
-                          : d.status === 'Partial'
-                            ? 'bg-amber-50 text-amber-700 border-amber-100'
-                            : 'bg-orange-50 text-orange-700 border-orange-100'
+                  currentDues.map((d) => {
+                    const invoiceNum = d.invoice || d.invoiceNumber || '-';
+                    const tenantName = getTenantName(d.tenant || d.tenantObj) || 'Tenant';
+                    const unitName = getUnitName(d.unit || d.lease?.unit) || 'Unit';
+                    const amt = Number(d.amount ?? d.balanceRemaining ?? 0);
+
+                    return (
+                      <tr key={invoiceNum} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="p-4 text-sm text-slate-700 font-mono font-medium whitespace-nowrap">{invoiceNum}</td>
+                        <td className="p-4 text-sm text-slate-700 whitespace-nowrap">{tenantName}</td>
+                        <td className="p-4 text-sm text-slate-700 whitespace-nowrap">{unitName}</td>
+                        <td className="p-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                            d.category === 'DEPOSIT' || d.category === 'SECURITY_DEPOSIT'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : d.category === 'SERVICE'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                           }`}>
-                          {d.status}
-                          {d.daysOverdue > 0 && d.status !== 'Partial' && ` (${d.daysOverdue} days)`}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex gap-2">
-                          <button onClick={() => setSelectedInvoice(d)} className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-slate-100 rounded-lg transition-all">
-                            <Eye size={16} />
-                          </button>
-                          {hasPermission('Outstanding Dues', 'add') && (
-                            <button
-                              onClick={() => {
-                                setSelectedInvoice(d);
-                                setPaymentForm({ amount: d.amount.toString(), paymentMethod: 'Cash' });
-                                setShowPaymentModal(true);
-                              }}
-                              title="Record Payment"
-                              className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition-all"
-                            >
-                              <CreditCard size={16} />
+                            { (d.category === 'DEPOSIT' || d.category === 'SECURITY_DEPOSIT') ? 'Deposit' : d.category === 'SERVICE' ? 'Service' : 'Rent'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-sm text-slate-500 whitespace-nowrap">{d.leaseType || 'Full Unit'}</td>
+                        <td className="p-4 text-sm font-bold font-mono text-slate-900 whitespace-nowrap italic">$ {amt.toLocaleString('en-CA')}</td>
+                        <td className="p-4 text-sm text-slate-600 whitespace-nowrap">{d.dueDate || 'N/A'}</td>
+                        <td className="p-4 text-sm">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border whitespace-nowrap ${d.status === 'Overdue'
+                            ? 'bg-rose-50 text-rose-700 border-rose-100'
+                            : d.status === 'Partial'
+                              ? 'bg-amber-50 text-amber-700 border-amber-100'
+                              : 'bg-orange-50 text-orange-700 border-orange-100'
+                            }`}>
+                            {d.status || 'Pending'}
+                            {d.daysOverdue > 0 && d.status !== 'Partial' && ` (${d.daysOverdue} days)`}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex gap-2">
+                            <button onClick={() => setSelectedInvoice({ ...d, invoice: invoiceNum, tenant: tenantName, unit: unitName, amount: amt })} className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-slate-100 rounded-lg transition-all">
+                              <Eye size={16} />
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            {hasPermission('Outstanding Dues', 'add') && (
+                              <button
+                                onClick={() => {
+                                  setSelectedInvoice({ ...d, invoice: invoiceNum, tenant: tenantName, unit: unitName, amount: amt });
+                                  setPaymentForm({ amount: amt.toString(), paymentMethod: 'Cash' });
+                                  setShowPaymentModal(true);
+                                }}
+                                title="Record Payment"
+                                className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition-all"
+                              >
+                                <CreditCard size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={9} className="p-12 text-center">
@@ -252,8 +276,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
         {/* VIEW INVOICE MODAL */}
         {selectedInvoice && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md anim-fade-inpx-4">
-            <div className="bg-white p-8 rounded-3xl w-full max-w-lg shadow-2xl anim-zoom-inborder border-slate-200">
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md anim-fade-in px-4">
+            <div className="bg-white p-8 rounded-3xl w-full max-w-lg shadow-2xl anim-zoom-in border border-slate-200">
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                 <h3 className="text-xl font-black text-slate-900 uppercase italic tracking-tight">Invoice Details</h3>
                 <button onClick={() => setSelectedInvoice(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
@@ -269,7 +293,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 
                 <div className="col-span-2 p-6 rounded-2xl bg-rose-50 border border-rose-100 text-center shadow-inner">
                   <p className="text-[10px] font-black uppercase tracking-widest text-rose-400 mb-1">Balance Remaining</p>
-                  <p className="text-3xl font-black text-rose-700 font-mono italic">$ {selectedInvoice.amount.toLocaleString('en-CA')}</p>
+                  <p className="text-3xl font-black text-rose-700 font-mono italic">$ {Number(selectedInvoice.amount || 0).toLocaleString('en-CA')}</p>
                 </div>
               </div>
 
@@ -279,7 +303,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 </Button>
                 {hasPermission('Outstanding Dues', 'add') && (
                   <Button className="flex-[2] rounded-2xl shadow-xl shadow-primary-100" onClick={() => {
-                    setPaymentForm({ amount: selectedInvoice.amount.toString(), paymentMethod: 'Cash' });
+                    setPaymentForm({ amount: (selectedInvoice.amount || '').toString(), paymentMethod: 'Cash' });
                     setShowPaymentModal(true);
                   }}>
                     Record Payment
@@ -292,8 +316,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
         {/* RECORD PAYMENT MODAL */}
         {showPaymentModal && selectedInvoice && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] backdrop-blur-md anim-fade-inpx-4">
-            <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl anim-zoom-inborder border-slate-200">
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] backdrop-blur-md anim-fade-in px-4">
+            <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl anim-zoom-in border border-slate-200">
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                 <h3 className="text-xl font-black text-slate-900 uppercase italic tracking-tight">Collect Payment</h3>
                 <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">

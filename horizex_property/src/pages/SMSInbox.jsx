@@ -70,7 +70,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             
             // If there are unread messages, mark as read
             if (response.data.some(m => m.direction === 'INBOUND' && !m.isReadByAdmin)) {
-                await api.post('/api/communication/mark-read', { senderId: typeof userId === 'string' ? parseInt(userId.replace('resident_', '')) : userId });
+                await api.post('/api/communication/mark-read', { senderId: typeof userId === 'string' ? userId.replace('resident_', '') : userId });
                 fetchConversations(); // Update badge count in list
             }
         } catch (error) {
@@ -123,8 +123,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         if (!matchesSearch) return false;
         
         if (activeTab === 'ALL') return true;
-        if (activeTab === 'TENANT') return c.role === 'TENANT';
-        if (activeTab === 'RESIDENT') return c.role === 'RESIDENT';
+        if (activeTab === 'TENANT') return c.role === 'TENANT' || c.role === 'RESIDENT';
+        if (activeTab === 'RESIDENT') return c.role === 'RESIDENT' || c.role === 'TENANT';
         if (activeTab === 'COWORKER') return c.role === 'COWORKER';
         if (activeTab === 'OWNER') return c.role === 'OWNER';
         return true;

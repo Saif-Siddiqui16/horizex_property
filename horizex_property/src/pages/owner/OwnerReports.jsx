@@ -12,7 +12,8 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { Button } from '../../components/Button';
-import api from '../../api/client';
+import api from '../../api/client';
+import { useGetOwnerReportsQuery } from '../../store';
 const ICON_MAP = {
     monthly_summary: BarChart3,
     annual_overview: CircleDollarSign,
@@ -27,7 +28,8 @@ const COLOR_MAP = {
 };
 
 export const OwnerReports = () => {
-const [availableReports, setAvailableReports] = useState([]);
+    const { data: rtkReports, refetch: rtkRefetch } = useGetOwnerReportsQuery();
+    const [availableReports, setAvailableReports] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -58,6 +60,7 @@ const [availableReports, setAvailableReports] = useState([]);
     };
 
     useEffect(() => {
+        if (rtkRefetch) rtkRefetch();
         fetchReports();
     }, []);
 

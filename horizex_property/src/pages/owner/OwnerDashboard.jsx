@@ -14,130 +14,56 @@ import {
     Wrench
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../../api/client';
+import {
+    useGetOwnerDashboardStatsQuery,
+    useGetOwnerFinancialPulseQuery,
+    useGetOwnerProfileQuery
+} from '../../store';
 
 export const OwnerDashboard = () => {
     const navigate = useNavigate();
-    const [stats, setStats] = React.useState([]);
-    const [rawData, setRawData] = React.useState(null);
-    const [tenants, setTenants] = React.useState([]);
-    const [recentFinancials, setRecentFinancials] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-    const [insuranceExpiryCount, setInsuranceExpiryCount] = React.useState(0);
-    const [recentActivity, setRecentActivity] = React.useState([]);
-    const [ownerName, setOwnerName] = React.useState('Owner');
+    const { data: rawData, isLoading: statsLoading } = useGetOwnerDashboardStatsQuery();
+    const { data: financials, isLoading: pulseLoading } = useGetOwnerFinancialPulseQuery();
+    const { data: profile } = useGetOwnerProfileQuery();
+
+    const loading = statsLoading || pulseLoading;
+    const ownerName = profile?.name || 'Owner';
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
-    React.useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [statsRes, finRes, profileRes] = await Promise.all([
-                    api.get('/api/owner/dashboard/stats'),
-                    api.get('/api/owner/dashboard/financial-pulse'),
-                    api.get('/api/owner/profile')
-                ]);
+    const propCount = rawData?.propertyCount ?? rawData?.totalProperties ?? 0;
+    const unitCount = rawData?.unitCount ?? rawData?.totalUnits ?? 0;
+    const vacantUnits = rawData?.occupancy?.vacantUnits ?? 0;
+    const occupiedUnits = Math.max(0, unitCount - vacantUnits);
+    const occupancyPercent = unitCount > 0 ? Math.round((occupiedUnits / unitCount) * 100) : 0;
+    const dues = rawData?.outstandingDues ?? 0;
+    const monthlyRev = rawData?.monthlyRevenue ?? 0;
+    const insuranceExpiryCount = rawData?.insuranceExpiryCount || 0;
+    const tenants = rawData?.tenants || [];
 
-                const data = statsRes.data || {};
-                setRawData(data);
-                const financials = finRes.data;
-                if (profileRes.data && profileRes.data.name) {
-                    setOwnerName(profileRes.data.name);
-                }
+    // Safely handle financials array
+    let finList = [];
+    if (Array.isArray(financials)) {
+        finList = financials;
+    } else if (financials && Array.isArray(financials.trajectory)) {
+        finList = financials.trajectory.map(t => ({
+            month: t.month || 'Current',
+            expected: t.expected ?? t.amount ?? 0,
+            collected: t.collected ?? t.amount ?? 0,
+            dues: t.dues ?? 0
+        }));
+    } else if (financials && Array.isArray(financials.data)) {
+        finList = financials.data;
+    } else if (financials && Array.isArray(financials.financials)) {
+        finList = financials.financials;
+    }
 
-                const propCount = data.propertyCount ?? data.totalProperties ?? 0;
-                const totalUnits = data.unitCount ?? data.totalUnits ?? 0;
-                const vacantUnits = data.occupancy?.vacantUnits ?? 0;
-                const outstandingDues = data.outstandingDues ?? 0;
-
-                // 1. Map Stats
-                setStats([
-                    {
-                        label: 'Total Properties',
-                        value: propCount.toString(),
-                        icon: Building2,
-                        color: 'text-indigo-600',
-                        bg: 'bg-indigo-50',
-                        trend: 'Active Portfolio',
-                        trendUp: propCount > 0
-                    },
-                    {
-                        label: 'Total Units',
-                        value: totalUnits.toString(),
-                        icon: Building2,
-                        color: 'text-blue-600',
-                        bg: 'bg-blue-50',
-                        trend: 'Registered',
-                        trendUp: null
-                    },
-                    {
-                        label: 'Vacant Units',
-                        value: vacantUnits.toString(),
-                        icon: Building2,
-                        color: 'text-amber-600',
-                        bg: 'bg-amber-50',
-                        trend: 'Full units available',
-                        trendUp: null,
-                        details: data.occupancy?.vacantUnitsList || []
-                    },
-                    {
-                        label: 'Vacant Bedrooms',
-                        value: (data.occupancy?.vacantBedrooms ?? 0).toString(),
-                        icon: Users,
-                        color: 'text-orange-600',
-                        bg: 'bg-orange-50',
-                        trend: 'Room-wise vacancies',
-                        trendUp: null,
-                        details: data.occupancy?.vacantBedroomsList || []
-                    },
-                    {
-                        label: 'Outstanding Dues',
-                        value: `$ ${outstandingDues.toLocaleString('en-CA')}`,
-                        icon: AlertCircle,
-                        color: 'text-rose-600',
-                        bg: 'bg-rose-50',
-                        trend: 'Rent to be collected',
-                        trendUp: outstandingDues === 0
-                    },
-                ]);
-
-                setInsuranceExpiryCount(data.insuranceExpiryCount || 0);
-                setRecentActivity(data.recentActivity || []);
-                setTenants(data.tenants || []);
-
-                // Safely handle financials array
-                let finList = [];
-                if (Array.isArray(financials)) {
-                    finList = financials;
-                } else if (financials && Array.isArray(financials.trajectory)) {
-                    finList = financials.trajectory.map(t => ({
-                        month: t.month || 'Current',
-                        expected: t.expected ?? t.amount ?? 15400,
-                        collected: t.collected ?? t.amount ?? 15400,
-                        dues: t.dues ?? 0
-                    }));
-                } else if (financials && Array.isArray(financials.data)) {
-                    finList = financials.data;
-                } else if (financials && Array.isArray(financials.financials)) {
-                    finList = financials.financials;
-                }
-
-                const sortedFinancials = [...finList].sort((a, b) => {
-                    const dateA = new Date(a.month);
-                    const dateB = new Date(b.month);
-                    return dateA - dateB;
-                });
-                setRecentFinancials(sortedFinancials);
-
-            } catch (error) {
-                console.error("Failed to fetch owner dashboard data", error);
-                setRecentFinancials([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
+    const sortedFinancials = [...finList].sort((a, b) => {
+        const dateA = new Date(a.month);
+        const dateB = new Date(b.month);
+        return dateA - dateB;
+    });
+    const recentFinancials = sortedFinancials;
 
     if (loading) {
         return (
@@ -148,14 +74,6 @@ export const OwnerDashboard = () => {
             </>
         );
     }
-
-    const propCount = rawData?.propertyCount ?? rawData?.totalProperties ?? 0;
-    const unitCount = rawData?.unitCount ?? rawData?.totalUnits ?? 0;
-    const vacantUnits = rawData?.occupancy?.vacantUnits ?? 0;
-    const occupiedUnits = Math.max(0, unitCount - vacantUnits);
-    const occupancyPercent = unitCount > 0 ? Math.round((occupiedUnits / unitCount) * 100) : 0;
-    const dues = rawData?.outstandingDues ?? 0;
-    const monthlyRev = rawData?.monthlyRevenue ?? 15400;
 
     return (
         <>

@@ -13,16 +13,18 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/Button';
 import api from '../../api/client';
+import { useGetOwnerPropertiesQuery } from '../../store';
 import clsx from 'clsx';
 export const OwnerProperties = () => {
 const [viewingProperty, setViewingProperty] = useState(null);
 
+    const { data: propertiesData = [] } = useGetOwnerPropertiesQuery();
     const [ownerProperties, setOwnerProperties] = useState([]);
 
     React.useEffect(() => {
         const fetchProperties = async () => {
             try {
-                const res = await api.get('/api/owner/properties');
+                const res = propertiesData.length > 0 ? { data: propertiesData } : await api.get('/api/owner/properties');
                 // Map to UI model
                 const mapped = res.data.map(p => ({
                     id: p.id,
@@ -50,7 +52,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
             }
         };
         fetchProperties();
-    }, []);
+    }, [propertiesData]);
 
     // ... (rendering code)
 

@@ -43,6 +43,9 @@ export const OwnerTopbar = ({ onMenuClick }) => {
                     const initials = res.data.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                     setOwnerInitials(initials);
                 }
+                if (res.data.propertyName) {
+                    setPropertyName(res.data.propertyName);
+                }
             } catch (err) {
                 setOwnerName('Owner');
                 setOwnerInitials('OW');
