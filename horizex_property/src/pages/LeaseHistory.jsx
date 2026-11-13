@@ -33,17 +33,56 @@ export const LeaseHistory = () => {
     const [buildingFilter, setBuildingFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+        return localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+    });
+    const [selectedBuildingId, setSelectedBuildingId] = useState(() => {
+        return localStorage.getItem('global_selected_building_id') || '';
+    });
+
+    useEffect(() => {
+        const handleSync = () => {
+            setSelectedCompanyId(localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
+            setSelectedBuildingId(localStorage.getItem('global_selected_building_id') || '');
+        };
+        window.addEventListener('companyChanged', handleSync);
+        window.addEventListener('buildingChanged', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('buildingChanged', handleSync);
+            window.removeEventListener('storage', handleSync);
+        };
+    }, []);
+
     const [page, setPage] = useState(1);
     const limit = 15;
 
     // Reset page to 1 on filter changes
     useEffect(() => {
         setPage(1);
-    }, [search, buildingFilter, typeFilter, statusFilter]);
+    }, [search, buildingFilter, typeFilter, statusFilter, selectedCompanyId, selectedBuildingId]);
 
     // Client-side filtering over query cache
     const filteredLeases = useMemo(() => {
         let result = Array.isArray(rawLeases) ? rawLeases : [];
+
+        // 1. Topbar Company Filter
+        if (selectedCompanyId && selectedCompanyId !== 'all') {
+            result = result.filter(l => {
+                const b = buildings.find(bld => String(bld.id) === String(l.propertyId || l.unit?.propertyId || l.unit?.property?.id || l.buildingId));
+                const cId = l.companyId || l.unit?.property?.companyId || b?.companyId;
+                return String(cId) === String(selectedCompanyId);
+            });
+        }
+
+        // 2. Topbar Building Filter
+        if (selectedBuildingId && selectedBuildingId !== 'all') {
+            result = result.filter(l => {
+                const bId = l.propertyId || l.unit?.propertyId || l.unit?.property?.id || l.buildingId;
+                return String(bId) === String(selectedBuildingId);
+            });
+        }
 
         if (statusFilter) {
             result = result.filter(l => (l.status || '').toLowerCase() === statusFilter.toLowerCase());
@@ -78,7 +117,7 @@ export const LeaseHistory = () => {
         }
 
         return result;
-    }, [rawLeases, statusFilter, buildingFilter, typeFilter, search]);
+    }, [rawLeases, buildings, selectedCompanyId, selectedBuildingId, statusFilter, buildingFilter, typeFilter, search]);
 
     const totalPages = Math.max(1, Math.ceil(filteredLeases.length / limit));
     const displayLeases = useMemo(() => {

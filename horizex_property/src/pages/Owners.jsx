@@ -32,14 +32,15 @@ export const Owners = () => {
     const fetchOwnersData = async () => {
         try {
             const res = await api.get('/api/admin/owners');
-            setOwners(res.data?.data || res.data || []);
+            const data = res.data?.data || res.data || [];
+            setOwners(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch owners', error);
         }
     };
 
     /* 🔍 SEARCH */
-    const filteredOwners = owners.filter(
+    const filteredOwners = (owners || []).filter(
         (o) =>
             (o.name && o.name.toLowerCase().includes(search.toLowerCase())) ||
             (o.email && o.email.toLowerCase().includes(search.toLowerCase())) ||
@@ -472,7 +473,7 @@ export const Owners = () => {
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100 font-bold text-lg">
-                                            {viewingOwner.name.split(' ').map(n => n[0]).join('')}
+                                            {(viewingOwner.name || 'Owner').split(' ').map(n => n[0]).join('')}
                                         </div>
                                         <div>
                                             <h3 className="text-2xl font-bold text-slate-800">{viewingOwner.name}</h3>

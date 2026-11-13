@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import {
@@ -51,6 +52,36 @@ export const Units = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [showTypesModal, setShowTypesModal] = useState(false);
+
+  // Global Topbar Filter States (Synchronized with Redux & Topbar)
+  const reduxCompanyId = useSelector((state) => state.auth?.effectiveCompanyId);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+    return reduxCompanyId || localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+  });
+  const [selectedBuildingId, setSelectedBuildingId] = useState(() => {
+    return localStorage.getItem('global_selected_building_id') || '';
+  });
+
+  useEffect(() => {
+    const handleSync = () => {
+      setSelectedCompanyId(localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
+      setSelectedBuildingId(localStorage.getItem('global_selected_building_id') || '');
+    };
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('buildingChanged', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('buildingChanged', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduxCompanyId !== undefined) {
+      setSelectedCompanyId(reduxCompanyId || '');
+    }
+  }, [reduxCompanyId]);
 
   const [typeFilter, setTypeFilter] = useState('');
   const [buildingFilter, setBuildingFilter] = useState('');
@@ -107,7 +138,7 @@ export const Units = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [typeFilter, buildingFilter, search, showInactive]);
+  }, [typeFilter, buildingFilter, search, showInactive, selectedCompanyId, selectedBuildingId]);
 
   useEffect(() => {
     if (showModal || viewUnit || editUnit || deleteConfirm) {
@@ -133,6 +164,21 @@ export const Units = () => {
   // Filtered & Paginated units from RTK Query cache
   const filteredUnits = useMemo(() => {
     let list = Array.isArray(units) ? units : [];
+
+    // 1. Topbar Company Filter
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      list = list.filter(u => {
+        const b = buildings.find(bld => String(bld.id) === String(u.propertyId || u.property?.id));
+        const uCompId = u.companyId || u.property?.companyId || b?.companyId;
+        return String(uCompId) === String(selectedCompanyId);
+      });
+    }
+
+    // 2. Topbar Building Filter
+    if (selectedBuildingId && selectedBuildingId !== 'all') {
+      list = list.filter(u => String(u.propertyId || u.property?.id) === String(selectedBuildingId));
+    }
+
     if (!showInactive) {
       list = list.filter(unit => {
         const isConstruction = unit.unit_status === 'INACTIVE' || unit.classification === 'New Construction' || unit.status === 'IN_CONSTRUCTION' || unit.status === 'UNDER_MAINTENANCE';
@@ -158,7 +204,7 @@ export const Units = () => {
       );
     }
     return list;
-  }, [units, showInactive, typeFilter, buildingFilter, search]);
+  }, [units, buildings, selectedCompanyId, selectedBuildingId, showInactive, typeFilter, buildingFilter, search]);
 
   const totalPages = Math.ceil(filteredUnits.length / itemsPerPage) || 1;
   const paginatedUnits = useMemo(() => {

@@ -76,18 +76,22 @@ export const Dashboard = () => {
     return () => window.removeEventListener('permissionsUpdated', handleUpdate);
   }, []);
 
-  // Track global building filter from top bar
+  // Track global company and building filter from top bar
   const [selectedBuildingId, setSelectedBuildingId] = useState(() => localStorage.getItem('global_selected_building_id') || '');
+  const [selectedCompanyId, setSelectedCompanyId] = useState(() => localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
 
   useEffect(() => {
     const handleBuildingSync = () => {
       setSelectedBuildingId(localStorage.getItem('global_selected_building_id') || '');
+      setSelectedCompanyId(localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
     };
     window.addEventListener('buildingChanged', handleBuildingSync);
     window.addEventListener('companyChanged', handleBuildingSync);
+    window.addEventListener('storage', handleBuildingSync);
     return () => {
       window.removeEventListener('buildingChanged', handleBuildingSync);
       window.removeEventListener('companyChanged', handleBuildingSync);
+      window.removeEventListener('storage', handleBuildingSync);
     };
   }, []);
 
@@ -169,14 +173,20 @@ export const Dashboard = () => {
     };
   }, []);
 
-  // Filtered units respecting top-bar Building selector
+  // Filtered units respecting top-bar Company & Building selector
   const filteredUnits = useMemo(() => {
     let list = Array.isArray(allUnits) ? allUnits : [];
-    if (selectedBuildingId) {
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      list = list.filter(u => {
+        const uCompId = u.companyId || u.property?.companyId;
+        return String(uCompId) === String(selectedCompanyId);
+      });
+    }
+    if (selectedBuildingId && selectedBuildingId !== 'all') {
       list = list.filter(u => String(u.propertyId || u.property?.id) === String(selectedBuildingId));
     }
     return list;
-  }, [allUnits, selectedBuildingId]);
+  }, [allUnits, selectedCompanyId, selectedBuildingId]);
 
   // Vacant units count
   const vacantUnitsCount = useMemo(() => {

@@ -60,11 +60,16 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const [tenantBuildingFilter, setTenantBuildingFilter] = useState(() => {
     return localStorage.getItem('global_selected_building_id') || '';
   });
+  const [tenantCompanyFilter, setTenantCompanyFilter] = useState(() => {
+    return localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+  });
 
   useEffect(() => {
     const handleSync = () => {
       const globalBuilding = localStorage.getItem('global_selected_building_id') || '';
+      const globalCompany = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
       setTenantBuildingFilter(globalBuilding);
+      setTenantCompanyFilter(globalCompany);
       setPagination(prev => ({ ...prev, page: 1 }));
     };
     window.addEventListener('buildingChanged', handleSync);
@@ -208,11 +213,21 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     }
   }, [selectedUnitId, availableUnits]);
 
-  // Filter tenants by building and search query
+  // Filter tenants by company, building and search query
   const filteredTenants = useMemo(() => {
     let result = Array.isArray(rawTenants) ? rawTenants : [];
 
-    if (tenantBuildingFilter) {
+    // 1. Topbar Company Filter
+    if (tenantCompanyFilter && tenantCompanyFilter !== 'all') {
+      result = result.filter(t => {
+        const p = properties.find(prop => String(prop.id) === String(t.propertyId || t.property?.id));
+        const cId = t.companyId || t.company?.id || t.property?.companyId || p?.companyId;
+        return String(cId) === String(tenantCompanyFilter);
+      });
+    }
+
+    // 2. Topbar Building Filter
+    if (tenantBuildingFilter && tenantBuildingFilter !== 'all') {
       result = result.filter(t => 
         String(t.propertyId) === String(tenantBuildingFilter) || 
         String(t.property?.id) === String(tenantBuildingFilter) ||
@@ -232,7 +247,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     }
 
     return result;
-  }, [rawTenants, tenantBuildingFilter, search]);
+  }, [rawTenants, properties, tenantCompanyFilter, tenantBuildingFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTenants.length / pagination.limit));
   const paginatedTenants = useMemo(() => {
