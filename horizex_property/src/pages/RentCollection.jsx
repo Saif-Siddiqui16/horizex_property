@@ -249,8 +249,8 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
               { id: 'collection', label: 'Company Rent Collection', icon: Building2 },
               { id: 'dashboard', label: 'Overview Dashboard', icon: TrendingUp },
               { id: 'invoices', label: 'Rent Invoices Grid', icon: ClipboardList },
-              { id: 'ledger', label: 'Tenant Ledgers', icon: FileText },
-              { id: 'aging', label: 'Accounts Aging', icon: CreditCard }
+              // { id: 'ledger', label: 'Tenant Ledgers', icon: FileText },
+              // { id: 'aging', label: 'Accounts Aging', icon: CreditCard }
             ].map(tab => (
               <Button
                 key={tab.id}
@@ -265,7 +265,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0 justify-end self-end xl:self-auto">
-            <Button
+            {/* <Button
               variant="secondary"
               onClick={() => {
                 setGenCategory('Credit Memo');
@@ -275,7 +275,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
             >
               <Plus size={16} className="mr-1.5 shrink-0" />
               Create Credit Memo
-            </Button>
+            </Button> */}
             <Button
               variant="primary"
               onClick={() => {
@@ -595,11 +595,11 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
             </h3>
             
             {/* Invoice Type Toggle */}
-            <div className="flex gap-2 p-1 bg-slate-100 rounded-xl mb-4">
+            {/* <div className="flex gap-2 p-1 bg-slate-100 rounded-xl mb-4">
               <button
                 type="button"
                 onClick={() => setGenCategory('Rent')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${genCategory === 'Rent' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-white text-indigo-600 shadow-sm"
               >
                 Rent Invoice
               </button>
@@ -610,7 +610,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
               >
                 Credit Memo
               </button>
-            </div>
+            </div> */}
 
             <form onSubmit={handleGenerateInvoiceSubmit} className="space-y-4">
               <div>
@@ -622,7 +622,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
                     const lId = e.target.value;
                     setGenLeaseId(lId);
                     if (lId) {
-                      const l = leases.find(item => item.id === parseInt(lId));
+                      const l = leases.find(item => String(item.id) === String(lId));
                       if (l) setGenAmount((l.rentAmount || l.monthlyRent || '').toString());
                     }
                   }}
@@ -630,7 +630,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
                 >
                   <option value="">-- Choose Lease --</option>
                   {leases.map(l => (
-                    <option key={l.id} value={l.id}>{l.tenantName} - {l.propertyName} ({l.unitNumber})</option>
+                    <option key={l.id} value={l.id}>{l.tenantName} - {l.propertyName || l.buildingName || 'Building'} ({l.unitNumber || l.unit || '-'})</option>
                   ))}
                 </select>
               </div>
