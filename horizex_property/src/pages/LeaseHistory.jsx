@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Pencil, Trash2, X, FileText, Calendar, User, Home, Bed, AlertTriangle, CheckCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, Pencil, Trash2, X, FileText, Calendar, User, Home, Bed, AlertTriangle, CheckCircle, Search, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { Button } from '../components/Button';
 import { hasPermission } from '../utils/permissions';
 import {
@@ -9,6 +9,7 @@ import {
   useUpdateLeaseMutation,
   useDeleteLeaseMutation,
   useSendLeaseCredentialsMutation,
+  useRenewLeaseMutation,
 } from '../store';
 
 export const LeaseHistory = () => {
@@ -26,6 +27,9 @@ export const LeaseHistory = () => {
     const [updateLease] = useUpdateLeaseMutation();
     const [deleteLease] = useDeleteLeaseMutation();
     const [sendLeaseCredentials] = useSendLeaseCredentialsMutation();
+    const [renewLeaseMutation] = useRenewLeaseMutation();
+    const [renewingLease, setRenewingLease] = useState(null);
+    const [renewalForm, setRenewalForm] = useState({ proposedRent: '', proposedEndDate: '' });
 
     const [selectedLease, setSelectedLease] = useState(null);
     const [editLease, setEditLease] = useState(null);
@@ -318,6 +322,21 @@ export const LeaseHistory = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className="flex justify-end gap-2">
                                                     <button
+                                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
+                                                            onClick={() => {
+                                                                setRenewingLease(lease);
+                                                                const nextYear = new Date();
+                                                                nextYear.setFullYear(nextYear.getFullYear() + 1);
+                                                                setRenewalForm({
+                                                                    proposedRent: lease.monthlyRent || lease.rentAmount || '',
+                                                                    proposedEndDate: nextYear.toISOString().split('T')[0]
+                                                                });
+                                                            }}
+                                                            title="Renew Lease"
+                                                        >
+                                                            <RefreshCw size={15} />
+                                                        </button>
+                                                    <button
                                                         className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 ${lease.isCredentialsSent
                                                             ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
                                                             : 'text-amber-600 bg-amber-50 hover:bg-amber-100 hover:scale-105 shadow-sm'
@@ -463,6 +482,68 @@ export const LeaseHistory = () => {
                             <div className="flex justify-end">
                                 <Button variant="secondary" onClick={() => setSelectedLease(null)}>Close</Button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* RENEW LEASE MODAL */}
+                {renewingLease && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 anim-fade-in">
+                        <div className="bg-white rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl anim-zoom-in">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800">Initiate Lease Renewal</h3>
+                                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                        {typeof renewingLease.tenant === 'object' ? `${renewingLease.tenant?.firstName || ''} ${renewingLease.tenant?.lastName || ''}` : renewingLease.tenant} • Unit {typeof renewingLease.unit === 'object' ? renewingLease.unit?.unitNumber : renewingLease.unit}
+                                    </p>
+                                </div>
+                                <button onClick={() => setRenewingLease(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+                            </div>
+
+                            <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                try {
+                                    await renewLeaseMutation({
+                                        id: renewingLease.id,
+                                        proposedRent: parseFloat(renewalForm.proposedRent) || 0,
+                                        proposedEndDate: renewalForm.proposedEndDate,
+                                    }).unwrap();
+                                    alert('Renewal offer created successfully! View it in the Lease Renewals tab.');
+                                    setRenewingLease(null);
+                                    navigate('/leases/renewals');
+                                } catch (err) {
+                                    console.error(err);
+                                    alert(err?.data?.message || 'Failed to initiate renewal');
+                                }
+                            }} className="space-y-4">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Proposed Monthly Rent ($)</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        value={renewalForm.proposedRent}
+                                        onChange={(e) => setRenewalForm(prev => ({ ...prev, proposedRent: e.target.value }))}
+                                        className="px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-medium"
+                                        placeholder="e.g. 4500"
+                                    />
+                                </div>
+
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Proposed New End Date</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        value={renewalForm.proposedEndDate}
+                                        onChange={(e) => setRenewalForm(prev => ({ ...prev, proposedEndDate: e.target.value }))}
+                                        className="px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-medium"
+                                    />
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                                    <Button type="button" variant="secondary" onClick={() => setRenewingLease(null)}>Cancel</Button>
+                                    <Button type="submit" variant="primary">Create Renewal Offer</Button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 )}
