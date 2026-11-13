@@ -29,7 +29,8 @@ import {
   StickyNote,
   Clock,
   Network,
-  Briefcase
+  Briefcase,
+  ShieldCheck
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -74,6 +75,12 @@ const NAV_ITEMS = [
       { label: "Tenant List", tKey: "sidebar.tenant_list", path: "/tenants" },
       { label: "Vehicle Management", tKey: "sidebar.vehicles", path: "/tenants/vehicles" }
     ]
+  },
+  {
+    icon: ShieldCheck,
+    label: "Owners",
+    tKey: "sidebar.owners",
+    path: "/owners"
   },
   {
     icon: FileText,
