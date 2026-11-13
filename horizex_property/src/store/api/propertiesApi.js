@@ -47,7 +47,12 @@ export const propertiesApi = masterApi.injectEndpoints({
         url: `/admin/properties/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: [{ type: 'Properties', id: 'LIST' }, 'Dashboard', 'Company'],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Properties', id },
+        { type: 'Properties', id: 'LIST' },
+        'Dashboard',
+        'Company',
+      ],
     }),
 
     // Owners query for building assignment

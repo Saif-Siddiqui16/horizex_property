@@ -261,6 +261,23 @@ export const Units = () => {
       const reservedUser = fullUnit.reserved_by_user;
       const unitTypeName = typeof fullUnit.unitType === 'object' ? (fullUnit.unitType?.name || '') : (fullUnit.unitType || fullUnit.unitTypeName || '');
 
+      let gcDate = '';
+      try {
+        if (fullUnit.gc_delivered_target_date) {
+          const d = new Date(fullUnit.gc_delivered_target_date);
+          if (!isNaN(d.getTime())) gcDate = d.toISOString().split('T')[0];
+        }
+      } catch {}
+
+      let moveInDate = '';
+      try {
+        const rawDate = fullUnit.tentative_move_in_date || fullUnit.tentativeMoveInDate || activeLease?.startDate;
+        if (rawDate) {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) moveInDate = d.toISOString().split('T')[0];
+        }
+      } catch {}
+
       setFormData({
         propertyId: fullUnit.propertyId?.toString() || '',
         unitNumber: fullUnit.unitNumber || '',
@@ -270,16 +287,16 @@ export const Units = () => {
         bedrooms: fullUnit.bedrooms?.toString() || '1',
         baseRent: fullUnit.baseRent ? String(fullUnit.baseRent) : '1200',
         status: fullUnit.status || 'Vacant',
-        bedroomIdentifiers: fullUnit.bedroomsList?.map(b => b.bedroomNumber) || [],
+        bedroomIdentifiers: fullUnit.bedroomsList?.map(b => b.bedroomNumber) || (Array.isArray(fullUnit.bedroomIdentifiers) ? fullUnit.bedroomIdentifiers : []),
         unit_status: fullUnit.unit_status || (fullUnit.classification === 'New Construction' ? 'INACTIVE' : 'ACTIVE'),
-        gc_delivered_target_date: fullUnit.gc_delivered_target_date ? new Date(fullUnit.gc_delivered_target_date).toISOString().split('T')[0] : '',
-        reserved_flag: fullUnit.reserved_flag || !!activeLease,
-        reserved_by_id: reservedUser?.id?.toString() || activeLease?.tenantId?.toString() || '',
-        reserve_firstName: reservedUser?.firstName || activeLease?.tenant?.firstName || activeLease?.tenant?.name?.split(' ')[0] || '',
-        reserve_lastName: reservedUser?.lastName || activeLease?.tenant?.lastName || activeLease?.tenant?.name?.split(' ').slice(1).join(' ') || '',
-        reserve_email: reservedUser?.email || activeLease?.tenant?.email || '',
-        reserve_phone: reservedUser?.phone || activeLease?.tenant?.phone || '',
-        tentative_move_in_date: (fullUnit.tentative_move_in_date || activeLease?.startDate) ? new Date(fullUnit.tentative_move_in_date || activeLease?.startDate).toISOString().split('T')[0] : '',
+        gc_delivered_target_date: gcDate,
+        reserved_flag: fullUnit.reserved_flag || fullUnit.reservedFlag || !!activeLease,
+        reserved_by_id: reservedUser?.id?.toString() || activeLease?.tenantId?.toString() || fullUnit.reserved_by_id || '',
+        reserve_firstName: reservedUser?.firstName || activeLease?.tenant?.firstName || activeLease?.tenant?.name?.split(' ')[0] || fullUnit.reserve_firstName || fullUnit.reserveFirstName || '',
+        reserve_lastName: reservedUser?.lastName || activeLease?.tenant?.lastName || activeLease?.tenant?.name?.split(' ').slice(1).join(' ') || fullUnit.reserve_lastName || fullUnit.reserveLastName || '',
+        reserve_email: reservedUser?.email || activeLease?.tenant?.email || fullUnit.reserve_email || fullUnit.reserveEmail || '',
+        reserve_phone: reservedUser?.phone || activeLease?.tenant?.phone || fullUnit.reserve_phone || fullUnit.reservePhone || '',
+        tentative_move_in_date: moveInDate,
         classification: fullUnit.classification || (fullUnit.unit_status === 'INACTIVE' ? 'New Construction' : 'Completed')
       });
       setEditUnit(fullUnit);
@@ -384,7 +401,8 @@ export const Units = () => {
       closeModal();
     } catch (error) {
       console.error('Error saving unit:', error);
-      showToast(error?.data?.message || error?.error || 'Error saving unit', 'error');
+      const errMsg = error?.data?.error?.message || error?.data?.message || error?.error || (error?.data?.error?.details ? error.data.error.details.map(d => d.issue).join(', ') : '') || 'Error saving unit';
+      showToast(errMsg, 'error');
     }
   };
 
@@ -396,7 +414,8 @@ export const Units = () => {
       showToast('Unit deleted successfully');
     } catch (error) {
       console.error('Error deleting unit:', error);
-      showToast(error?.data?.message || error?.error || 'Error deleting unit', 'error');
+      const errMsg = error?.data?.error?.message || error?.data?.message || error?.error || 'Error deleting unit';
+      showToast(errMsg, 'error');
     }
   };
 

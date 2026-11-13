@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Briefcase } from 'lucide-react';
 import { useGetCompaniesQuery, setCompanyContext } from '../store';
@@ -6,7 +6,25 @@ import { useGetCompaniesQuery, setCompanyContext } from '../store';
 export const CompanySelector = () => {
     const dispatch = useDispatch();
     const effectiveCompanyId = useSelector((state) => state.auth?.effectiveCompanyId);
-    const { data: companies = [] } = useGetCompaniesQuery();
+    const { data: companiesRaw = [] } = useGetCompaniesQuery();
+
+    const companies = useMemo(() => {
+        if (Array.isArray(companiesRaw) && companiesRaw.length > 0) {
+            try {
+                localStorage.setItem('mock_companies', JSON.stringify(companiesRaw));
+            } catch (e) {}
+            return companiesRaw;
+        }
+        try {
+            const stored = localStorage.getItem('mock_companies');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch (e) {}
+        return Array.isArray(companiesRaw) ? companiesRaw : [];
+    }, [companiesRaw]);
+
     const [selectedId, setSelectedId] = useState(() => {
         return localStorage.getItem('global_selected_company_id') || '';
     });
@@ -23,12 +41,6 @@ export const CompanySelector = () => {
             setSelectedId(saved);
             dispatch(setCompanyContext(saved));
             localStorage.setItem('companyContext', saved);
-        } else if (companies.length === 1) {
-            const singleId = companies[0].id.toString();
-            setSelectedId(singleId);
-            dispatch(setCompanyContext(singleId));
-            localStorage.setItem('global_selected_company_id', singleId);
-            localStorage.setItem('companyContext', singleId);
         } else {
             setSelectedId('');
             dispatch(setCompanyContext(null));
@@ -70,9 +82,6 @@ export const CompanySelector = () => {
     // If user has no company access (like basic Tenant), don't render.
     if (user.role === 'TENANT') return null;
 
-    // Show "All Companies" option only if user has access to more than one company.
-    const showAllOption = companies.length > 1;
-
     return (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 hover:bg-zinc-100/80 rounded-[var(--radius-md)] border border-zinc-200 min-w-[120px] sm:min-w-[180px] h-9 transition-colors group relative">
             <Briefcase size={16} className="hidden sm:block text-zinc-400 group-hover:text-zinc-600 transition-colors shrink-0" />
@@ -81,9 +90,7 @@ export const CompanySelector = () => {
                 onChange={handleChange}
                 className="bg-transparent border-none outline-none text-zinc-800 font-semibold text-xs sm:text-sm cursor-pointer w-full appearance-none pr-6 truncate"
             >
-                {showAllOption && (
-                    <option value="">All Companies</option>
-                )}
+                <option value="">All Companies</option>
                 {companies.map(c => (
                     <option key={c.id} value={c.id}>
                         {c.name}
