@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { Plus, Search, User, Eye, Trash2, Pencil, Calendar, AlertCircle, Building, Building2, UserPlus, Mail, Smartphone, Send, CheckCircle } from 'lucide-react';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
-import { AccessControl } from '../components/AccessControl';
+import { AccessControl } from '../components/AccessControl';
 const initialOwners = [
     {
         id: 1,
@@ -53,6 +53,13 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     // Fetch properties from backend
     useEffect(() => {
         fetchOwnersData();
+        const handleSync = () => fetchOwnersData();
+        window.addEventListener('companyChanged', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('storage', handleSync);
+        };
     }, []);
 
     const fetchOwnersData = async () => {

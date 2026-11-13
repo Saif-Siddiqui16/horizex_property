@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   Briefcase,
@@ -43,6 +44,42 @@ export const Companies = () => {
     { id: 5, name: 'George Soros' },
     { id: 7, name: 'Jane Doe' }
   ]);
+
+  // Global Topbar Filter States (Synchronized with Redux & Topbar)
+  const reduxCompanyId = useSelector((state) => state.auth?.effectiveCompanyId);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+    return reduxCompanyId || localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+  });
+  const [selectedBuildingId, setSelectedBuildingId] = useState(() => {
+    return localStorage.getItem('global_selected_building_id') || '';
+  });
+
+  // Listen to Topbar changes (CompanySelector and BuildingSelector events)
+  useEffect(() => {
+    const handleSync = () => {
+      const activeComp = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      setSelectedCompanyId(activeComp);
+      const activeBldg = localStorage.getItem('global_selected_building_id') || '';
+      setSelectedBuildingId(activeBldg);
+    };
+
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('buildingChanged', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('buildingChanged', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
+
+  // Sync when Redux effectiveCompanyId updates
+  useEffect(() => {
+    if (reduxCompanyId !== undefined) {
+      setSelectedCompanyId(reduxCompanyId || '');
+    }
+  }, [reduxCompanyId]);
 
   const [search, setSearch] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
@@ -92,22 +129,41 @@ export const Companies = () => {
     return stats;
   }, [companies, buildings]);
 
-  // Overall metrics
-  const totalCompaniesCount = companies.length;
-  const totalManagedBuildings = Object.values(companyStats).reduce((acc, curr) => acc + curr.buildingsCount, 0);
-  const totalUnits = Object.values(companyStats).reduce((acc, curr) => acc + curr.unitsCount, 0);
-
-  // Filtered companies based on search
+  // Filtered companies based on Topbar (Company & Building) and local search
   const filteredCompanies = useMemo(() => {
-    if (!search.trim()) return companies;
-    const term = search.toLowerCase();
-    return companies.filter(c =>
-      (c.name && c.name.toLowerCase().includes(term)) ||
-      (c.code && c.code.toLowerCase().includes(term)) ||
-      (c.ownerName && c.ownerName.toLowerCase().includes(term)) ||
-      (c.address && c.address.toLowerCase().includes(term))
-    );
-  }, [companies, search]);
+    let result = companies;
+
+    // 1. Topbar Company Filter
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      result = result.filter(c => String(c.id) === String(selectedCompanyId));
+    }
+
+    // 2. Topbar Building Filter (filter to company that owns this building)
+    if (selectedBuildingId && selectedBuildingId !== 'all') {
+      const targetBuilding = buildings.find(b => String(b.id) === String(selectedBuildingId));
+      if (targetBuilding && targetBuilding.companyId) {
+        result = result.filter(c => String(c.id) === String(targetBuilding.companyId));
+      }
+    }
+
+    // 3. Search Bar Filter
+    if (search.trim()) {
+      const term = search.toLowerCase();
+      result = result.filter(c =>
+        (c.name && c.name.toLowerCase().includes(term)) ||
+        (c.code && c.code.toLowerCase().includes(term)) ||
+        (c.ownerName && c.ownerName.toLowerCase().includes(term)) ||
+        (c.address && c.address.toLowerCase().includes(term))
+      );
+    }
+
+    return result;
+  }, [companies, buildings, selectedCompanyId, selectedBuildingId, search]);
+
+  // Overall metrics reactively computed from filtered companies
+  const totalCompaniesCount = filteredCompanies.length;
+  const totalManagedBuildings = filteredCompanies.reduce((acc, curr) => acc + (companyStats[curr.id]?.buildingsCount || 0), 0);
+  const totalUnits = filteredCompanies.reduce((acc, curr) => acc + (companyStats[curr.id]?.unitsCount || 0), 0);
 
   // Auto-generate company code from name
   const handleNameChange = (nameVal, isEdit = false) => {
@@ -344,7 +400,7 @@ export const Companies = () => {
               ) : filteredCompanies.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-400 text-sm">
-                    No companies found matching "{search}".
+                    {search ? `No companies found matching "${search}".` : 'No companies found matching the active filter.'}
                   </td>
                 </tr>
               ) : (

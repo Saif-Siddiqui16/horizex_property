@@ -9,6 +9,23 @@ import api from '../api/client';
 export const Properties = () => {
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedCompanyId, setSelectedCompanyId] = useState(() => localStorage.getItem('global_selected_company_id') || '');
+    const [selectedBuildingId, setSelectedBuildingId] = useState(() => localStorage.getItem('global_selected_building_id') || '');
+
+    useEffect(() => {
+        const handleSync = () => {
+            setSelectedCompanyId(localStorage.getItem('global_selected_company_id') || '');
+            setSelectedBuildingId(localStorage.getItem('global_selected_building_id') || '');
+        };
+        window.addEventListener('companyChanged', handleSync);
+        window.addEventListener('buildingChanged', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('buildingChanged', handleSync);
+            window.removeEventListener('storage', handleSync);
+        };
+    }, []);
 
     useEffect(() => {
         const fetchProperties = async () => {
@@ -25,6 +42,12 @@ export const Properties = () => {
         fetchProperties();
     }, []);
 
+    const displayedProperties = properties.filter(p => {
+        if (selectedCompanyId && selectedCompanyId !== 'all' && String(p.companyId) !== String(selectedCompanyId)) return false;
+        if (selectedBuildingId && selectedBuildingId !== 'all' && String(p.id) !== String(selectedBuildingId)) return false;
+        return true;
+    });
+
     if (loading) {
         return <><div className="p-8">Loading properties...</div></>;
     }
@@ -38,7 +61,7 @@ export const Properties = () => {
 
             <Table
                 headers={['Property Name', 'Owner(s)', 'Units', 'Occupancy', 'Status', 'Actions']}
-                data={properties}
+                data={displayedProperties}
                 renderRow={(property) => (
                     <>
                         <td>

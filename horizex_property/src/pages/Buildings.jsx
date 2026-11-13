@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -46,6 +47,40 @@ export const Buildings = () => {
   const [editCompanyId, setEditCompanyId] = useState('');
   const [editBankAccount, setEditBankAccount] = useState('');
 
+  // Global Topbar Filter States (Synchronized with Redux & Topbar)
+  const reduxCompanyId = useSelector((state) => state.auth?.effectiveCompanyId);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+    return reduxCompanyId || localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+  });
+  const [selectedBuildingId, setSelectedBuildingId] = useState(() => {
+    return localStorage.getItem('global_selected_building_id') || '';
+  });
+
+  // Listen to Topbar changes (CompanySelector and BuildingSelector events)
+  useEffect(() => {
+    const handleSync = () => {
+      setSelectedCompanyId(localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
+      setSelectedBuildingId(localStorage.getItem('global_selected_building_id') || '');
+    };
+
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('buildingChanged', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('buildingChanged', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
+
+  // Sync when Redux effectiveCompanyId updates
+  useEffect(() => {
+    if (reduxCompanyId !== undefined) {
+      setSelectedCompanyId(reduxCompanyId || '');
+    }
+  }, [reduxCompanyId]);
+
   // Default company selection in Add Modal
   useEffect(() => {
     if (availableCompanies.length > 0 && !formCompanyId) {
@@ -71,19 +106,35 @@ export const Buildings = () => {
     return accounts.length > 0 ? getAccountLabel(accounts[0]) : '';
   };
 
-  // Filtered & Paginated Buildings using RTK Query cached server state
+  // Filtered & Paginated Buildings using RTK Query cached server state and Topbar Filters
   const filteredBuildings = useMemo(() => {
-    if (!search.trim()) return buildings;
-    const term = search.toLowerCase();
-    return buildings.filter(b =>
-      (b.name && b.name.toLowerCase().includes(term)) ||
-      (b.street && b.street.toLowerCase().includes(term)) ||
-      (b.city && b.city.toLowerCase().includes(term)) ||
-      (b.companyName && b.companyName.toLowerCase().includes(term)) ||
-      (b.ownerNames && b.ownerNames.toLowerCase().includes(term)) ||
-      (b.postalCode && b.postalCode.toLowerCase().includes(term))
-    );
-  }, [buildings, search]);
+    let result = buildings;
+
+    // 1. Topbar Company Filter
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      result = result.filter(b => String(b.companyId) === String(selectedCompanyId));
+    }
+
+    // 2. Topbar Building Filter
+    if (selectedBuildingId && selectedBuildingId !== 'all') {
+      result = result.filter(b => String(b.id) === String(selectedBuildingId));
+    }
+
+    // 3. Search Bar Filter
+    if (search.trim()) {
+      const term = search.toLowerCase();
+      result = result.filter(b =>
+        (b.name && b.name.toLowerCase().includes(term)) ||
+        (b.street && b.street.toLowerCase().includes(term)) ||
+        (b.city && b.city.toLowerCase().includes(term)) ||
+        (b.companyName && b.companyName.toLowerCase().includes(term)) ||
+        (b.ownerNames && b.ownerNames.toLowerCase().includes(term)) ||
+        (b.postalCode && b.postalCode.toLowerCase().includes(term))
+      );
+    }
+
+    return result;
+  }, [buildings, selectedCompanyId, selectedBuildingId, search]);
 
   const totalPages = Math.ceil(filteredBuildings.length / itemsPerPage) || 1;
   const paginatedBuildings = useMemo(() => {
@@ -92,7 +143,7 @@ export const Buildings = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, selectedCompanyId, selectedBuildingId]);
 
   // Add new building via RTK Query mutation
   const addBuilding = async (e) => {
