@@ -89,9 +89,10 @@ export const Buildings = () => {
   }, [availableCompanies, formCompanyId]);
 
   const getCompanyBankAccounts = (companyId) => {
-    if (!companyId) return [];
+    if (!companyId) return availableBankAccounts;
     const compId = String(companyId);
-    return availableBankAccounts.filter(a => String(a.companyId) === compId);
+    const matched = availableBankAccounts.filter(a => String(a.companyId) === compId);
+    return matched.length > 0 ? matched : availableBankAccounts;
   };
 
   const getAccountLabel = (acc) => {
@@ -154,7 +155,8 @@ export const Buildings = () => {
     const selectedOwnerObjs = owners.filter(o => selectedOwnerIds.includes(o.id));
     const ownerNamesFromSelection = selectedOwnerObjs.map(o => o.name).join(', ');
     const manualOwnerName = form.ownerName?.value?.trim() || '';
-    const finalOwnerNames = manualOwnerName || ownerNamesFromSelection || 'David Miller';
+    const finalOwnerNames = manualOwnerName || ownerNamesFromSelection || (owners[0]?.name || 'Demo Owner');
+    const validOwnerId = selectedOwnerIds.find(id => typeof id === 'string' && id.length > 10) || (selectedOwnerObjs[0]?.id) || null;
 
     const civic = form.civicNumber?.value?.trim() || '';
     const street = form.street?.value?.trim() || '';
@@ -176,7 +178,8 @@ export const Buildings = () => {
       province: form.province.value || 'Quebec',
       state: form.province.value || 'Quebec',
       postalCode: form.postalCode.value || 'H1A 1A1',
-      ownerIds: selectedOwnerIds.length > 0 ? selectedOwnerIds : [3],
+      ownerId: validOwnerId,
+      ownerIds: validOwnerId ? [validOwnerId] : [],
       ownerNames: finalOwnerNames
     };
 
@@ -217,7 +220,8 @@ export const Buildings = () => {
   // Edit building
   const editBuilding = (building) => {
     setCurrentBuilding(building);
-    setSelectedOwnerIds(building.ownerIds || []);
+    const initialOwners = building.ownerId ? [building.ownerId] : (building.ownerIds || []);
+    setSelectedOwnerIds(initialOwners);
     const compId = building.companyId ? String(building.companyId) : '';
     setEditCompanyId(compId);
     const autoBank = getCompanyBankAccount(compId);
@@ -235,35 +239,40 @@ export const Buildings = () => {
     const selectedOwnerObjs = owners.filter(o => selectedOwnerIds.includes(o.id));
     const ownerNamesFromSelection = selectedOwnerObjs.map(o => o.name).join(', ');
     const manualOwnerName = form.ownerName?.value?.trim() || '';
-    const finalOwnerNames = manualOwnerName || ownerNamesFromSelection || currentBuilding.ownerNames || 'David Miller';
+    const finalOwnerNames = manualOwnerName || ownerNamesFromSelection || currentBuilding.ownerNames || (owners[0]?.name || 'Demo Owner');
+    const validOwnerId = selectedOwnerIds.find(id => typeof id === 'string' && id.length > 10) || currentBuilding.ownerId || (selectedOwnerObjs[0]?.id) || null;
 
+    const nameVal = (form.name?.value || currentBuilding.name || '').trim();
+    const statusVal = form.status?.value || currentBuilding.status || 'Active';
     const civic = form.civicNumber?.value?.trim() || '';
     const street = form.street?.value?.trim() || '';
-    const fullAddress = [civic, street].filter(Boolean).join(' ') || currentBuilding.address || form.name.value;
-    const totalUnitsCount = parseInt(form.units.value) || 0;
+    const fullAddress = [civic, street].filter(Boolean).join(' ') || currentBuilding.address || nameVal;
+    const totalUnitsCount = parseInt(form.units?.value) || 0;
 
     const updatedData = {
       id: currentBuilding.id,
-      name: form.name.value.trim(),
-      companyId: selectedComp ? selectedComp.id : (currentBuilding.companyId || null),
+      name: nameVal,
+      companyId: selectedComp ? selectedComp.id : currentBuilding.companyId,
       companyName: selectedComp ? selectedComp.name : (currentBuilding.companyName || ''),
       bankAccount: form.bankAccount?.value || editBankAccount || currentBuilding.bankAccount || '',
       units: totalUnitsCount,
       totalUnits: totalUnitsCount,
-      status: form.status.value,
+      status: statusVal,
       civicNumber: civic,
       street: street,
       address: fullAddress,
-      city: form.city.value || 'Montreal',
-      province: form.province.value || 'Quebec',
-      state: form.province.value || 'Quebec',
-      postalCode: form.postalCode.value || 'H1A 1A1',
-      ownerIds: selectedOwnerIds,
+      city: form.city?.value || currentBuilding.city || 'Montreal',
+      province: form.province?.value || currentBuilding.province || 'Quebec',
+      state: form.province?.value || currentBuilding.province || 'Quebec',
+      postalCode: form.postalCode?.value || currentBuilding.postalCode || 'H1A 1A1',
+      ownerId: validOwnerId,
+      ownerIds: validOwnerId ? [validOwnerId] : [],
       ownerNames: finalOwnerNames
     };
 
     try {
       await updateProperty(updatedData).unwrap();
+      window.dispatchEvent(new Event('buildingChanged'));
       setShowEditModal(false);
       form.reset();
       setSelectedOwnerIds([]);
