@@ -84,6 +84,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [editAmount, setEditAmount] = useState('');
   const [editDueDate, setEditDueDate] = useState('');
+  const [viewingInvoice, setViewingInvoice] = useState(null);
 
   const loadData = async () => {
     try {
@@ -349,7 +350,13 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   const handleRecordPaymentSubmit = async (e) => {
     e.preventDefault();
     if (!payAmount || parseFloat(payAmount) <= 0) return;
-    await api.post('/admin/payments', { invoiceId: targetInvoiceId, amount: parseFloat(payAmount), paymentMethod: payMethod }).catch(() => {});
+    const inv = invoices.find(i => i.id === targetInvoiceId);
+    await api.post('/admin/payments', { 
+      invoiceId: targetInvoiceId, 
+      tenantId: inv?.tenantId,
+      amount: parseFloat(payAmount), 
+      paymentMethod: payMethod 
+    }).catch((err) => console.error('Payment record error', err));
     closeModal();
     loadData();
   };
@@ -565,8 +572,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
                   onView={(id) => {
                     const inv = invoices.find(i => i.id === id);
                     if (inv) {
-                      setSelectedTenantLedger(inv.tenantId);
-                      setActiveTab('ledger');
+                      setViewingInvoice(inv);
                     }
                   }}
                   onEdit={handleOpenEdit}
@@ -632,6 +638,95 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
         )}
 
       </div>
+
+      {/* 📄 View Invoice Details Modal */}
+      {viewingInvoice && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-[26px] p-6 max-w-md w-full border border-slate-100 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+            <button 
+              onClick={() => setViewingInvoice(null)} 
+              className="absolute right-6 top-6 p-1.5 hover:bg-slate-100 rounded-full text-slate-400"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <ClipboardList size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-800 tracking-tight">Invoice Details</h3>
+                <p className="text-xs font-mono font-bold text-indigo-600">{viewingInvoice.invoiceNo || viewingInvoice.invoiceNumber || viewingInvoice.id}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="font-bold text-slate-400 uppercase text-[10px]">Building & Unit</span>
+                <span className="font-black text-slate-800 text-right">{viewingInvoice.propertyName || viewingInvoice.buildingName || 'Building'} • Unit {viewingInvoice.unitNumber || viewingInvoice.unit || '-'}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="font-bold text-slate-400 uppercase text-[10px]">Tenant</span>
+                <span className="font-black text-slate-800">{viewingInvoice.tenantName || viewingInvoice.tenant || 'Tenant'}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="font-bold text-slate-400 uppercase text-[10px]">Due Date</span>
+                <span className="font-semibold text-slate-700 font-mono">{viewingInvoice.dueDateFormatted || (viewingInvoice.dueDate ? String(viewingInvoice.dueDate).split('T')[0] : 'N/A')}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="font-bold text-slate-400 uppercase text-[10px]">Status</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                  (viewingInvoice.status || '').toUpperCase() === 'PAID'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border border-amber-200'
+                }`}>
+                  {viewingInvoice.status || 'UNPAID'}
+                </span>
+              </div>
+
+              {/* Financial Breakdown Card */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2 mt-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-semibold">Total Rent Due:</span>
+                  <span className="font-mono font-black text-slate-900">${(parseFloat(viewingInvoice.amountDue !== undefined ? viewingInvoice.amountDue : (viewingInvoice.amount || 0))).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-semibold">Amount Paid:</span>
+                  <span className="font-mono font-bold text-emerald-600">${(parseFloat(viewingInvoice.amountPaid || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                  <span className="text-slate-900 font-black">Outstanding Balance:</span>
+                  <span className="font-mono font-black text-rose-600 text-sm">
+                    ${(parseFloat(viewingInvoice.outstandingBalance !== undefined ? viewingInvoice.outstandingBalance : (viewingInvoice.amountDue || viewingInvoice.amount || 0) - (viewingInvoice.amountPaid || 0))).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <Button onClick={() => setViewingInvoice(null)} variant="secondary" className="flex-1 text-xs font-bold">
+                Close
+              </Button>
+              {parseFloat(viewingInvoice.outstandingBalance !== undefined ? viewingInvoice.outstandingBalance : (viewingInvoice.amountDue || 0) - (viewingInvoice.amountPaid || 0)) > 0 && (
+                <Button 
+                  onClick={() => {
+                    const id = viewingInvoice.id;
+                    setViewingInvoice(null);
+                    openModal('payment', id);
+                  }} 
+                  variant="primary" 
+                  className="flex-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  Record Payment
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Action Modals */}
       {activeModal === 'payment' && (
