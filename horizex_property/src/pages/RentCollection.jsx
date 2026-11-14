@@ -13,6 +13,22 @@ import { InvoiceTable } from '../components/collection/InvoiceTable';
 import { RecentPaymentsWidget } from '../components/collection/RecentPaymentsWidget';
 import { CompanyRentCollection } from '../components/collection/CompanyRentCollection';
 import api from '../api/client';
+
+const BILLING_MONTHS = [
+  'November 2026',
+  'December 2026',
+  'January 2027',
+  'February 2027',
+  'March 2027',
+  'April 2027',
+  'May 2027',
+  'June 2027',
+  'July 2027',
+  'August 2027',
+  'September 2027',
+  'October 2027'
+];
+
 export const RentCollection = ({ defaultTab = 'collection' }) => {
   const [activeTab, setActiveTab] = useState(defaultTab || 'collection'); // 'collection', 'dashboard', 'invoices', 'ledger', 'aging'
 
@@ -53,6 +69,13 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   const [credAmount, setCredAmount] = useState('');
   const [credReason, setCredReason] = useState('');
   
+  const [genBuildingId, setGenBuildingId] = useState('');
+  const [genTenantId, setGenTenantId] = useState('');
+  const [genUnitNumber, setGenUnitNumber] = useState('');
+  const [genBillingMonth, setGenBillingMonth] = useState('November 2026');
+  const [genInvoiceType, setGenInvoiceType] = useState('RENT');
+  const [genBaseRent, setGenBaseRent] = useState('');
+  const [genServiceFee, setGenServiceFee] = useState('0');
   const [genLeaseId, setGenLeaseId] = useState('');
   const [genAmount, setGenAmount] = useState('');
   const [genDueDate, setGenDueDate] = useState('');
@@ -65,16 +88,116 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const invRes = await api.get('/admin/invoices').catch(() => ({ data: [] })); const invList = invRes.data?.data || invRes.data || [];
+      const [invRes, payRes] = await Promise.all([
+        api.get('/admin/invoices').catch(() => ({ data: [] })),
+        api.get('/admin/payments').catch(() => ({ data: [] }))
+      ]);
+
+      const invList = Array.isArray(invRes.data?.data) ? invRes.data.data : (Array.isArray(invRes.data) ? invRes.data : []);
+      const backendPayments = Array.isArray(payRes.data?.data) ? payRes.data.data : (Array.isArray(payRes.data) ? payRes.data : []);
       const rawPayments = localStorage.getItem('mock_payments');
-      const payList = rawPayments ? JSON.parse(rawPayments) : [];
+      const localPayments = rawPayments ? JSON.parse(rawPayments) : [];
+      const payList = [...backendPayments, ...localPayments];
       
       setInvoices(invList);
       setPayments(payList);
 
-      // Business services call (Do NOT calculate inside components!)
-      setMetrics({ collected: 0, overdue: 0, pending: 0 });
-      setAging([]);
+      // Compute dynamic metrics for Overview Dashboard
+      const totalDue = invList.reduce((sum, inv) => sum + (parseFloat(inv.amountDue !== undefined ? inv.amountDue : inv.amount) || 0), 0);
+      const totalCollected = invList.reduce((sum, inv) => sum + (parseFloat(inv.amountPaid) || 0), 0);
+      const totalOutstanding = invList.reduce((sum, inv) => {
+        const bal = inv.outstandingBalance !== undefined ? inv.outstandingBalance : (parseFloat(inv.amountDue || inv.amount || 0) - (parseFloat(inv.amountPaid) || 0));
+        return sum + Math.max(0, parseFloat(bal) || 0);
+      }, 0);
+      const collectionRate = totalDue > 0 ? Math.round((totalCollected / totalDue) * 100) : 0;
+
+      const now = new Date();
+      let overdueCount = 0;
+      let currentAging = 0;
+      let thirtyAging = 0;
+      let sixtyAging = 0;
+      let ninetyAging = 0;
+      let ninetyPlusAging = 0;
+
+      const tenantOutstandingMap = {};
+      const buildingOutstandingMap = {};
+
+      invList.forEach(inv => {
+        const bal = parseFloat(inv.outstandingBalance !== undefined ? inv.outstandingBalance : (parseFloat(inv.amountDue || inv.amount || 0) - (parseFloat(inv.amountPaid) || 0))) || 0;
+        const dDate = inv.dueDate ? new Date(inv.dueDate) : null;
+        const isPastDue = dDate && dDate < now;
+        const isOverdue = (inv.status || '').toUpperCase() === 'OVERDUE' || (isPastDue && bal > 0);
+
+        if (isOverdue) overdueCount++;
+
+        if (bal > 0) {
+          const diffDays = dDate ? Math.floor((now.getTime() - dDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+          if (diffDays <= 0) {
+            currentAging += bal;
+          } else if (diffDays <= 30) {
+            thirtyAging += bal;
+          } else if (diffDays <= 60) {
+            sixtyAging += bal;
+          } else if (diffDays <= 90) {
+            ninetyAging += bal;
+          } else {
+            ninetyPlusAging += bal;
+          }
+
+          const tName = inv.tenantName || inv.tenant || 'Tenant';
+          tenantOutstandingMap[tName] = (tenantOutstandingMap[tName] || 0) + bal;
+
+          const bName = inv.propertyName || inv.buildingName || 'Property';
+          buildingOutstandingMap[bName] = (buildingOutstandingMap[bName] || 0) + bal;
+        }
+      });
+
+      const thisMonth = now.getMonth();
+      const thisYear = now.getFullYear();
+      let thisMonthCollection = 0;
+      let lastMonthCollection = 0;
+      payList.forEach(p => {
+        const pDate = new Date(p.paidAt || p.paymentDate || p.createdAt || now);
+        const pAmount = parseFloat(p.amount || p.amountPaid || 0);
+        if (pDate.getFullYear() === thisYear && pDate.getMonth() === thisMonth) {
+          thisMonthCollection += pAmount;
+        } else {
+          lastMonthCollection += pAmount;
+        }
+      });
+      if (thisMonthCollection === 0 && totalCollected > 0) {
+        thisMonthCollection = totalCollected;
+      }
+
+      const highestTenants = Object.entries(tenantOutstandingMap)
+        .map(([name, amount]) => ({ name, amount: Math.round(amount * 100) / 100 }))
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+
+      const highestBuildings = Object.entries(buildingOutstandingMap)
+        .map(([name, amount]) => ({ name, amount: Math.round(amount * 100) / 100 }))
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+
+      setMetrics({
+        totalDue: Math.round(totalDue * 100) / 100,
+        totalCollected: Math.round(totalCollected * 100) / 100,
+        totalOutstanding: Math.round(totalOutstanding * 100) / 100,
+        collectionRate,
+        overdueCount,
+        thisMonthCollection: Math.round(thisMonthCollection * 100) / 100,
+        lastMonthCollection: Math.round(lastMonthCollection * 100) / 100,
+      });
+
+      setAging({
+        current: Math.round(currentAging * 100) / 100,
+        thirty: Math.round(thirtyAging * 100) / 100,
+        sixty: Math.round(sixtyAging * 100) / 100,
+        ninety: Math.round(ninetyAging * 100) / 100,
+        ninetyPlus: Math.round(ninetyPlusAging * 100) / 100,
+        highestTenants,
+        highestBuildings,
+      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -126,11 +249,19 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
   // Filters logic
   const filteredInvoices = invoices.filter(inv => {
     const matchesSearch =
-      (inv.tenantName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (inv.invoiceNo || '').toLowerCase().includes(search.toLowerCase()) ||
-      (inv.unitNumber || '').toLowerCase().includes(search.toLowerCase());
-    const matchesBuilding = !selectedBuilding || inv.propertyId === parseInt(selectedBuilding);
-    const matchesStatus = !selectedStatus || inv.status === selectedStatus;
+      (inv.tenantName || inv.tenant || '').toLowerCase().includes(search.toLowerCase()) ||
+      (inv.invoiceNo || inv.invoiceNumber || '').toLowerCase().includes(search.toLowerCase()) ||
+      (inv.unitNumber || inv.unit || '').toLowerCase().includes(search.toLowerCase()) ||
+      (inv.propertyName || inv.buildingName || '').toLowerCase().includes(search.toLowerCase());
+    const matchesBuilding = !selectedBuilding || String(inv.propertyId || inv.lease?.unit?.propertyId || inv.lease?.unit?.property?.id) === String(selectedBuilding);
+    const matchesStatus = !selectedStatus || (() => {
+      const s = (selectedStatus || '').toLowerCase().replace(/[\s_-]/g, '');
+      const invS = (inv.status || '').toLowerCase().replace(/[\s_-]/g, '');
+      if (s === invS) return true;
+      if (s === 'unpaid' && (invS === 'unpaid' || invS === 'pending')) return true;
+      if (s === 'partiallypaid' && (invS === 'partiallypaid' || invS === 'partialpayment' || invS === 'partial')) return true;
+      return false;
+    })();
     const matchesMethod = !selectedPaymentMethod || inv.paymentsList?.some(p => p.paymentMethod === selectedPaymentMethod);
     return matchesSearch && matchesBuilding && matchesStatus && matchesMethod;
   });
@@ -151,10 +282,48 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
     }
   };
 
+  const resetGenForm = () => {
+    setGenBuildingId('');
+    setGenTenantId('');
+    setGenUnitNumber('');
+    setGenLeaseId('');
+    setGenBaseRent('');
+    setGenServiceFee('0');
+    setGenInvoiceType('RENT');
+    setGenDueDate('');
+    setGenDescription('');
+  };
+
   const closeModal = () => {
     setActiveModal(null);
     setTargetInvoiceId(null);
     setEditingInvoice(null);
+    resetGenForm();
+  };
+
+  const handleGenBuildingChange = (bId) => {
+    setGenBuildingId(bId);
+    setGenTenantId('');
+    setGenUnitNumber('');
+    setGenLeaseId('');
+    setGenBaseRent('');
+  };
+
+  const handleGenTenantChange = (lId) => {
+    setGenLeaseId(lId);
+    const selectedLease = leases.find(l => String(l.id) === String(lId));
+    if (selectedLease) {
+      setGenTenantId(selectedLease.tenantId || selectedLease.tenantObj?.id || '');
+      setGenUnitNumber(selectedLease.unitNumber || selectedLease.unit || '-');
+      setGenBaseRent((selectedLease.rentAmount || selectedLease.monthlyRent || '').toString());
+      if (selectedLease.unitObj?.property?.id) {
+        setGenBuildingId(selectedLease.unitObj.property.id);
+      }
+    } else {
+      setGenTenantId('');
+      setGenUnitNumber('');
+      setGenBaseRent('');
+    }
   };
 
   const handleOpenEdit = (inv) => {
@@ -203,16 +372,28 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
 
   const handleGenerateInvoiceSubmit = async (e) => {
     e.preventDefault();
-    if (!genLeaseId || !genAmount || !genDueDate) return;
-    await api.post('/admin/invoices', { leaseId: genLeaseId, amount: parseFloat(genAmount), dueDate: genDueDate, category: genCategory, description: genDescription }).catch(() => {});
+    const total = (parseFloat(genBaseRent) || 0) + (parseFloat(genServiceFee) || 0);
+    if (!genLeaseId || total <= 0 || !genDueDate) return;
+    await api.post('/admin/invoices', {
+      leaseId: genLeaseId,
+      amount: total,
+      dueDate: genDueDate,
+      category: genInvoiceType || 'RENT',
+      description: `${genInvoiceType || 'RENT'} - ${genBillingMonth || ''}`,
+    }).catch(() => {});
     closeModal();
     loadData();
-    setGenCategory('Rent');
-    setGenDescription('');
+    resetGenForm();
   };
 
   const handleDuplicate = async (id) => {
     await api.post(`/admin/invoices/${id}/duplicate`).catch(() => {});
+    loadData();
+  };
+
+  const handleDeleteInvoice = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this invoice?')) return;
+    await api.delete(`/admin/invoices/${id}`).catch(() => {});
     loadData();
   };
 
@@ -389,6 +570,7 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
                     }
                   }}
                   onEdit={handleOpenEdit}
+                  onDelete={handleDeleteInvoice}
                   onDuplicate={handleDuplicate}
                   onMarkSent={handleMarkSent}
                   onEmail={handleEmail}
@@ -586,89 +768,132 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
 
       {activeModal === 'generate' && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-[26px] p-6 max-w-md w-full border border-slate-100 shadow-2xl relative">
+          <div className="bg-white rounded-[26px] p-6 max-w-lg w-full border border-slate-100 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button onClick={closeModal} className="absolute right-6 top-6 p-1.5 hover:bg-slate-100 rounded-full text-slate-400">
               <X size={18} />
             </button>
-            <h3 className="text-base font-black text-slate-800 tracking-tight mb-3">
-              {genCategory === 'Credit Memo' ? 'Create Credit Memo' : 'Generate Rent Invoice'}
-            </h3>
-            
-            {/* Invoice Type Toggle */}
-            {/* <div className="flex gap-2 p-1 bg-slate-100 rounded-xl mb-4">
-              <button
-                type="button"
-                onClick={() => setGenCategory('Rent')}
-                className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-white text-indigo-600 shadow-sm"
-              >
-                Rent Invoice
-              </button>
-              <button
-                type="button"
-                onClick={() => setGenCategory('Credit Memo')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${genCategory === 'Credit Memo' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Credit Memo
-              </button>
-            </div> */}
 
-            <form onSubmit={handleGenerateInvoiceSubmit} className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <Plus size={18} />
+              </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Select Lease Agreement</label>
+                <h3 className="text-base font-black text-slate-800 tracking-tight">Create New Invoice</h3>
+                <p className="text-[11px] text-slate-400 font-semibold">Fill in the details below</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleGenerateInvoiceSubmit} className="space-y-3.5">
+              {/* Select Building */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Select Building</label>
                 <select
-                  required
-                  value={genLeaseId}
-                  onChange={(e) => {
-                    const lId = e.target.value;
-                    setGenLeaseId(lId);
-                    if (lId) {
-                      const l = leases.find(item => String(item.id) === String(lId));
-                      if (l) setGenAmount((l.rentAmount || l.monthlyRent || '').toString());
-                    }
-                  }}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none"
+                  value={genBuildingId}
+                  onChange={(e) => handleGenBuildingChange(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:bg-white focus:border-indigo-500 transition-all"
                 >
-                  <option value="">-- Choose Lease --</option>
-                  {leases.map(l => (
-                    <option key={l.id} value={l.id}>{l.tenantName} - {l.propertyName || l.buildingName || 'Building'} ({l.unitNumber || l.unit || '-'})</option>
+                  <option value="">Choose Building</option>
+                  {buildings.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
-                  {genCategory === 'Credit Memo' ? 'Credit Amount ($)' : 'Invoice Due Amount ($)'}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  placeholder="0.00"
-                  value={genAmount}
-                  onChange={(e) => setGenAmount(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-xl text-xs font-semibold outline-none transition-all text-slate-800 ${
-                    genCategory === 'Credit Memo'
-                      ? 'bg-rose-50/30 border-rose-200 focus:bg-white focus:border-rose-500 text-rose-700 font-mono font-bold'
-                      : 'bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500'
-                  }`}
-                />
-              </div>
-              {genCategory === 'Credit Memo' && (
+
+              {/* Tenant & Unit Row */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Credit Reason / Description</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tenant</label>
+                  <select
+                    required
+                    value={genLeaseId}
+                    onChange={(e) => handleGenTenantChange(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:bg-white focus:border-indigo-500 transition-all"
+                  >
+                    <option value="">Select Tenant</option>
+                    {leases
+                      .filter(l => !genBuildingId || String(l.unitObj?.property?.id) === String(genBuildingId) || String(l.unit?.propertyId) === String(genBuildingId) || l.buildingName === genBuildingId)
+                      .map(l => (
+                        <option key={l.id} value={l.id}>
+                          {l.tenantName} {l.unitNumber ? `(${l.unitNumber})` : ''}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Unit</label>
                   <input
                     type="text"
+                    readOnly
+                    placeholder="Unit"
+                    value={genUnitNumber}
+                    className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-not-allowed outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Billing Month */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Billing Month</label>
+                <select
+                  value={genBillingMonth}
+                  onChange={(e) => setGenBillingMonth(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:bg-white focus:border-indigo-500 transition-all"
+                >
+                  {BILLING_MONTHS.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Invoice Type Pills */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Invoice Type</label>
+                <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl">
+                  {['RENT', 'SERVICE FEE', 'DEPOSIT'].map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setGenInvoiceType(t)}
+                      className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                        genInvoiceType === t ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Base Rent & Service Fees Row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Base Rent ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
                     required
-                    placeholder="e.g. Rent concession, repair refund"
-                    value={genDescription}
-                    onChange={(e) => setGenDescription(e.target.value)}
+                    placeholder="0.00"
+                    value={genBaseRent}
+                    onChange={(e) => setGenBaseRent(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-indigo-500 transition-all text-slate-800"
                   />
                 </div>
-              )}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Service Fees ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0"
+                    value={genServiceFee}
+                    onChange={(e) => setGenServiceFee(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-indigo-500 transition-all text-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* Due Date */}
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
-                  {genCategory === 'Credit Memo' ? 'Credit Date' : 'Due Date'}
-                </label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Due Date</label>
                 <input
                   type="date"
                   required
@@ -677,14 +902,25 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:border-indigo-500 transition-all text-slate-800"
                 />
               </div>
-              <div className="pt-2 flex gap-3">
+
+              {/* Total Calculation Purple Card */}
+              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-2xl p-4 text-white shadow-md flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">TOTAL CALCULATION</p>
+                  <p className="text-xs font-bold text-white/90">
+                    {genInvoiceType === 'RENT' ? 'Base Rent' : genInvoiceType} {parseFloat(genServiceFee) > 0 ? `+ $${parseFloat(genServiceFee)} Fee` : ''}
+                  </p>
+                </div>
+                <div className="text-xl font-black tracking-tight text-white font-mono">
+                  ${((parseFloat(genBaseRent) || 0) + (parseFloat(genServiceFee) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex gap-2.5">
                 <Button onClick={closeModal} variant="secondary" className="flex-1 text-xs font-bold">Cancel</Button>
-                <Button 
-                  type="submit" 
-                  variant="primary" 
-                  className={`flex-1 text-xs font-bold ${genCategory === 'Credit Memo' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''}`}
-                >
-                  {genCategory === 'Credit Memo' ? 'Issue Credit Memo' : 'Generate Invoice'}
+                <Button type="submit" variant="primary" className="flex-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white">
+                  Generate Invoice
                 </Button>
               </div>
             </form>

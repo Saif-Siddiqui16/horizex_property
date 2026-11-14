@@ -1,11 +1,12 @@
 import React from 'react';
 import { COLLECTION_STATUSES } from '../../constants/rentCollection';
-import { Eye, Edit, Send, Copy, Mail, Download, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Eye, Edit, Trash2, Send, Copy, Mail, Download, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const InvoiceTable = ({
   invoices = [],
   onView = () => {},
   onEdit = () => {},
+  onDelete = () => {},
   onDuplicate = () => {},
   onMarkSent = () => {},
   onEmail = () => {},
@@ -46,7 +47,10 @@ export const InvoiceTable = ({
               </tr>
             ) : (
               invoices.map(inv => {
-                const key = Object.keys(COLLECTION_STATUSES).find(k => COLLECTION_STATUSES[k].label === inv.status);
+                const key = Object.keys(COLLECTION_STATUSES).find(k => 
+                  k === inv.status || 
+                  COLLECTION_STATUSES[k].label.toUpperCase() === (inv.status || '').toUpperCase()
+                );
                 const isCreditMemo = inv.category === 'Credit Memo' || inv.category === 'CREDIT_MEMO';
                 const statusConfig = isCreditMemo
                   ? { label: 'Credit Memo', color: 'bg-rose-50 text-rose-700 border-rose-200' }
@@ -64,15 +68,17 @@ export const InvoiceTable = ({
                           {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
                       </td>
-                      <td className="px-5 py-4 text-xs font-black text-slate-800 font-mono pl-2">{inv.invoiceNo}</td>
-                      <td className="px-5 py-4 text-xs font-semibold text-slate-600 truncate max-w-[120px]">{inv.propertyName}</td>
-                      <td className="px-5 py-4 text-xs font-black text-slate-800 font-mono">{inv.unitNumber}</td>
-                      <td className="px-5 py-4 text-xs font-bold text-slate-900">{inv.tenantName}</td>
-                      <td className="px-5 py-4 text-xs font-bold font-mono text-right text-slate-800">${(inv.amountDue || 0).toLocaleString()}</td>
-                      <td className={`px-5 py-4 text-xs font-black font-mono text-right ${inv.outstandingBalance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        ${(inv.outstandingBalance || 0).toLocaleString()}
+                      <td className="px-5 py-4 text-xs font-black text-slate-800 font-mono pl-2">{inv.invoiceNo || inv.invoiceNumber || '-'}</td>
+                      <td className="px-5 py-4 text-xs font-semibold text-slate-600 truncate max-w-[120px]">{inv.propertyName || inv.buildingName || inv.lease?.unit?.property?.name || '-'}</td>
+                      <td className="px-5 py-4 text-xs font-black text-slate-800 font-mono">{inv.unitNumber || inv.unit || inv.lease?.unit?.unitNumber || '-'}</td>
+                      <td className="px-5 py-4 text-xs font-bold text-slate-900">{inv.tenantName || (inv.tenant ? `${inv.tenant.firstName || ''} ${inv.tenant.lastName || ''}`.trim() : '-')}</td>
+                      <td className="px-5 py-4 text-xs font-bold font-mono text-right text-slate-800">${(Number(inv.amountDue || 0)).toLocaleString()}</td>
+                      <td className={`px-5 py-4 text-xs font-black font-mono text-right ${(inv.outstandingBalance > 0 || (Number(inv.amountDue || 0) - Number(inv.amountPaid || 0)) > 0) ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        ${(inv.outstandingBalance ?? Math.max(0, Number(inv.amountDue || 0) - Number(inv.amountPaid || 0))).toLocaleString()}
                       </td>
-                      <td className="px-5 py-4 text-xs text-center text-slate-500 font-mono">{inv.dueDate}</td>
+                      <td className="px-5 py-4 text-xs text-center text-slate-500 font-mono">
+                        {inv.dueDate ? (inv.dueDate.includes('T') ? inv.dueDate.split('T')[0] : inv.dueDate) : '-'}
+                      </td>
                       <td className="px-5 py-4 text-center">
                         <span className={`inline-block px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${statusConfig.color}`}>
                           {statusConfig.label}
@@ -95,6 +101,13 @@ export const InvoiceTable = ({
                             <Edit size={12} className="inline mr-1" />
                             Edit
                           </button>
+                          <button
+                            onClick={() => onDelete(inv.id)}
+                            className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl transition-all"
+                            title="Delete Invoice"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                           
                           {inv.outstandingBalance > 0 && (
                             <>
@@ -105,7 +118,7 @@ export const InvoiceTable = ({
                               >
                                 Record Pay
                               </button>
-                              <button
+                              {/* <button
                                 onClick={() => onAddAdjustment(inv.id)}
                                 className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl transition-all font-black text-[9px] uppercase tracking-wider px-2"
                                 title="Late Fee / Adjustment"
@@ -118,7 +131,7 @@ export const InvoiceTable = ({
                                 title="Apply Credit Balance"
                               >
                                 + Cred
-                              </button>
+                              </button> */}
                             </>
                           )}
 

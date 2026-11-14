@@ -6,11 +6,19 @@ export const RecentPaymentsWidget = ({ payments = [], invoices = [] }) => {
   // Map payments with parent invoice details
   const enriched = payments.map(p => {
     const inv = invoices.find(i => i.id === p.invoiceId);
+    const amountVal = parseFloat(p.amountPaid !== undefined ? p.amountPaid : (p.amount || 0)) || 0;
+    const dateVal = p.paymentDate || (p.paidAt ? new Date(p.paidAt).toISOString().split('T')[0] : 'Recent');
+    const tenantName = p.tenantName || (p.tenant ? `${p.tenant.firstName || ''} ${p.tenant.lastName || ''}`.trim() : (inv ? (inv.tenantName || inv.tenant) : 'Tenant'));
+    const unitNumber = p.unitNumber || (inv ? (inv.unitNumber || inv.unit) : 'Unit');
+    const propertyName = p.propertyName || (inv ? (inv.propertyName || inv.buildingName) : 'Property');
     return {
       ...p,
-      tenantName: inv ? inv.tenantName : 'Tenant',
-      unitNumber: inv ? inv.unitNumber : 'Apt',
-      propertyName: inv ? inv.propertyName : 'Building'
+      amountPaid: amountVal,
+      paymentDate: dateVal,
+      paymentMethod: p.paymentMethod || 'Payment',
+      tenantName,
+      unitNumber,
+      propertyName
     };
   }).sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()).slice(0, 5);
 
@@ -43,7 +51,7 @@ export const RecentPaymentsWidget = ({ payments = [], invoices = [] }) => {
                     <span className="text-[9px] font-bold text-slate-400 font-mono tracking-wider">{pay.paymentDate} via {pay.paymentMethod}</span>
                   </div>
                 </div>
-                <span className="text-xs font-black text-slate-900 font-mono shrink-0">+${pay.amountPaid.toLocaleString('en-CA')}</span>
+                <span className="text-xs font-black text-slate-900 font-mono shrink-0">+${(pay.amountPaid || 0).toLocaleString('en-CA')}</span>
               </div>
             ))}
           </div>
