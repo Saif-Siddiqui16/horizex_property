@@ -98,10 +98,11 @@ export const Owners = () => {
             const res = await api.post(`/api/admin/owners/${invitingOwner.id}/send-invite`, { methods });
 
             let msg = 'Invitations processed successfully.';
-            if (res.data.data?.results) {
-                const { email, sms } = res.data.data.results;
-                if (email.attempted) msg += `\nEmail: ${email.success ? 'Sent' : 'Failed (' + (email.error || 'Unknown error') + ')'}`;
-                if (sms.attempted) msg += `\nSMS: ${sms.success ? 'Sent' : 'Failed (' + (sms.error || 'Unknown error') + ')'}`;
+            const results = res.data?.results || res.data?.data?.results || res.results;
+            if (results) {
+                const { email, sms } = results;
+                if (email?.attempted) msg += `\nEmail: ${email.success ? 'Sent' : 'Failed (' + (email.error || 'Unknown error') + ')'}`;
+                if (sms?.attempted) msg += `\nSMS: ${sms.success ? 'Sent' : 'Failed (' + (sms.error || 'Unknown error') + ')'}`;
             }
 
             alert(msg);
@@ -120,10 +121,11 @@ export const Owners = () => {
         if (!window.confirm('Are you sure? This will deactivate the owner account.')) return;
         try {
             await api.delete(`/api/admin/owners/${id}`);
+            alert('Owner account removed successfully.');
             fetchOwnersData();
         } catch (e) {
             console.error(e);
-            alert('Error deleting owner');
+            alert(e.response?.data?.message || 'Error deleting owner');
         }
     };
 

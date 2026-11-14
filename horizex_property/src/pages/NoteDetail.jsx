@@ -16,6 +16,9 @@ import {
   Send,
   Trash2,
   ShieldAlert,
+  Edit2,
+  X,
+  StickyNote,
 } from 'lucide-react';
 
 import {
@@ -35,6 +38,17 @@ export const NoteDetail = () => {
   const [fileName, setFileName] = useState('');
   const [localComments, setLocalComments] = useState([]);
   const [localAttachments, setLocalAttachments] = useState([]);
+
+  // Edit Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    content: '',
+    category: 'GENERAL',
+    priority: 'MEDIUM',
+    isPinned: false,
+    isPrivate: false,
+  });
 
   const canView = hasPermission('Notes Hub', 'view');
   const canEdit = hasPermission('Notes Hub', 'edit');
@@ -174,6 +188,37 @@ export const NoteDetail = () => {
     }
   };
 
+  const handleOpenEdit = () => {
+    if (!note) return;
+    setEditForm({
+      title: note.title || '',
+      content: note.content || '',
+      category: note.category || 'GENERAL',
+      priority: note.priority || 'MEDIUM',
+      isPinned: Boolean(note.isPinned),
+      isPrivate: Boolean(note.isPrivate),
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm.title.trim()) {
+      alert('Please enter a note title');
+      return;
+    }
+    try {
+      await updateNoteMutation({
+        id: note.id,
+        ...editForm,
+      }).unwrap();
+      setShowEditModal(false);
+    } catch (err) {
+      console.error('Failed to update note:', err);
+      alert('Error updating note: ' + (err?.data?.message || err.message));
+    }
+  };
+
   const handleDelete = async () => {
     if (!window.confirm('Delete this note permanently?')) return;
     try {
@@ -234,6 +279,11 @@ export const NoteDetail = () => {
             {canEdit && (
               <Button variant="secondary" onClick={handleTogglePin} className="flex items-center gap-1 text-xs">
                 <Pin size={14} /> {note.isPinned ? 'Unpin' : 'Pin'}
+              </Button>
+            )}
+            {canEdit && (
+              <Button variant="secondary" onClick={handleOpenEdit} className="flex items-center gap-1 text-xs text-amber-600">
+                <Edit2 size={14} /> Edit
               </Button>
             )}
             {canDelete && (
@@ -353,6 +403,87 @@ export const NoteDetail = () => {
           </Card>
         </div>
       </div>
+
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[28px] border border-slate-200 shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <StickyNote size={18} className="text-indigo-600" />
+                <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                  Edit Note
+                </h2>
+              </div>
+              <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-slate-100 rounded-xl">
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
+              <input
+                required
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                placeholder="Note title"
+                className="w-full px-3 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl outline-none focus:border-indigo-500"
+              />
+              <textarea
+                required
+                rows={4}
+                value={editForm.content}
+                onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                placeholder="Note content..."
+                className="w-full px-3 py-2.5 text-sm font-medium border border-slate-200 rounded-xl outline-none focus:border-indigo-500 resize-none"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={editForm.category}
+                  onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                  className="text-xs font-bold px-3 py-2.5 border border-slate-200 rounded-xl"
+                >
+                  {Object.entries(NOTE_CATEGORIES).map(([key, val]) => (
+                    <option key={key} value={key}>{val.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={editForm.priority}
+                  onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+                  className="text-xs font-bold px-3 py-2.5 border border-slate-200 rounded-xl"
+                >
+                  {Object.entries(NOTE_PRIORITIES).map(([key, val]) => (
+                    <option key={key} value={key}>{val.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isPinned}
+                    onChange={(e) => setEditForm({ ...editForm, isPinned: e.target.checked })}
+                  />
+                  Pin note
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isPrivate}
+                    onChange={(e) => setEditForm({ ...editForm, isPrivate: e.target.checked })}
+                  />
+                  Private
+                </label>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="secondary" onClick={() => setShowEditModal(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Update Note
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };

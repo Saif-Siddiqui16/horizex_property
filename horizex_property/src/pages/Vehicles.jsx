@@ -93,8 +93,9 @@ export const Vehicles = () => {
     if (window.confirm('Are you sure you want to remove this vehicle record?')) {
       try {
         await deleteVehicle(id).unwrap();
+        alert('Vehicle record removed successfully!');
       } catch (e) {
-        alert('Failed to delete vehicle');
+        alert(e?.data?.message || 'Failed to delete vehicle');
       }
     }
   };

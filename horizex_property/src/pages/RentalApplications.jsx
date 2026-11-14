@@ -27,6 +27,7 @@ import {
     Trash2
 } from 'lucide-react';
 import { Button } from '../components/Button';
+import api from '../api/client';
 import clsx from 'clsx';
 
 const STORAGE_KEY = 'horizex_rental_applications_v1';
@@ -207,6 +208,22 @@ export const RentalApplications = () => {
     const [showNewModal, setShowNewModal] = useState(false);
     const [toastMessage, setToastMessage] = useState(null);
 
+    // Fetch applications from backend API on mount
+    useEffect(() => {
+        const fetchApps = async () => {
+            try {
+                const res = await api.get('/api/admin/rental-applications');
+                const data = res.data?.data || res.data;
+                if (Array.isArray(data) && data.length > 0) {
+                    setApplications(data);
+                }
+            } catch (err) {
+                console.warn('Rental applications API fallback to local storage:', err?.message);
+            }
+        };
+        fetchApps();
+    }, []);
+
     // Save to localStorage whenever applications change
     useEffect(() => {
         try {
@@ -289,17 +306,27 @@ export const RentalApplications = () => {
     };
 
     // Save the reviewed application
-    const handleSaveReview = () => {
+    const handleSaveReview = async () => {
         if (!selectedApp) return;
         setApplications(prev => prev.map(a => a.id === selectedApp.id ? selectedApp : a));
+        try {
+            await api.put(`/api/admin/rental-applications/${selectedApp.id}`, selectedApp);
+        } catch (err) {
+            console.warn('Sync rental application update to server failed:', err?.message);
+        }
         showToast(`Application for ${selectedApp.applicantName} saved successfully.`);
         setIsReviewDrawerOpen(false);
     };
 
     // Delete application
-    const handleDeleteApp = (appId, appName) => {
+    const handleDeleteApp = async (appId, appName) => {
         if (window.confirm(`Are you sure you want to delete the rental application for ${appName}?`)) {
             setApplications(prev => prev.filter(a => a.id !== appId));
+            try {
+                await api.delete(`/api/admin/rental-applications/${appId}`);
+            } catch (err) {
+                console.warn('Sync rental application delete to server failed:', err?.message);
+            }
             showToast(`Application for ${appName} deleted.`);
             if (selectedApp?.id === appId) {
                 setIsReviewDrawerOpen(false);
@@ -382,6 +409,13 @@ export const RentalApplications = () => {
         };
 
         setApplications([newEntry, ...applications]);
+        try {
+            api.post('/api/admin/rental-applications', newEntry).catch(err => {
+                console.warn('Sync new rental application to server failed:', err?.message);
+            });
+        } catch (e) {
+            // ignore
+        }
         setShowNewModal(false);
         setNewAppForm({
             applicantName: '',

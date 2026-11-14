@@ -30,7 +30,7 @@ export const NotesTable = ({
               <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Entity</th>
               <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
               <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Priority</th>
-              <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Meta</th>
+              {/* <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Meta</th> */}
               <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Author</th>
               <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Date</th>
               <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
@@ -65,7 +65,7 @@ export const NotesTable = ({
                       {pri.label || note.priority}
                     </span>
                   </td>
-                  <td className="px-5 py-4">
+                  {/* <td className="px-5 py-4">
                     <div className="flex items-center justify-center gap-3 text-slate-400">
                       <span className="flex items-center gap-1 text-[10px] font-bold">
                         <MessageSquare size={11} /> {note.commentCount || 0}
@@ -74,7 +74,7 @@ export const NotesTable = ({
                         <Paperclip size={11} /> {note.attachmentCount || 0}
                       </span>
                     </div>
-                  </td>
+                  </td> */}
                   <td className="px-5 py-4 text-xs font-semibold text-slate-600">{note.createdBy}</td>
                   <td className="px-5 py-4 text-right text-[11px] font-medium text-slate-500">
                     {new Date(note.createdAt).toLocaleDateString()}
@@ -102,7 +102,7 @@ export const NotesTable = ({
                       >
                         <Eye size={14} />
                       </Link>
-                      {onEdit && (
+                      {/* {onEdit && (
                         <button
                           type="button"
                           onClick={() => onEdit(note)}
@@ -111,8 +111,8 @@ export const NotesTable = ({
                         >
                           <Edit2 size={13} />
                         </button>
-                      )}
-                      {onDelete && (
+                      )} */}
+                      {/* {onDelete && (
                         <button
                           type="button"
                           onClick={() => onDelete(note.id)}
@@ -121,7 +121,7 @@ export const NotesTable = ({
                         >
                           <Trash2 size={13} />
                         </button>
-                      )}
+                      )} */}
                     </div>
                   </td>
                 </tr>

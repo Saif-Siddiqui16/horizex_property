@@ -139,7 +139,7 @@ export const VehicleForm = ({ isOpen, onClose, editingVehicle, selectedBuildingI
       const resolvedUnitId = formData.unitId || selectedTenant?.unitId;
 
       const payload = {
-        tenantId: formData.tenantId,
+        tenantId: formData.tenantId || undefined,
         unitId: resolvedUnitId || undefined,
         make: formData.make.trim(),
         model: formData.model.trim(),
@@ -150,8 +150,10 @@ export const VehicleForm = ({ isOpen, onClose, editingVehicle, selectedBuildingI
 
       if (editingVehicle) {
         await updateVehicle({ id: editingVehicle.id, ...payload }).unwrap();
+        alert('Vehicle updated successfully!');
       } else {
         await createVehicle(payload).unwrap();
+        alert('Vehicle registered successfully!');
       }
 
       onClose();

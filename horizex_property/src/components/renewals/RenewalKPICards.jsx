@@ -19,21 +19,21 @@ export const RenewalKPICards = ({ renewals = [] }) => {
     },
     {
       title: 'Due This Month',
-      value: renewals.filter(r => isDueThisMonth(r.renewalDueDate)).length,
+      value: renewals.filter(r => isDueThisMonth(r.renewalDueDate || r.leaseEnd)).length,
       color: 'bg-amber-500 text-white',
       textColor: 'text-amber-600',
       icon: Calendar
     },
     {
       title: 'Accepted',
-      value: renewals.filter(r => r.status === 'Accepted').length,
+      value: renewals.filter(r => (r.status || '').toUpperCase() === 'ACCEPTED').length,
       color: 'bg-emerald-500 text-white',
       textColor: 'text-emerald-600',
       icon: CheckCircle2
     },
     {
       title: 'Negotiating',
-      value: renewals.filter(r => r.status === 'Negotiating').length,
+      value: renewals.filter(r => (r.status || '').toUpperCase() === 'NEGOTIATING').length,
       color: 'bg-purple-600 text-white',
       textColor: 'text-purple-600',
       icon: MessageSquare

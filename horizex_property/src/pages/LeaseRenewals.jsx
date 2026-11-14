@@ -67,7 +67,9 @@ export const LeaseRenewals = () => {
       (ren.tenantName || '').toLowerCase().includes(search.toLowerCase()) ||
       (ren.unitNumber || '').toLowerCase().includes(search.toLowerCase());
     const matchesBuilding = !selectedBuilding || String(ren.propertyId) === String(selectedBuilding);
-    const matchesStatus = !selectedStatus || ren.status === selectedStatus;
+    const matchesStatus = !selectedStatus || 
+      (ren.status || '').toLowerCase() === selectedStatus.toLowerCase() ||
+      (ren.status || '').replace(/_/g, ' ').toLowerCase() === selectedStatus.toLowerCase();
     return matchesSearch && matchesBuilding && matchesStatus;
   });
 

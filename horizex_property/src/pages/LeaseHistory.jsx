@@ -73,11 +73,14 @@ export const LeaseHistory = () => {
 
         // 1. Topbar Company Filter
         if (selectedCompanyId && selectedCompanyId !== 'all') {
-            result = result.filter(l => {
+            const matches = result.filter(l => {
                 const b = buildings.find(bld => String(bld.id) === String(l.propertyId || l.unit?.propertyId || l.unit?.property?.id || l.buildingId));
                 const cId = l.companyId || l.unit?.property?.companyId || b?.companyId;
                 return String(cId) === String(selectedCompanyId);
             });
+            if (matches.length > 0) {
+                result = matches;
+            }
         }
 
         // 2. Topbar Building Filter
