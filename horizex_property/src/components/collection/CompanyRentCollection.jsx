@@ -134,29 +134,34 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
         ? `${prop.address || prop.name}, ${t.unitNumber || 'Unit'}`
         : `${t.propertyName || 'Building'}, ${t.unitNumber || 'Unit'}`;
 
-      // Find matching invoice for this tenant (prefer unpaid/generated invoice for active cycle)
+      // Find matching invoices for this tenant
       const matchingInvoices = invoices.filter(i => String(i.tenantId) === String(t.id));
-      const activeUnpaidInv = matchingInvoices.find(i => (i.status || '').toUpperCase() !== 'PAID');
+      const unpaidInvoices = matchingInvoices.filter(i => (i.status || '').toUpperCase() !== 'PAID');
       const latestInvoice = matchingInvoices[matchingInvoices.length - 1];
 
       // Monthly rent defaults to active invoice amount (or lease/renewal rent)
       let monthlyRent = parseFloat(t.rent || 600);
-      if (activeUnpaidInv && (activeUnpaidInv.amountDue || activeUnpaidInv.amount)) {
-        monthlyRent = parseFloat(activeUnpaidInv.amountDue || activeUnpaidInv.amount);
+      if (unpaidInvoices.length > 0 && (unpaidInvoices[0].amountDue || unpaidInvoices[0].amount)) {
+        monthlyRent = parseFloat(unpaidInvoices[0].amountDue || unpaidInvoices[0].amount);
       } else if (latestInvoice && (latestInvoice.amountDue || latestInvoice.amount)) {
         monthlyRent = parseFloat(latestInvoice.amountDue || latestInvoice.amount);
       }
       
-      // Check if custom balance exists in storage for this tenant
+      // Calculate live current balance from database invoices
       let currentBalance = monthlyRent;
-      if (storedBalances[t.id] !== undefined) {
-        currentBalance = parseFloat(storedBalances[t.id]);
-      } else if (activeUnpaidInv) {
-        currentBalance = activeUnpaidInv.outstandingBalance !== undefined
-          ? parseFloat(activeUnpaidInv.outstandingBalance)
-          : parseFloat(activeUnpaidInv.amountDue || activeUnpaidInv.amount || monthlyRent);
+      if (unpaidInvoices.length > 0) {
+        currentBalance = unpaidInvoices.reduce((sum, inv) => {
+          const bal = inv.outstandingBalance !== undefined
+            ? parseFloat(inv.outstandingBalance)
+            : (parseFloat(inv.amountDue || inv.amount || 0) - (parseFloat(inv.amountPaid) || 0));
+          return sum + Math.max(0, bal);
+        }, 0);
       } else if (matchingInvoices.length > 0 && matchingInvoices.every(i => (i.status || '').toUpperCase() === 'PAID')) {
         currentBalance = 0;
+      } else if (storedBalances[t.id] !== undefined) {
+        currentBalance = parseFloat(storedBalances[t.id]);
+      } else if (t.balanceDue !== undefined && t.balanceDue > 0) {
+        currentBalance = parseFloat(t.balanceDue);
       }
 
       return {
@@ -219,12 +224,13 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
       setPaymentEntries(updated);
     } else {
       // Check: default payment amount is their current rent balance
+      const bal = tenant.currentBalance > 0 ? tenant.currentBalance : tenant.monthlyRent;
       setPaymentEntries({
         ...paymentEntries,
         [tId]: {
           checked: true,
-          amountPaid: tenant.currentBalance,
-          originalBalance: tenant.currentBalance
+          amountPaid: bal,
+          originalBalance: bal
         }
       });
     }
@@ -232,33 +238,41 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
 
   // Edit custom rent amount received
   const handleAmountChange = (tenantId, newAmountStr, originalBalance) => {
-    const val = parseFloat(newAmountStr) || 0;
-    setPaymentEntries({
-      ...paymentEntries,
+    const val = newAmountStr === '' ? '' : (parseFloat(newAmountStr) || 0);
+    setPaymentEntries(prev => ({
+      ...prev,
       [tenantId]: {
         checked: true,
         amountPaid: val,
-        originalBalance
+        originalBalance: originalBalance || val
       }
-    });
+    }));
   };
 
   // Select all / Deselect all
   const handleSelectAll = () => {
-    const unpaidTenants = filteredAndSortedTenants.filter(t => t.currentBalance > 0);
-    if (Object.keys(paymentEntries).length === unpaidTenants.length) {
+    // If any items are currently checked, the button action is "Clear Selection"
+    if (selectedEntries.length > 0) {
       setPaymentEntries({});
-    } else {
-      const newEntries = {};
-      unpaidTenants.forEach(t => {
-        newEntries[t.id] = {
-          checked: true,
-          amountPaid: t.currentBalance,
-          originalBalance: t.currentBalance
-        };
-      });
-      setPaymentEntries(newEntries);
+      return;
     }
+
+    // Otherwise select only active unpaid/partial tenants
+    const unpaidTenants = filteredAndSortedTenants.filter(t => t.currentBalance > 0);
+    if (unpaidTenants.length === 0) {
+      alert('All tenants are already paid in full ($0 balance).');
+      return;
+    }
+
+    const newEntries = {};
+    unpaidTenants.forEach(t => {
+      newEntries[t.id] = {
+        checked: true,
+        amountPaid: t.currentBalance,
+        originalBalance: t.currentBalance
+      };
+    });
+    setPaymentEntries(newEntries);
   };
 
   // Submit Rent Collection Batch
@@ -594,7 +608,20 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                  <th className="py-3 px-4 w-12 text-center">Collect</th>
+                  <th className="py-3 px-4 w-12 text-center">
+                    <button
+                      type="button"
+                      onClick={handleSelectAll}
+                      className="p-1 hover:bg-slate-200/80 rounded-md text-slate-500 transition-colors inline-flex items-center justify-center"
+                      title={selectedEntries.length > 0 ? 'Clear Selection' : 'Select All Unpaid'}
+                    >
+                      {selectedEntries.length > 0 ? (
+                        <CheckSquare size={14} className="text-indigo-600 stroke-[2.5]" />
+                      ) : (
+                        <Square size={14} className="text-slate-400" />
+                      )}
+                    </button>
+                  </th>
                   <th className="py-3 px-4">Tenant Name</th>
                   <th className="py-3 px-4">Building & Address</th>
                   <th className="py-3 px-4">Unit</th>
@@ -685,23 +712,26 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
 
                       {/* Amount Received Input (Customizable) */}
                       <td className="py-3 px-4">
-                        {isChecked ? (
-                          <div className="space-y-1">
-                            <div className="relative">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max={tenant.currentBalance}
-                                value={entry.amountPaid}
-                                onChange={(e) => handleAmountChange(tenant.id, e.target.value, tenant.currentBalance)}
-                                className="w-full pl-6 pr-3 py-1.5 bg-white border-2 border-indigo-500 rounded-xl text-xs font-black font-mono text-slate-900 outline-none shadow-xs"
-                                placeholder={tenant.currentBalance.toString()}
-                              />
-                            </div>
-                            
-                            {/* Live Remaining Balance Helper */}
+                        <div className="space-y-1">
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={entry !== undefined ? entry.amountPaid : (tenant.currentBalance > 0 ? tenant.currentBalance : tenant.monthlyRent)}
+                              onChange={(e) => handleAmountChange(tenant.id, e.target.value, tenant.currentBalance)}
+                              className={`w-full pl-6 pr-3 py-1.5 rounded-xl text-xs font-black font-mono outline-none transition-all ${
+                                isChecked 
+                                  ? 'bg-white border-2 border-indigo-500 text-slate-900 shadow-xs' 
+                                  : 'bg-slate-50 border border-slate-200 text-slate-700 hover:border-slate-300'
+                              }`}
+                              placeholder="0.00"
+                            />
+                          </div>
+                          
+                          {/* Live Remaining Balance Helper */}
+                          {isChecked ? (
                             <div className="text-[10px] font-bold">
                               {calculatedRemaining === 0 ? (
                                 <span className="text-emerald-600 flex items-center gap-0.5">
@@ -709,16 +739,16 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
                                 </span>
                               ) : (
                                 <span className="text-amber-600">
-                                  Remaining balance: <strong className="font-mono text-rose-600">${calculatedRemaining.toFixed(2)}</strong> stays on list
+                                  Remaining: <strong className="font-mono text-rose-600">${calculatedRemaining.toFixed(2)}</strong>
                                 </span>
                               )}
                             </div>
-                          </div>
-                        ) : (
-                          <div className="text-[11px] text-slate-400 italic">
-                            Check box to enter payment
-                          </div>
-                        )}
+                          ) : (
+                            <div className="text-[10px] text-slate-400 font-medium">
+                              Check box to include in batch
+                            </div>
+                          )}
+                        </div>
                       </td>
 
                       {/* Status */}
