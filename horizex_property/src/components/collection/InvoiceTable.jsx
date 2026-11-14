@@ -25,19 +25,19 @@ export const InvoiceTable = ({
   return (
     <div className="bg-white rounded-[22px] border border-slate-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left">
+        <table className="w-full border-collapse text-left min-w-[1050px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="w-10"></th>
-              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest pl-2">Invoice No</th>
-              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Building</th>
-              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Unit</th>
-              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Tenant</th>
-              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Rent Due</th>
-              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Outstanding</th>
-              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Due Date</th>
-              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Status</th>
-              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right pr-6">Actions</th>
+              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest pl-2 whitespace-nowrap">Invoice No</th>
+              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Building</th>
+              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Unit</th>
+              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Tenant</th>
+              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Rent Due</th>
+              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Outstanding</th>
+              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">Due Date</th>
+              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">Status</th>
+              <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right pr-6 whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -56,6 +56,8 @@ export const InvoiceTable = ({
                   ? { label: 'Credit Memo', color: 'bg-rose-50 text-rose-700 border-rose-200' }
                   : (COLLECTION_STATUSES[key] || { label: inv.status, color: 'bg-slate-50 text-slate-500 border-slate-200' });
                 const isExpanded = expandedRow === inv.id;
+                const outstandingAmt = inv.outstandingBalance ?? Math.max(0, Number(inv.amountDue || 0) - Number(inv.amountPaid || 0));
+                const isUnpaid = outstandingAmt > 0 || (inv.status || '').toUpperCase() !== 'PAID';
 
                 return (
                   <React.Fragment key={inv.id}>
@@ -68,24 +70,26 @@ export const InvoiceTable = ({
                           {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
                       </td>
-                      <td className="px-5 py-4 text-xs font-black text-slate-800 font-mono pl-2">{inv.invoiceNo || inv.invoiceNumber || '-'}</td>
-                      <td className="px-5 py-4 text-xs font-semibold text-slate-600 truncate max-w-[120px]">{inv.propertyName || inv.buildingName || inv.lease?.unit?.property?.name || '-'}</td>
-                      <td className="px-5 py-4 text-xs font-black text-slate-800 font-mono">{inv.unitNumber || inv.unit || inv.lease?.unit?.unitNumber || '-'}</td>
-                      <td className="px-5 py-4 text-xs font-bold text-slate-900">{inv.tenantName || (inv.tenant ? `${inv.tenant.firstName || ''} ${inv.tenant.lastName || ''}`.trim() : '-')}</td>
-                      <td className="px-5 py-4 text-xs font-bold font-mono text-right text-slate-800">${(Number(inv.amountDue || 0)).toLocaleString()}</td>
-                      <td className={`px-5 py-4 text-xs font-black font-mono text-right ${(inv.outstandingBalance > 0 || (Number(inv.amountDue || 0) - Number(inv.amountPaid || 0)) > 0) ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        ${(inv.outstandingBalance ?? Math.max(0, Number(inv.amountDue || 0) - Number(inv.amountPaid || 0))).toLocaleString()}
+                      <td className="px-5 py-4 text-xs font-black text-slate-800 font-mono pl-2 whitespace-nowrap">{inv.invoiceNo || inv.invoiceNumber || '-'}</td>
+                      <td className="px-5 py-4 text-xs font-semibold text-slate-600 truncate max-w-[140px] whitespace-nowrap" title={inv.propertyName || inv.buildingName || inv.lease?.unit?.property?.name || '-'}>
+                        {inv.propertyName || inv.buildingName || inv.lease?.unit?.property?.name || '-'}
                       </td>
-                      <td className="px-5 py-4 text-xs text-center text-slate-500 font-mono">
+                      <td className="px-5 py-4 text-xs font-black text-slate-800 font-mono whitespace-nowrap">{inv.unitNumber || inv.unit || inv.lease?.unit?.unitNumber || '-'}</td>
+                      <td className="px-5 py-4 text-xs font-bold text-slate-900 whitespace-nowrap">{inv.tenantName || (inv.tenant ? `${inv.tenant.firstName || ''} ${inv.tenant.lastName || ''}`.trim() : '-')}</td>
+                      <td className="px-5 py-4 text-xs font-bold font-mono text-right text-slate-800 whitespace-nowrap">${(Number(inv.amountDue || 0)).toLocaleString()}</td>
+                      <td className={`px-5 py-4 text-xs font-black font-mono text-right whitespace-nowrap ${outstandingAmt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        ${outstandingAmt.toLocaleString()}
+                      </td>
+                      <td className="px-5 py-4 text-xs text-center text-slate-500 font-mono whitespace-nowrap">
                         {inv.dueDate ? (inv.dueDate.includes('T') ? inv.dueDate.split('T')[0] : inv.dueDate) : '-'}
                       </td>
-                      <td className="px-5 py-4 text-center">
+                      <td className="px-5 py-4 text-center whitespace-nowrap">
                         <span className={`inline-block px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${statusConfig.color}`}>
                           {statusConfig.label}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-right pr-6">
-                        <div className="flex gap-1.5 justify-end">
+                      <td className="px-5 py-4 text-right pr-6 whitespace-nowrap">
+                        <div className="flex gap-1.5 justify-end items-center">
                           <button
                             onClick={() => onView(inv.id)}
                             className="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
@@ -109,30 +113,14 @@ export const InvoiceTable = ({
                             <Trash2 size={13} />
                           </button>
                           
-                          {inv.outstandingBalance > 0 && (
-                            <>
-                              <button
-                                onClick={() => onRecordPayment(inv.id)}
-                                className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all font-black text-[9px] uppercase tracking-wider px-2.5"
-                                title="Record Rent Payment"
-                              >
-                                Record Pay
-                              </button>
-                              {/* <button
-                                onClick={() => onAddAdjustment(inv.id)}
-                                className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl transition-all font-black text-[9px] uppercase tracking-wider px-2"
-                                title="Late Fee / Adjustment"
-                              >
-                                + Adj
-                              </button>
-                              <button
-                                onClick={() => onAddCredit(inv.id)}
-                                className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl transition-all font-black text-[9px] uppercase tracking-wider px-2"
-                                title="Apply Credit Balance"
-                              >
-                                + Cred
-                              </button> */}
-                            </>
+                          {isUnpaid && (
+                            <button
+                              onClick={() => onRecordPayment(inv.id)}
+                              className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all font-black text-[9px] uppercase tracking-wider px-2.5"
+                              title="Record Rent Payment"
+                            >
+                              Record Pay
+                            </button>
                           )}
 
                           <button

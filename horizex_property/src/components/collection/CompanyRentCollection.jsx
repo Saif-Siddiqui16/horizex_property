@@ -276,7 +276,7 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
   };
 
   // Submit Rent Collection Batch
-  const handleRecordPayments = () => {
+  const handleRecordPayments = async () => {
     const selectedIds = Object.keys(paymentEntries).filter(id => paymentEntries[id]?.checked);
     if (selectedIds.length === 0) {
       alert('Please check off at least one tenant to record rent payment.');
@@ -286,11 +286,11 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
     const storedBalances = getStoredBalances();
     const recordedSummary = [];
 
-    selectedIds.forEach(idStr => {
+    for (const idStr of selectedIds) {
       const id = idStr;
       const entry = paymentEntries[id];
       const tenant = companyTenantsWithBalances.find(t => String(t.id) === String(id));
-      if (!tenant) return;
+      if (!tenant) continue;
 
       const amountPaid = parseFloat(entry.amountPaid) || 0;
       const currentBalance = tenant.currentBalance;
@@ -299,10 +299,14 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
       // Save updated remaining balance
       storedBalances[id] = remainingBalance;
 
-      // Also record payment in mock payment service
+      // Also record payment in backend payment service
       const matchingInvoice = invoices.find(inv => String(inv.tenantId) === String(id) && (inv.status || '').toUpperCase() !== 'PAID');
       if (matchingInvoice) {
-        api.post('/admin/payments', { invoiceId: matchingInvoice.id, amount: amountPaid, paymentMethod }).catch(() => {});
+        try {
+          await api.post('/admin/payments', { invoiceId: matchingInvoice.id, amount: amountPaid, paymentMethod });
+        } catch (err) {
+          console.error('Payment post error for invoice:', matchingInvoice.id, err);
+        }
       }
 
       recordedSummary.push({
@@ -312,7 +316,7 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
         unit: tenant.unitNumber,
         building: tenant.buildingName
       });
-    });
+    }
 
     // Persist new balances
     saveStoredBalances(storedBalances);
