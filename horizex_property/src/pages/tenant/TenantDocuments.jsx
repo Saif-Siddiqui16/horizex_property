@@ -30,18 +30,27 @@ export const TenantDocuments = () => {
         }
 
         try {
-            const formData = new FormData();
-            formData.append('name', form.docName.value || selectedFile.name);
-            formData.append('type', form.docType.value);
-            formData.append('file', selectedFile);
+            const fileUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(selectedFile);
+            });
 
-            await uploadDoc(formData).unwrap();
+            await uploadDoc({
+                name: form.docName.value || selectedFile.name,
+                type: form.docType.value || 'General Document',
+                fileName: selectedFile.name,
+                fileUrl
+            }).unwrap();
+
             setShowUpload(false);
             setSelectedFile(null);
             form.reset();
+            alert('Document uploaded successfully!');
         } catch (e) {
             console.error(e);
-            alert('Upload failed');
+            alert('Upload failed: ' + (e?.data?.message || e?.message || 'Please try again'));
         }
     };
 

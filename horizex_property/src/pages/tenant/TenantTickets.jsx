@@ -17,28 +17,17 @@ export const TenantTickets = () => {
         const form = e.target;
 
         try {
-            const formData = new FormData();
-            formData.append('subject', form.subject.value);
-            formData.append('description', form.description.value);
-            formData.append('priority', form.priority.value);
-
-            // Handle Attachments
-            const imageFiles = Array.from(form.images?.files || []);
-            imageFiles.forEach(file => {
-                formData.append('images', file);
-            });
-
-            const videoFile = form.video?.files?.[0];
-            if (videoFile) {
-                formData.append('video', videoFile);
-            }
-
-            await createTicket(formData).unwrap();
+            await createTicket({
+                subject: form.subject.value,
+                description: form.description.value,
+                priority: form.priority.value
+            }).unwrap();
             setShowNew(false);
             form.reset();
+            alert('Support ticket created successfully!');
         } catch (e) {
-            console.error('Upload Error:', e);
-            alert('Failed to create ticket');
+            console.error('Ticket Error:', e);
+            alert('Failed to create ticket: ' + (e?.data?.message || e?.message || 'Please try again'));
         }
     };
 
