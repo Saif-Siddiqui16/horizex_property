@@ -24,7 +24,7 @@ import api from '../../api/client';
 export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
   // State
   const [companies, setCompanies] = useState([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState(1);
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [properties, setProperties] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -66,8 +66,8 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
       setInvoices(invList);
 
       // Default company
-      if (compList.length > 0 && !selectedCompanyId) {
-        setSelectedCompanyId(compList[0].id);
+      if (compList.length > 0) {
+        setSelectedCompanyId(prev => prev || compList[0].id);
       }
     } catch (e) {
       console.error('Failed to load rent collection data', e);
@@ -82,12 +82,12 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
 
   // Get current active company object
   const activeCompany = useMemo(() => {
-    return companies.find(c => c.id === parseInt(selectedCompanyId)) || {
-      id: 1,
-      name: 'Apex Real Estate Partners',
-      code: 'APEX',
-      bankName: 'TD Canada Trust',
-      bankAccount: 'TD Commercial Operating #0144-8829-10',
+    return companies.find(c => String(c.id) === String(selectedCompanyId)) || companies[0] || {
+      id: '',
+      name: 'All Companies',
+      code: 'ALL',
+      bankName: 'General Operating Account',
+      bankAccount: 'Operating Account',
       ownerName: 'Owner User'
     };
   }, [companies, selectedCompanyId]);
@@ -108,11 +108,12 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
 
   // Buildings belonging to the selected company
   const companyBuildings = useMemo(() => {
-    return properties.filter(p => p.companyId === parseInt(selectedCompanyId));
+    if (!selectedCompanyId) return properties;
+    return properties.filter(p => String(p.companyId) === String(selectedCompanyId));
   }, [properties, selectedCompanyId]);
 
   const companyBuildingIds = useMemo(() => {
-    return companyBuildings.map(b => b.id);
+    return companyBuildings.map(b => String(b.id));
   }, [companyBuildings]);
 
   // Combined Tenant List across all buildings of the selected company
@@ -120,17 +121,22 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
     const storedBalances = getStoredBalances();
 
     // Filter tenants who belong to any building owned by this company
-    const matchingTenants = tenants.filter(t => companyBuildingIds.includes(t.propertyId));
+    const matchingTenants = tenants.filter(t => {
+      if (!selectedCompanyId) return true;
+      if (t.companyId && String(t.companyId) === String(selectedCompanyId)) return true;
+      const tPropId = String(t.propertyId || t.unit?.propertyId || '');
+      return companyBuildingIds.includes(tPropId);
+    });
 
     return matchingTenants.map(t => {
-      const prop = companyBuildings.find(b => b.id === t.propertyId);
+      const prop = companyBuildings.find(b => String(b.id) === String(t.propertyId || t.unit?.propertyId || ''));
       const fullAddress = prop 
         ? `${prop.address || prop.name}, ${t.unitNumber || 'Unit'}`
         : `${t.propertyName || 'Building'}, ${t.unitNumber || 'Unit'}`;
 
       // Find matching invoice for this tenant (prefer unpaid/generated invoice for active cycle)
-      const matchingInvoices = invoices.filter(i => i.tenantId === t.id);
-      const activeUnpaidInv = matchingInvoices.find(i => i.status !== 'Paid');
+      const matchingInvoices = invoices.filter(i => String(i.tenantId) === String(t.id));
+      const activeUnpaidInv = matchingInvoices.find(i => (i.status || '').toUpperCase() !== 'PAID');
       const latestInvoice = matchingInvoices[matchingInvoices.length - 1];
 
       // Monthly rent defaults to active invoice amount (or lease/renewal rent)
@@ -149,7 +155,7 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
         currentBalance = activeUnpaidInv.outstandingBalance !== undefined
           ? parseFloat(activeUnpaidInv.outstandingBalance)
           : parseFloat(activeUnpaidInv.amountDue || activeUnpaidInv.amount || monthlyRent);
-      } else if (matchingInvoices.length > 0 && matchingInvoices.every(i => i.status === 'Paid')) {
+      } else if (matchingInvoices.length > 0 && matchingInvoices.every(i => (i.status || '').toUpperCase() === 'PAID')) {
         currentBalance = 0;
       }
 
@@ -164,7 +170,7 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
         status: currentBalance <= 0 ? 'Paid' : currentBalance < monthlyRent ? 'Partial' : 'Unpaid'
       };
     });
-  }, [tenants, companyBuildingIds, companyBuildings, invoices]);
+  }, [tenants, companyBuildingIds, companyBuildings, invoices, selectedCompanyId]);
 
   // Sort and filter the company tenants list
   const filteredAndSortedTenants = useMemo(() => {
@@ -267,9 +273,9 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
     const recordedSummary = [];
 
     selectedIds.forEach(idStr => {
-      const id = parseInt(idStr);
+      const id = idStr;
       const entry = paymentEntries[id];
-      const tenant = companyTenantsWithBalances.find(t => t.id === id);
+      const tenant = companyTenantsWithBalances.find(t => String(t.id) === String(id));
       if (!tenant) return;
 
       const amountPaid = parseFloat(entry.amountPaid) || 0;
@@ -280,7 +286,7 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
       storedBalances[id] = remainingBalance;
 
       // Also record payment in mock payment service
-      const matchingInvoice = invoices.find(inv => inv.tenantId === id && inv.status !== 'Paid');
+      const matchingInvoice = invoices.find(inv => String(inv.tenantId) === String(id) && (inv.status || '').toUpperCase() !== 'PAID');
       if (matchingInvoice) {
         api.post('/admin/payments', { invoiceId: matchingInvoice.id, amount: amountPaid, paymentMethod }).catch(() => {});
       }
@@ -367,12 +373,13 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
               <select
                 value={selectedCompanyId}
                 onChange={(e) => {
-                  setSelectedCompanyId(parseInt(e.target.value));
+                  setSelectedCompanyId(e.target.value);
                   setPaymentEntries({});
                   setSuccessNotice(null);
                 }}
                 className="w-full lg:w-64 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 cursor-pointer"
               >
+                <option value="">All Companies</option>
                 {companies.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.code})
@@ -396,72 +403,75 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
         {/* Company Bank Account & Stats Summary Bar */}
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Bank Account Details */}
-          <div className="p-4 bg-gradient-to-br from-indigo-50/70 to-blue-50/70 rounded-2xl border border-indigo-100/80 flex items-start gap-3">
+          <div className="p-4 bg-gradient-to-br from-indigo-50/70 to-blue-50/70 rounded-2xl border border-indigo-100/80 flex items-start gap-3 min-w-0 overflow-hidden">
             <div className="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5">
               <Landmark size={18} />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <span className="text-[10px] font-black text-indigo-700 uppercase tracking-wider block">
                 Direct Deposit Bank Account
               </span>
-              <p className="text-xs font-black text-slate-800 tracking-tight truncate mt-0.5">
+              <p className="text-xs font-black text-slate-800 tracking-tight truncate mt-0.5" title={activeCompany.bankAccount || 'TD Commercial #0144-8829-10'}>
                 {activeCompany.bankAccount || 'TD Commercial #0144-8829-10'}
               </p>
-              <span className="text-[10px] text-slate-500 font-medium block mt-0.5">
+              <span className="text-[10px] text-slate-500 font-medium block truncate mt-0.5" title={`Owner: ${activeCompany.ownerName || 'Owner User'}`}>
                 Owner: {activeCompany.ownerName || 'Owner User'}
               </span>
             </div>
           </div>
 
           {/* Buildings in this company */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-3">
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-3 min-w-0 overflow-hidden">
             <div className="p-2 bg-slate-200 text-slate-700 rounded-xl shrink-0 mt-0.5">
               <Building2 size={18} />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
                 Company Buildings
               </span>
               <p className="text-base font-black text-slate-800 tracking-tight mt-0.5">
                 {companyBuildings.length} {companyBuildings.length === 1 ? 'Building' : 'Buildings'}
               </p>
-              <span className="text-[10px] text-slate-500 font-medium block truncate">
+              <span 
+                className="text-[10px] text-slate-500 font-medium block truncate"
+                title={companyBuildings.map(b => b.name).join(', ') || 'No buildings'}
+              >
                 {companyBuildings.map(b => b.name).join(', ') || 'No buildings'}
               </span>
             </div>
           </div>
 
           {/* Total Outstanding Balance */}
-          <div className="p-4 bg-rose-50/60 rounded-2xl border border-rose-100 flex items-start gap-3">
+          <div className="p-4 bg-rose-50/60 rounded-2xl border border-rose-100 flex items-start gap-3 min-w-0 overflow-hidden">
             <div className="p-2 bg-rose-500 text-white rounded-xl shrink-0 mt-0.5">
               <TrendingDown size={18} />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <span className="text-[10px] font-black text-rose-700 uppercase tracking-wider block">
                 Outstanding Balance Due
               </span>
               <p className="text-base font-black text-rose-700 font-mono tracking-tight mt-0.5">
                 ${totalCurrentBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </p>
-              <span className="text-[10px] text-slate-500 font-medium block">
+              <span className="text-[10px] text-slate-500 font-medium block truncate">
                 Across {companyTenantsWithBalances.length} active tenants
               </span>
             </div>
           </div>
 
           {/* Collected Rent Amount */}
-          <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 flex items-start gap-3">
+          <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 flex items-start gap-3 min-w-0 overflow-hidden">
             <div className="p-2 bg-emerald-500 text-white rounded-xl shrink-0 mt-0.5">
               <DollarSign size={18} />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider block">
                 Rent Collected To Date
               </span>
               <p className="text-base font-black text-emerald-700 font-mono tracking-tight mt-0.5">
                 ${totalCollectedSoFar.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </p>
-              <span className="text-[10px] text-slate-500 font-medium block">
+              <span className="text-[10px] text-slate-500 font-medium block truncate">
                 Of ${totalMonthlyRent.toLocaleString('en-US', { minimumFractionDigits: 2 })} expected
               </span>
             </div>
