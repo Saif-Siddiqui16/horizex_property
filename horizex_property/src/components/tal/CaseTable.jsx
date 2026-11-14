@@ -36,6 +36,10 @@ export const CaseTable = ({ cases = [], onView, onStatusChange }) => {
 
   const handlePrint = (c) => {
     const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
     printWindow.document.write(`
       <html>
         <head>

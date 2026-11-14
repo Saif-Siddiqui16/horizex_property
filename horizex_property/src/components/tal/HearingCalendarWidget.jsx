@@ -33,8 +33,10 @@ export const HearingCalendarWidget = ({ hearings = [] }) => {
   const getHearingsForDay = (day) => {
     if (!day) return [];
     return hearings.filter(h => {
-      const hDate = new Date(h.date);
-      return hDate.getFullYear() === year && hDate.getMonth() === month && hDate.getDate() === day;
+      const hearingTime = h.date || h.nextHearingDate;
+      if (!hearingTime) return false;
+      const hDate = new Date(hearingTime);
+      return !isNaN(hDate.getTime()) && hDate.getFullYear() === year && hDate.getMonth() === month && hDate.getDate() === day;
     });
   };
 
@@ -100,44 +102,51 @@ export const HearingCalendarWidget = ({ hearings = [] }) => {
 
           <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
             {hearings.filter(h => {
-              const hDate = new Date(h.date);
-              return hDate.getFullYear() === year && hDate.getMonth() === month;
+              const hearingTime = h.date || h.nextHearingDate;
+              if (!hearingTime) return false;
+              const hDate = new Date(hearingTime);
+              return !isNaN(hDate.getTime()) && hDate.getFullYear() === year && hDate.getMonth() === month;
             }).length === 0 ? (
               <p className="text-xs font-semibold text-slate-400 text-center py-2">No hearings this month.</p>
             ) : (
               hearings
                 .filter(h => {
-                  const hDate = new Date(h.date);
-                  return hDate.getFullYear() === year && hDate.getMonth() === month;
+                  const hearingTime = h.date || h.nextHearingDate;
+                  if (!hearingTime) return false;
+                  const hDate = new Date(hearingTime);
+                  return !isNaN(hDate.getTime()) && hDate.getFullYear() === year && hDate.getMonth() === month;
                 })
-                .map(h => (
-                  <div key={h.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="text-[9px] font-bold text-slate-400 font-mono tracking-tight">{h.caseNumber}</span>
-                        <h4 className="text-xs font-black text-slate-800 mt-0.5">{h.tenantName}</h4>
+                .map(h => {
+                  const hearingDateObj = new Date(h.date || h.nextHearingDate);
+                  return (
+                    <div key={h.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-400 font-mono tracking-tight">{h.caseNumber}</span>
+                          <h4 className="text-xs font-black text-slate-800 mt-0.5">{h.tenantName}</h4>
+                        </div>
+                        <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded text-[9px] font-bold font-mono">
+                          Day {hearingDateObj.getDate()}
+                        </span>
                       </div>
-                      <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded text-[9px] font-bold font-mono">
-                        Day {new Date(h.date).getDate()}
-                      </span>
-                    </div>
 
-                    <div className="space-y-1 text-[10px] text-slate-500 font-semibold border-t border-slate-200/50 pt-2">
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={11} className="text-slate-400 shrink-0" />
-                        <span>{new Date(h.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <MapPin size={11} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{h.courtRoom || 'TBD'}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <UserCheck size={11} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{h.judgeName || 'TBD'}</span>
+                      <div className="space-y-1 text-[10px] text-slate-500 font-semibold border-t border-slate-200/50 pt-2">
+                        <div className="flex items-center gap-1.5">
+                          <Clock size={11} className="text-slate-400 shrink-0" />
+                          <span>{hearingDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin size={11} className="text-slate-400 shrink-0" />
+                          <span className="truncate">{h.courtRoom || 'TBD'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <UserCheck size={11} className="text-slate-400 shrink-0" />
+                          <span className="truncate">{h.judgeName || h.assignedLawyerName || 'TBD'}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
             )}
           </div>
         </div>

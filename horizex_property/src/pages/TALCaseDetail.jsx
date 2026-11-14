@@ -12,7 +12,8 @@ import { CaseNotes } from '../components/tal/CaseNotes';
 import { CaseTasks } from '../components/tal/CaseTasks';
 import { CaseHearingList } from '../components/tal/CaseHearingList';
 import { CaseOverviewSteps } from '../components/tal/CaseOverviewSteps';
-import api from '../api/client';
+import api from '../api/client';
+
 export const TALCaseDetail = () => {
 const { id } = useParams();
   const [loading, setLoading] = useState(true);
@@ -32,20 +33,96 @@ const { id } = useParams();
   const loadCaseDetail = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/admin/tal-cases/${id}`).catch(() => ({ data: null })); const data = res.data?.data || res.data;
-      if (!data) return;
+      const res = await api.get(`/admin/tal-cases/${id}`).catch(() => ({ data: null }));
+      let data = res.data?.data || res.data;
 
-      setCaseData(data);
+      if (!data) {
+        const localCases = JSON.parse(localStorage.getItem('mock_tal_cases') || '[]');
+        data = localCases.find(
+          c => String(c.id) === String(id) ||
+               String(c.caseNumber) === String(id) ||
+               String(c.docketNumber) === String(id)
+        );
+      }
 
-      const [tenantRes, leaseRes] = await Promise.all([
-        api.get(`/api/admin/tenants/${data.tenantId}`).catch(() => null),
-        api.get(`/api/admin/leases/${data.leaseId}`).catch(() => null)
-      ]);
+      if (!data) {
+        const defaultCases = [
+          {
+            id: 'tal-case-1',
+            caseNumber: 'TAL-2026-0001',
+            docketNumber: 'TAL-2026-0001',
+            companyId: 1,
+            propertyId: 1,
+            propertyName: 'Parkview Heights',
+            unitId: 1,
+            unitNumber: 'Unit 101',
+            tenantId: 1,
+            tenantName: 'Demo Tenant',
+            leaseId: 1,
+            caseType: 'Non-Payment of Rent',
+            reason: 'Unpaid Rent for October & November 2026',
+            subject: 'Rent Recovery and Late Fee Arrears',
+            caseSummary: 'Tenant has not paid rent for 2 consecutive months despite formal notices sent.',
+            status: 'Preparing Documents',
+            priority: 'HIGH',
+            amountOwed: 2500,
+            amountClaimed: 2948,
+            filingFee: 98,
+            legalFees: 350,
+            outstandingRent: 2500,
+            recoveredAmount: 0,
+            paymentStatus: 'Unpaid',
+            filedDate: '2026-11-01',
+            assignedManagerName: 'Admin Administrator',
+            assignedLawyerId: 'lwy-001',
+            assignedLawyerName: 'Me. Jean Tremblay (Tremblay Legal Group)',
+            nextHearingDate: '2026-12-15T10:00:00Z',
+            courtRoom: 'Room 302 - TAL Montreal',
+            createdAt: '2026-11-01T10:00:00Z',
+            documents: [],
+            hearings: [],
+            notes: [],
+            tasks: []
+          }
+        ];
+        data = defaultCases.find(
+          c => String(c.id) === String(id) ||
+               String(c.caseNumber) === String(id) ||
+               String(c.docketNumber) === String(id)
+        );
+      }
 
-      if (tenantRes?.data) setTenant(tenantRes.data);
-      if (leaseRes?.data) setLease(leaseRes.data);
+      if (data) {
+        const safeData = {
+          ...data,
+          documents: data.documents || [],
+          hearings: data.hearings || [],
+          notes: data.notes || [],
+          tasks: data.tasks || [],
+          auditLog: data.auditLog || [
+            {
+              id: 1,
+              timestamp: data.createdAt || new Date().toISOString(),
+              user: data.assignedManagerName || 'Admin Administrator',
+              action: 'CREATE',
+              field: 'Status',
+              oldValue: 'None',
+              newValue: data.status || 'Draft'
+            }
+          ]
+        };
+        setCaseData(safeData);
 
-      setLedgerData([]);
+        const [tenantRes, leaseRes] = await Promise.all([
+          data.tenantId ? api.get(`/api/admin/tenants/${data.tenantId}`).catch(() => null) : null,
+          data.leaseId ? api.get(`/api/admin/leases/${data.leaseId}`).catch(() => null) : null
+        ]);
+
+        if (tenantRes?.data) setTenant(tenantRes.data?.data || tenantRes.data);
+        if (leaseRes?.data) setLease(leaseRes.data?.data || leaseRes.data);
+
+        setLedgerData([]);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -59,56 +136,167 @@ const { id } = useParams();
 
   // Actions
   const handleAddHearing = async (hearing) => {
-    await api.post(`/admin/tal-cases/${id}/hearings`, hearing).catch(() => {});
-    loadCaseDetail();
+    try {
+      const currentLocal = JSON.parse(localStorage.getItem('mock_tal_cases') || '[]');
+      const idx = currentLocal.findIndex(c => String(c.id) === String(id) || String(c.caseNumber) === String(id) || String(c.docketNumber) === String(id));
+      const newHearing = { id: Date.now(), ...hearing, createdAt: new Date().toISOString() };
+      if (idx !== -1) {
+        currentLocal[idx].hearings = currentLocal[idx].hearings || [];
+        currentLocal[idx].hearings.push(newHearing);
+        if (hearing.date) currentLocal[idx].nextHearingDate = hearing.date;
+        if (hearing.courtRoom) currentLocal[idx].courtRoom = hearing.courtRoom;
+        localStorage.setItem('mock_tal_cases', JSON.stringify(currentLocal));
+      }
+      await api.post(`/admin/tal-cases/${id}/hearings`, hearing).catch(() => {});
+      loadCaseDetail();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleUploadDocument = async (doc) => {
-    await api.post(`/admin/tal-cases/${id}/documents`, doc).catch(() => {});
-    loadCaseDetail();
+    try {
+      const currentLocal = JSON.parse(localStorage.getItem('mock_tal_cases') || '[]');
+      const idx = currentLocal.findIndex(c => String(c.id) === String(id) || String(c.caseNumber) === String(id) || String(c.docketNumber) === String(id));
+      const newDoc = { id: Date.now(), ...doc, uploadedAt: new Date().toISOString() };
+      if (idx !== -1) {
+        currentLocal[idx].documents = currentLocal[idx].documents || [];
+        currentLocal[idx].documents.push(newDoc);
+        localStorage.setItem('mock_tal_cases', JSON.stringify(currentLocal));
+      }
+      await api.post(`/admin/tal-cases/${id}/documents`, doc).catch(() => {});
+      loadCaseDetail();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleDeleteDocument = async (docId) => {
-    await api.delete(`/admin/tal-cases/${id}/documents/${docId}`).catch(() => {});
-    loadCaseDetail();
+    try {
+      const currentLocal = JSON.parse(localStorage.getItem('mock_tal_cases') || '[]');
+      const idx = currentLocal.findIndex(c => String(c.id) === String(id) || String(c.caseNumber) === String(id) || String(c.docketNumber) === String(id));
+      if (idx !== -1 && currentLocal[idx].documents) {
+        currentLocal[idx].documents = currentLocal[idx].documents.filter(d => String(d.id) !== String(docId));
+        localStorage.setItem('mock_tal_cases', JSON.stringify(currentLocal));
+      }
+      await api.delete(`/admin/tal-cases/${id}/documents/${docId}`).catch(() => {});
+      loadCaseDetail();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleAddNote = async (note) => {
-    await api.post('/admin/notes', { entityType: 'TAL_CASE', entityId: id, content: typeof note === 'string' ? note : note.text }).catch(() => {});
-    loadCaseDetail();
+    try {
+      const currentLocal = JSON.parse(localStorage.getItem('mock_tal_cases') || '[]');
+      const idx = currentLocal.findIndex(c => String(c.id) === String(id) || String(c.caseNumber) === String(id) || String(c.docketNumber) === String(id));
+      const newNote = {
+        id: Date.now(),
+        content: typeof note === 'string' ? note : (note.text || note.content),
+        createdAt: new Date().toISOString(),
+        author: activeRole || 'Admin Administrator'
+      };
+      if (idx !== -1) {
+        currentLocal[idx].notes = currentLocal[idx].notes || [];
+        currentLocal[idx].notes.push(newNote);
+        localStorage.setItem('mock_tal_cases', JSON.stringify(currentLocal));
+      }
+      await api.post('/admin/notes', { entityType: 'TAL_CASE', entityId: id, content: typeof note === 'string' ? note : note.text }).catch(() => {});
+      loadCaseDetail();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleAddTask = async (task) => {
-    const taskPayload = {
-      ...task,
-      entityType: 'TAL_CASE',
-      entityId: parseInt(id),
-      companyId: caseData.companyId || 1,
-      propertyId: caseData.propertyId || 3,
-      propertyName: caseData.propertyName || 'Greenfield Commons',
-      unitId: caseData.unitId || 3,
-      unitNumber: caseData.unitNumber || 'Apt 301',
-      tenantId: caseData.tenantId || 103,
-      tenantName: caseData.tenantName || 'John Doe',
-      leaseId: caseData.leaseId || 3
-    };
-
-    await api.post(`/admin/tal-cases/${id}/tasks`, taskPayload).catch(() => {});
-    loadCaseDetail();
+    try {
+      const currentLocal = JSON.parse(localStorage.getItem('mock_tal_cases') || '[]');
+      const idx = currentLocal.findIndex(c => String(c.id) === String(id) || String(c.caseNumber) === String(id) || String(c.docketNumber) === String(id));
+      const newTask = {
+        id: Date.now(),
+        title: task.title || task.name || 'New Task',
+        priority: task.priority || 'Medium',
+        dueDate: task.dueDate || new Date().toISOString().split('T')[0],
+        status: 'PENDING',
+        createdAt: new Date().toISOString()
+      };
+      if (idx !== -1) {
+        currentLocal[idx].tasks = currentLocal[idx].tasks || [];
+        currentLocal[idx].tasks.push(newTask);
+        localStorage.setItem('mock_tal_cases', JSON.stringify(currentLocal));
+      }
+      const taskPayload = {
+        ...task,
+        entityType: 'TAL_CASE',
+        entityId: parseInt(id) || id,
+        companyId: caseData?.companyId || 1,
+        propertyId: caseData?.propertyId || 3,
+        propertyName: caseData?.propertyName || 'Greenfield Commons',
+        unitId: caseData?.unitId || 3,
+        unitNumber: caseData?.unitNumber || 'Apt 301',
+        tenantId: caseData?.tenantId || 103,
+        tenantName: caseData?.tenantName || 'John Doe',
+        leaseId: caseData?.leaseId || 3
+      };
+      await api.post(`/admin/tal-cases/${id}/tasks`, taskPayload).catch(() => {});
+      loadCaseDetail();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleCompleteTask = async (taskId) => {
-    await api.put(`/admin/tal-cases/tasks/${taskId}`, { status: 'COMPLETED' }).catch(() => {});
-    loadCaseDetail();
+    try {
+      const currentLocal = JSON.parse(localStorage.getItem('mock_tal_cases') || '[]');
+      const idx = currentLocal.findIndex(c => String(c.id) === String(id) || String(c.caseNumber) === String(id) || String(c.docketNumber) === String(id));
+      if (idx !== -1 && currentLocal[idx].tasks) {
+        const t = currentLocal[idx].tasks.find(x => String(x.id) === String(taskId));
+        if (t) t.status = 'COMPLETED';
+        localStorage.setItem('mock_tal_cases', JSON.stringify(currentLocal));
+      }
+      await api.put(`/admin/tal-cases/tasks/${taskId}`, { status: 'COMPLETED' }).catch(() => {});
+      loadCaseDetail();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleDeleteTask = async (taskId) => {
-    await api.delete(`/admin/tal-cases/tasks/${taskId}`).catch(() => {});
-    loadCaseDetail();
+    try {
+      const currentLocal = JSON.parse(localStorage.getItem('mock_tal_cases') || '[]');
+      const idx = currentLocal.findIndex(c => String(c.id) === String(id) || String(c.caseNumber) === String(id) || String(c.docketNumber) === String(id));
+      if (idx !== -1 && currentLocal[idx].tasks) {
+        currentLocal[idx].tasks = currentLocal[idx].tasks.filter(x => String(x.id) !== String(taskId));
+        localStorage.setItem('mock_tal_cases', JSON.stringify(currentLocal));
+      }
+      await api.delete(`/admin/tal-cases/tasks/${taskId}`).catch(() => {});
+      loadCaseDetail();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleStatusChange = async (newStatus) => {
     try {
+      const currentLocal = JSON.parse(localStorage.getItem('mock_tal_cases') || '[]');
+      const idx = currentLocal.findIndex(c => String(c.id) === String(id) || String(c.caseNumber) === String(id) || String(c.docketNumber) === String(id));
+      if (idx !== -1) {
+        currentLocal[idx].status = newStatus;
+        currentLocal[idx].auditLog = currentLocal[idx].auditLog || [];
+        currentLocal[idx].auditLog.unshift({
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
+          user: activeRole,
+          action: 'UPDATE',
+          field: 'Status',
+          oldValue: caseData?.status || 'Unknown',
+          newValue: newStatus
+        });
+        localStorage.setItem('mock_tal_cases', JSON.stringify(currentLocal));
+      }
+      if (caseData) {
+        setCaseData(prev => ({ ...prev, status: newStatus }));
+      }
       await api.put(`/admin/tal-cases/${id}`, { status: newStatus }).catch(() => {});
       loadCaseDetail();
       setShowStatusTransition(false);
@@ -116,6 +304,7 @@ const { id } = useParams();
       alert(e.message);
     }
   };
+
 
   const handleBack = () => {
     window.location.href = '/tal-cases';
@@ -218,9 +407,17 @@ const { id } = useParams();
           </div>
         </div>
 
-        {loading || !caseData ? (
+        {loading ? (
           <div className="flex items-center justify-center min-h-[300px]">
             <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          </div>
+        ) : !caseData ? (
+          <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-8 bg-white border border-slate-200 rounded-[22px]">
+            <p className="text-sm font-bold text-slate-700">Case not found</p>
+            <p className="text-xs text-slate-400 mt-1">The requested TAL legal dispute dossier could not be loaded.</p>
+            <Button variant="secondary" onClick={handleBack} className="mt-4 text-xs font-bold">
+              Back to Cases
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">

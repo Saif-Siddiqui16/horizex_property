@@ -28,7 +28,7 @@ export const UpcomingHearingsWidget = ({ hearings = [] }) => {
                     <h4 className="text-xs font-black text-slate-800 mt-0.5 truncate">{h.tenantName}</h4>
                   </div>
                   <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded text-[9px] font-bold font-mono shrink-0">
-                    {new Date(h.date).toLocaleDateString('en-CA')}
+                    {new Date(h.date || h.nextHearingDate).toLocaleDateString('en-CA')}
                   </span>
                 </div>
 
