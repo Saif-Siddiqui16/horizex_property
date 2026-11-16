@@ -332,7 +332,7 @@ export const Profile = () => {
                                         name="firstName"
                                         value={profile.firstName || ''}
                                         onChange={handleProfileChange}
-                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900"
                                         placeholder="John"
                                     />
                                 </div>
@@ -343,7 +343,7 @@ export const Profile = () => {
                                         name="lastName"
                                         value={profile.lastName || ''}
                                         onChange={handleProfileChange}
-                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900"
                                         placeholder="Doe"
                                     />
                                 </div>
@@ -356,7 +356,7 @@ export const Profile = () => {
                                     name="name"
                                     value={profile.name || ''}
                                     onChange={handleProfileChange}
-                                    className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                    className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900"
                                     placeholder="John Doe"
                                 />
                             </div>
@@ -369,7 +369,7 @@ export const Profile = () => {
                                         name="email"
                                         value={profile.email || ''}
                                         onChange={handleProfileChange}
-                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900"
                                         placeholder="john@example.com"
                                     />
                                 </div>
@@ -387,7 +387,7 @@ export const Profile = () => {
                                                 const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                                                 setProfile(prev => ({ ...prev, phone: '+1' + val }));
                                             }}
-                                            className="w-full h-11 pl-14 pr-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                            className="w-full h-11 pl-14 pr-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900"
                                             placeholder="5550000000"
                                         />
                                     </div>
@@ -410,7 +410,7 @@ export const Profile = () => {
                                         value={profile.city || ''}
                                         onChange={handleProfileChange}
                                         disabled={!isCompanyEditable}
-                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Toronto"
                                     />
                                 </div>
@@ -422,7 +422,7 @@ export const Profile = () => {
                                         value={profile.state || ''}
                                         onChange={handleProfileChange}
                                         disabled={!isCompanyEditable}
-                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Ontario"
                                     />
                                 </div>
@@ -434,7 +434,7 @@ export const Profile = () => {
                                         value={profile.country || ''}
                                         onChange={handleProfileChange}
                                         disabled={!isCompanyEditable}
-                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Canada"
                                     />
                                 </div>
@@ -456,7 +456,7 @@ export const Profile = () => {
                                         value={profile.companyName || ''}
                                         onChange={handleProfileChange}
                                         disabled={!isCompanyEditable}
-                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="e.g. Horizex Properties"
                                     />
                                 </div>
@@ -468,7 +468,7 @@ export const Profile = () => {
                                         onChange={handleProfileChange}
                                         disabled={!isCompanyEditable}
                                         rows={3}
-                                        className={`w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 min-h-[100px] ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
+                                        className={`w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900 min-h-[100px] ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Mention your company address, registration number, tax details, or mission statement..."
                                     />
                                 </div>
@@ -493,7 +493,7 @@ export const Profile = () => {
                                             name="newPassword"
                                             value={passwordData.newPassword}
                                             onChange={handlePasswordChange}
-                                            className="w-full h-11 px-4 pr-12 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                            className="w-full h-11 px-4 pr-12 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900"
                                             placeholder="Leave blank to keep current"
                                         />
                                         <button
@@ -512,7 +512,7 @@ export const Profile = () => {
                                         name="confirmPassword"
                                         value={passwordData.confirmPassword}
                                         onChange={handlePasswordChange}
-                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900"
                                         placeholder="Repeat new password"
                                     />
                                 </div>

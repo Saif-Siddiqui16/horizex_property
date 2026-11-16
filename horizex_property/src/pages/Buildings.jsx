@@ -334,7 +334,8 @@ export const Buildings = () => {
                 placeholder="Search buildings by name, street, city, owner, postal code..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="bg-transparent border-none outline-none text-slate-700 placeholder:text-slate-300 w-full text-sm font-medium"
+                className="bg-transparent border-none outline-hidden text-slate-700 placeholder:text-slate-300 w-full text-sm font-medium focus:outline-hidden focus:ring-0 focus-visible:outline-hidden focus-visible:ring-0 focus-visible:!shadow-none"
+                style={{ outline: 'none', boxShadow: 'none' }}
               />
             </div>
           </div>
