@@ -7,6 +7,7 @@ import {
   useGetTenantsQuery,
   useGetUnitsQuery,
   useGetVacantBedroomsQuery,
+  useGetLeasesQuery,
   useCreateLeaseMutation,
 } from '../store';
 
@@ -17,6 +18,7 @@ export const LeaseFormBedroom = () => {
     const { data: buildings = [] } = useGetPropertiesQuery();
     const { data: rawTenants = [] } = useGetTenantsQuery();
     const { data: allUnits = [] } = useGetUnitsQuery({ showInactive: true });
+    const { data: rawLeases = [] } = useGetLeasesQuery();
     const [createLease, { isLoading: isCreating }] = useCreateLeaseMutation();
 
     const [selectedBuilding, setSelectedBuilding] = useState('');
@@ -33,12 +35,45 @@ export const LeaseFormBedroom = () => {
         sendCredentials: false
     });
 
-    // Vacant bedrooms for selected unit
+    // Vacant bedrooms for selected unit from backend API
     const { data: rawBedrooms = [] } = useGetVacantBedroomsQuery(
         { unitId: form.unitId },
         { skip: !form.unitId }
     );
-    const bedrooms = useMemo(() => form.unitId ? rawBedrooms : [], [form.unitId, rawBedrooms]);
+
+    // Analyze active leases to know which units have full-unit leases or all bedrooms filled
+    const activeUnitLeaseInfo = useMemo(() => {
+        const map = {};
+        (Array.isArray(rawLeases) ? rawLeases : []).forEach(l => {
+            const s = String(l.status || '').toUpperCase();
+            if (s === 'ACTIVE' || s === 'EXPIRING_SOON' || s === 'PENDING' || s === 'DRAFT') {
+                const uId = String(l.unitId || l.unit?.id || '');
+                if (!uId) return;
+                if (!map[uId]) {
+                    map[uId] = { hasFullUnitLease: false, occupiedBedrooms: new Set() };
+                }
+                const lType = String(l.leaseType || l.type || '').toUpperCase();
+                if (!l.bedroomId || lType === 'FULL UNIT LEASE' || lType === 'FULL_UNIT') {
+                    map[uId].hasFullUnitLease = true;
+                } else {
+                    map[uId].occupiedBedrooms.add(String(l.bedroomId));
+                }
+            }
+        });
+        return map;
+    }, [rawLeases]);
+
+    // Derived vacant bedrooms: exclude any bedroom with an active lease
+    const bedrooms = useMemo(() => {
+        if (!form.unitId) return [];
+        const leaseInfo = activeUnitLeaseInfo[String(form.unitId)];
+        const occupiedBeds = leaseInfo ? leaseInfo.occupiedBedrooms : new Set();
+
+        return (Array.isArray(rawBedrooms) ? rawBedrooms : []).filter(b => {
+            const bedKey = String(b.bedroomId ?? b.id ?? '');
+            return !occupiedBeds.has(bedKey);
+        });
+    }, [form.unitId, rawBedrooms, activeUnitLeaseInfo]);
 
     // Derived tenants
     const tenants = useMemo(() => {
@@ -48,19 +83,50 @@ export const LeaseFormBedroom = () => {
         }));
     }, [rawTenants]);
 
-    // Filter available units for bedroom-wise leasing
+    // Filter available units for bedroom-wise leasing:
+    // Exclude units with an active full unit lease, or where all bedrooms are already leased
     const units = useMemo(() => {
         if (!selectedBuilding) return [];
         return (Array.isArray(allUnits) ? allUnits : []).filter(u => {
             const match = String(u.propertyId || u.property?.id) === String(selectedBuilding);
             if (!match) return false;
-            if (u.hasCompanyLease) return true;
-            const uStatus = (u.status || '').toUpperCase();
+
+            const uId = String(u.id);
+            const leaseInfo = activeUnitLeaseInfo[uId];
+
+            // 1. If unit already has an active full unit lease, no bedrooms can be leased
+            if (leaseInfo?.hasFullUnitLease) return false;
+
+            // 2. If unit's activeLease is a full unit lease
+            if (u.activeLease && (!u.activeLease.bedroomId || String(u.activeLease.leaseType || '').toUpperCase() === 'FULL UNIT LEASE')) {
+                return false;
+            }
+
+            // 3. If unit is marked FULLY BOOKED or OCCUPIED (full unit mode)
+            const uStatus = String(u.status || '').toUpperCase();
             if (uStatus === 'FULLY BOOKED') return false;
-            if ((u.rentalMode === 'FULL_UNIT' || !u.rentalMode) && uStatus === 'OCCUPIED') return false;
+            if ((u.rentalMode === 'FULL_UNIT' || !u.rentalMode) && uStatus === 'OCCUPIED' && !u.hasCompanyLease) return false;
+
+            // 4. Exclude if unit is in construction phase / inactive / not ready
+            const isConstruction =
+                u.classification === 'New Construction' ||
+                String(u.classification || '').toLowerCase().includes('construction') ||
+                u.unit_status === 'INACTIVE' ||
+                u.isActive === false ||
+                uStatus === 'IN_CONSTRUCTION' ||
+                uStatus === 'UNDER_MAINTENANCE' ||
+                uStatus === 'TURNOVER';
+            if (isConstruction) return false;
+
+            // 5. If all bedrooms in this unit are already leased
+            const totalBeds = Math.max(1, Number(u.bedrooms) || 1);
+            if (leaseInfo && leaseInfo.occupiedBedrooms.size >= totalBeds) {
+                return false;
+            }
+
             return true;
         });
-    }, [allUnits, selectedBuilding]);
+    }, [allUnits, selectedBuilding, activeUnitLeaseInfo]);
 
     const handleBuildingChange = (e) => {
         const buildingId = e.target.value;
@@ -231,7 +297,7 @@ export const LeaseFormBedroom = () => {
                                     disabled={!selectedBuilding}
                                     className="w-full pl-12 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-slate-800 appearance-none disabled:opacity-50"
                                 >
-                                    <option value="">Select Unit</option>
+                                    <option value="">{selectedBuilding && units.length === 0 ? 'No units with vacant bedrooms available' : 'Select Unit'}</option>
                                     {units.map(u => (
                                         <option key={u.id} value={u.id}>
                                             {u.unitNumber || u.unit_identifier || u.name} ({u.status})
@@ -256,7 +322,7 @@ export const LeaseFormBedroom = () => {
                                     disabled={!form.unitId}
                                     className="w-full pl-12 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-slate-800 appearance-none disabled:opacity-50"
                                 >
-                                    <option value="">Select Bedroom</option>
+                                    <option value="">{form.unitId && bedrooms.length === 0 ? 'No vacant bedrooms available in this unit' : 'Select Bedroom'}</option>
                                     {Array.isArray(bedrooms) && bedrooms.map(b => (
                                         <option key={b.id} value={b.id}>
                                             {b.bedroomNumber || b.displayName}
@@ -410,7 +476,7 @@ export const LeaseFormBedroom = () => {
                         </div>
                     </div>
 
-                    {/* Send Credentials Toggle */}
+                    {/* Send Credentials Toggle (Commented out)
                     <div className="flex items-center mb-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
                         <input
                             type="checkbox"
@@ -426,6 +492,7 @@ export const LeaseFormBedroom = () => {
                             </span>
                         </label>
                     </div>
+                    */}
 
                     <div className="flex justify-end gap-4 pt-4 border-t border-slate-100">
                         <Button variant="secondary" onClick={() => navigate('/leases')}>

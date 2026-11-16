@@ -7,6 +7,7 @@ import {
   useGetTenantsQuery,
   useGetUnitsQuery,
   useGetVacantBedroomsQuery,
+  useGetLeasesQuery,
   useCreateLeaseMutation,
 } from '../store';
 
@@ -17,6 +18,7 @@ export const LeaseForm = () => {
   const { data: buildings = [] } = useGetPropertiesQuery();
   const { data: rawTenants = [] } = useGetTenantsQuery();
   const { data: allUnits = [] } = useGetUnitsQuery({ showInactive: true });
+  const { data: rawLeases = [] } = useGetLeasesQuery();
   const [createLease, { isLoading: isCreating }] = useCreateLeaseMutation();
 
   const [selectedBuilding, setSelectedBuilding] = useState('');
@@ -47,16 +49,52 @@ export const LeaseForm = () => {
     }));
   }, [rawTenants]);
 
-  // Filter available units for the selected building (vacant / not occupied full unit)
+  // Set of unit IDs that already have an active lease (Full Unit or Bedroom)
+  const activeLeasedUnitIds = useMemo(() => {
+    const set = new Set();
+    (Array.isArray(rawLeases) ? rawLeases : []).forEach(l => {
+      const s = String(l.status || '').toUpperCase();
+      if (s === 'ACTIVE' || s === 'EXPIRING_SOON' || s === 'PENDING' || s === 'DRAFT') {
+        const uId = l.unitId || l.unit?.id;
+        if (uId) {
+          set.add(String(uId));
+        }
+      }
+    });
+    return set;
+  }, [rawLeases]);
+
+  // Filter available units for the selected building (only vacant units with no active leases)
   const units = useMemo(() => {
     if (!selectedBuilding) return [];
     return (Array.isArray(allUnits) ? allUnits : []).filter(u => {
       const match = String(u.propertyId || u.property?.id) === String(selectedBuilding);
       if (!match) return false;
-      if (u.status === 'Occupied' || u.status === 'Fully Booked') return false;
+
+      // 1. Exclude if unit already has an active lease in lease registry
+      if (activeLeasedUnitIds.has(String(u.id))) return false;
+
+      // 2. Exclude if unit has activeLease attached directly from backend
+      if (u.activeLease && String(u.activeLease.status || 'ACTIVE').toUpperCase() !== 'EXPIRED') return false;
+
+      // 3. Exclude if status is OCCUPIED or FULLY BOOKED
+      const uStatus = String(u.status || '').toUpperCase();
+      if (uStatus === 'OCCUPIED' || uStatus === 'FULLY BOOKED') return false;
+
+      // 4. Exclude if unit is in construction phase / inactive / not ready
+      const isConstruction =
+        u.classification === 'New Construction' ||
+        String(u.classification || '').toLowerCase().includes('construction') ||
+        u.unit_status === 'INACTIVE' ||
+        u.isActive === false ||
+        uStatus === 'IN_CONSTRUCTION' ||
+        uStatus === 'UNDER_MAINTENANCE' ||
+        uStatus === 'TURNOVER';
+      if (isConstruction) return false;
+
       return true;
     });
-  }, [allUnits, selectedBuilding]);
+  }, [allUnits, selectedBuilding, activeLeasedUnitIds]);
 
   const handleBuildingChange = (e) => {
     const buildingId = e.target.value;
@@ -152,7 +190,7 @@ export const LeaseForm = () => {
                 disabled={!selectedBuilding}
                 className="w-full pl-12 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-slate-800 appearance-none disabled:opacity-50"
               >
-                <option value="">Select Unit</option>
+                <option value="">{selectedBuilding && units.length === 0 ? 'No vacant units available in this building' : 'Select Unit'}</option>
                 {units.map(u => (
                   <option key={u.id} value={u.id}>
                     {u.unitNumber || u.name}
@@ -329,7 +367,7 @@ export const LeaseForm = () => {
           </div>
         </div>
 
-        {/* Send Credentials Toggle */}
+        {/* Send Credentials Toggle (Commented out)
         <div className="flex items-center mt-8 mb-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
           <input
             type="checkbox"
@@ -345,6 +383,7 @@ export const LeaseForm = () => {
             </span>
           </label>
         </div>
+        */}
 
         <div className="flex justify-end gap-4 mt-10 pt-6 border-t border-slate-100">
           <Button variant="secondary" onClick={() => navigate('/leases')}>

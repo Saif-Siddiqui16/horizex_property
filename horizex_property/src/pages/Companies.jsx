@@ -375,7 +375,7 @@ export const Companies = () => {
               <tr className="bg-slate-50/80 border-b border-slate-200">
                 <th className="pl-6 py-3.5 text-xs font-bold text-slate-600 uppercase tracking-wider">Company</th>
                 <th className="py-3.5 text-xs font-bold text-slate-600 uppercase tracking-wider">Code</th>
-                <th className="py-3.5 text-xs font-bold text-slate-600 uppercase tracking-wider">Owner</th>
+                {/* <th className="py-3.5 text-xs font-bold text-slate-600 uppercase tracking-wider">Owner</th> */}
                 <th className="py-3.5 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">Buildings</th>
                 <th className="py-3.5 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">Total Units</th>
                 <th className="pr-6 py-3.5 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
@@ -384,7 +384,7 @@ export const Companies = () => {
             <tbody className="divide-y divide-slate-100">
               {isLoadingCompanies ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400 text-sm">
+                  <td colSpan={5} className="text-center py-12 text-slate-400 text-sm">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 size={18} className="animate-spin text-blue-600" />
                       <span>Loading companies from RTK Query cache...</span>
@@ -393,13 +393,13 @@ export const Companies = () => {
                 </tr>
               ) : companiesError ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-rose-500 text-sm">
+                  <td colSpan={5} className="text-center py-12 text-rose-500 text-sm">
                     Failed to load companies. Please check your backend connection.
                   </td>
                 </tr>
               ) : filteredCompanies.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400 text-sm">
+                  <td colSpan={5} className="text-center py-12 text-slate-400 text-sm">
                     {search ? `No companies found matching "${search}".` : 'No companies found matching the active filter.'}
                   </td>
                 </tr>
@@ -433,7 +433,7 @@ export const Companies = () => {
                         </span>
                       </td>
 
-                      {/* Owner */}
+                      {/* Owner column commented out
                       <td className="py-4">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
                           <User size={14} className="text-slate-400" />
@@ -446,6 +446,7 @@ export const Companies = () => {
                           </span>
                         </div>
                       </td>
+                      */}
 
                       {/* Managed Buildings Count */}
                       <td className="py-4 text-center">
@@ -533,35 +534,36 @@ export const Companies = () => {
                 />
               </div>
 
-              {/* Company Code & Owner Dropdown */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1">Company Code *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                    placeholder="e.g. APEX"
-                    className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 uppercase font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1">
-                    Owner <span className="text-zinc-400 font-normal">(Optional)</span>
-                  </label>
-                  <select
-                    value={formData.ownerName}
-                    onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 bg-white"
-                  >
-                    <option value="">-- Select Owner --</option>
-                    {availableOwners.map(o => (
-                      <option key={o.id || o.name} value={o.name}>{o.name}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Company Code */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">Company Code *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                  placeholder="e.g. APEX"
+                  className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 uppercase font-mono font-bold"
+                />
               </div>
+
+              {/* Owner Dropdown (Commented out)
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Owner <span className="text-zinc-400 font-normal">(Optional)</span>
+                </label>
+                <select
+                  value={formData.ownerName}
+                  onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 bg-white"
+                >
+                  <option value="">-- Select Owner --</option>
+                  {availableOwners.map(o => (
+                    <option key={o.id || o.name} value={o.name}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+              */}
 
               {/* Office Address (Optional) */}
               <div>
@@ -635,34 +637,35 @@ export const Companies = () => {
                 />
               </div>
 
-              {/* Company Code & Owner Dropdown */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1">Company Code *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                    className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 uppercase font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1">
-                    Owner <span className="text-zinc-400 font-normal">(Optional)</span>
-                  </label>
-                  <select
-                    value={formData.ownerName}
-                    onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 bg-white"
-                  >
-                    <option value="">-- Select Owner --</option>
-                    {availableOwners.map(o => (
-                      <option key={o.id || o.name} value={o.name}>{o.name}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Company Code */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">Company Code *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 uppercase font-mono font-bold"
+                />
               </div>
+
+              {/* Owner Dropdown (Commented out)
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Owner <span className="text-zinc-400 font-normal">(Optional)</span>
+                </label>
+                <select
+                  value={formData.ownerName}
+                  onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg focus:outline-hidden focus:border-blue-500 bg-white"
+                >
+                  <option value="">-- Select Owner --</option>
+                  {availableOwners.map(o => (
+                    <option key={o.id || o.name} value={o.name}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+              */}
 
               {/* Office Address (Optional) */}
               <div>
@@ -776,15 +779,15 @@ export const Companies = () => {
 
             <div className="p-6 space-y-6">
               {/* Company Info Header */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
                 <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Code</p>
                   <p className="font-bold text-slate-800 mt-0.5">{selectedCompany.code || (selectedCompany.name ? selectedCompany.name.slice(0, 4).toUpperCase() : '')}</p>
                 </div>
-                <div>
+                {/* <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Owner</p>
                   <p className="font-bold text-slate-800 mt-0.5">{selectedCompany.ownerName || 'Unassigned'}</p>
-                </div>
+                </div> */}
                 <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Managed Buildings</p>
                   <p className="font-bold text-indigo-600 mt-0.5">{companyStats[selectedCompany.id]?.buildingsCount || 0}</p>

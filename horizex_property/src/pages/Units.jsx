@@ -34,6 +34,24 @@ import {
   useDeleteUnitTypeMutation,
 } from '../store';
 
+// Helper functions for unit type rate and bedroom calculation
+const getBedCountFromTypeName = (typeName = '') => {
+  const match = String(typeName).match(/(\d+)\s*(?:bedroom|bed|b)/i);
+  if (match) return parseInt(match[1], 10) || 1;
+  if (/studio/i.test(typeName)) return 1;
+  return 1;
+};
+
+const getCalculatedBedRate = (type) => {
+  if (!type) return 0;
+  const directBedRate = parseFloat(type.singleBedroomRate);
+  if (directBedRate > 0) return directBedRate;
+  const fullRate = parseFloat(type.fullUnitRate || type.marketRent || 0);
+  if (fullRate <= 0) return 0;
+  const beds = getBedCountFromTypeName(type.typeName || type.name || '');
+  return Math.round(fullRate / (beds || 1));
+};
+
 export const Units = () => {
   const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
@@ -320,6 +338,16 @@ export const Units = () => {
 
       if (name === 'classification') {
         newData.unit_status = value === 'New Construction' ? 'INACTIVE' : 'ACTIVE';
+      }
+
+      if (name === 'unitType') {
+        const matched = unitTypes.find(t => (t.typeName || t.name) === value);
+        if (matched) {
+          const rate = parseFloat(matched.fullUnitRate || matched.marketRent || 0);
+          if (rate > 0) {
+            newData.baseRent = String(rate);
+          }
+        }
       }
 
       if (name === 'bedrooms' || name === 'unitNumber') {
@@ -758,9 +786,12 @@ export const Units = () => {
                       {formData.unitType && (() => {
                         const matchedType = unitTypes.find(t => (t.typeName || t.name) === formData.unitType);
                         if (!matchedType) return null;
+                        const fullRate = parseFloat(matchedType.fullUnitRate || matchedType.marketRent || 0);
+                        const beds = getBedCountFromTypeName(matchedType.typeName || matchedType.name || '');
+                        const bedRate = getCalculatedBedRate(matchedType);
                         return (
                           <p className="text-[11px] font-black text-indigo-500 mt-1.5 pl-1 anim-slide-up">
-                            💡 Standard Rates: Full ${parseFloat(matchedType.fullUnitRate || matchedType.marketRent || 0).toLocaleString()} | Single Bed ${parseFloat(matchedType.singleBedroomRate || 0).toLocaleString()}
+                            💡 Standard Rates: Full ${fullRate.toLocaleString()}{beds > 1 ? ` | Single Bed $${bedRate.toLocaleString()}` : ''}
                           </p>
                         );
                       })()}
@@ -1343,12 +1374,16 @@ const ManageTypesModal = ({ types, onClose }) => {
     if (!typeNameStr) return;
 
     try {
+      const fullRate = parseFloat(newType.fullUnitRate) || 0;
+      const beds = getBedCountFromTypeName(typeNameStr);
+      const bedRate = parseFloat(newType.singleBedroomRate) || (beds > 1 && fullRate > 0 ? Math.round(fullRate / beds) : 0);
+
       const payload = {
         name: typeNameStr,
         typeName: typeNameStr,
-        marketRent: parseFloat(newType.fullUnitRate) || 0,
-        fullUnitRate: parseFloat(newType.fullUnitRate) || 0,
-        singleBedroomRate: parseFloat(newType.singleBedroomRate) || 0
+        marketRent: fullRate,
+        fullUnitRate: fullRate,
+        singleBedroomRate: bedRate
       };
 
       if (editingId) {
@@ -1379,12 +1414,36 @@ const ManageTypesModal = ({ types, onClose }) => {
   };
 
   const handleEdit = (type) => {
+    const fullRate = type.fullUnitRate || type.marketRent || '';
+    const bedRate = getCalculatedBedRate(type);
     setNewType({
       typeName: type.typeName || type.name || '',
-      fullUnitRate: type.fullUnitRate || type.marketRent || '',
-      singleBedroomRate: type.singleBedroomRate || ''
+      fullUnitRate: fullRate,
+      singleBedroomRate: bedRate || ''
     });
     setEditingId(type.id);
+  };
+
+  const handleFullUnitRateChange = (val) => {
+    const full = parseFloat(val) || 0;
+    const beds = getBedCountFromTypeName(newType.typeName);
+    const autoBed = full > 0 && beds > 1 ? String(Math.round(full / beds)) : '';
+    setNewType(prev => ({
+      ...prev,
+      fullUnitRate: val,
+      singleBedroomRate: (!prev.singleBedroomRate || prev.singleBedroomRate === '0') ? autoBed : prev.singleBedroomRate
+    }));
+  };
+
+  const handleTypeNameChange = (val) => {
+    const beds = getBedCountFromTypeName(val);
+    const full = parseFloat(newType.fullUnitRate) || 0;
+    const autoBed = full > 0 && beds > 1 ? String(Math.round(full / beds)) : '';
+    setNewType(prev => ({
+      ...prev,
+      typeName: val,
+      singleBedroomRate: autoBed || prev.singleBedroomRate
+    }));
   };
 
   return (
@@ -1416,7 +1475,7 @@ const ManageTypesModal = ({ types, onClose }) => {
             </div>
             <input
               value={newType?.typeName || ''}
-              onChange={(e) => setNewType({ ...newType, typeName: e.target.value })}
+              onChange={(e) => handleTypeNameChange(e.target.value)}
               placeholder="Type Name (e.g. Studio, 2B2B)"
               className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-bold"
               autoFocus
@@ -1428,7 +1487,7 @@ const ManageTypesModal = ({ types, onClose }) => {
                   type="number"
                   placeholder="0"
                   value={newType.fullUnitRate}
-                  onChange={(e) => setNewType({ ...newType, fullUnitRate: e.target.value })}
+                  onChange={(e) => handleFullUnitRateChange(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -1453,37 +1512,48 @@ const ManageTypesModal = ({ types, onClose }) => {
             {types.length === 0 ? (
               <p className="text-center text-slate-400 py-4 text-xs">No unit types found.</p>
             ) : (
-              types.map((type, idx) => (
-                <div key={type.id || type.typeName || type.name || idx} className={`flex justify-between items-center bg-white p-3 rounded-xl border ${editingId === type.id ? 'border-indigo-500 bg-indigo-50/20' : 'border-slate-100'} hover:shadow-md hover:border-indigo-100 transition-all`}>
-                  <div>
-                    <p className="font-bold text-slate-800 text-sm">{type.typeName || type.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Full: <span className="font-bold text-slate-700">${parseFloat(type.fullUnitRate || type.marketRent || 0).toLocaleString()}</span> |
-                      Bed: <span className="font-bold text-slate-700">${parseFloat(type.singleBedroomRate || 0).toLocaleString()}</span>
-                    </p>
+              types.map((type, idx) => {
+                const fullRate = parseFloat(type.fullUnitRate || type.marketRent || 0);
+                const beds = getBedCountFromTypeName(type.typeName || type.name || '');
+                const bedRate = getCalculatedBedRate(type);
+                const showBedRate = beds > 1 || parseFloat(type.singleBedroomRate) > 0;
+                return (
+                  <div key={type.id || type.typeName || type.name || idx} className={`flex justify-between items-center bg-white p-3 rounded-xl border ${editingId === type.id ? 'border-indigo-500 bg-indigo-50/20' : 'border-slate-100'} hover:shadow-md hover:border-indigo-100 transition-all`}>
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm">{type.typeName || type.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Full: <span className="font-bold text-slate-700">${fullRate.toLocaleString()}</span>
+                        {showBedRate && (
+                          <>
+                            {' | '}
+                            Bed: <span className="font-bold text-slate-700">${bedRate.toLocaleString()}</span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(type)}
+                        disabled={loading}
+                        className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-indigo-600 transition-colors"
+                        title="Edit Type"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(type.id)}
+                        disabled={loading}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Delete Type"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(type)}
-                      disabled={loading}
-                      className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-indigo-600 transition-colors"
-                      title="Edit Type"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(type.id)}
-                      disabled={loading}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                      title="Delete Type"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
