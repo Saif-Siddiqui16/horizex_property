@@ -87,8 +87,8 @@ export const OwnerDashboard = () => {
                         { title: 'Occupied Units', value: occupiedUnits, subValue: `${occupancyPercent}% Occupied`, icon: Users, color: 'bg-indigo-500', path: '/owner/properties' },
                         { title: 'Outstanding Dues', value: `$${dues.toLocaleString('en-CA')}`, subValue: 'Total Outstanding', icon: Wallet, color: 'bg-rose-500', path: '/owner/financials' },
                         { title: 'Monthly Income', value: `$${monthlyRev.toLocaleString('en-CA')}`, subValue: 'This Month', icon: TrendingUp, color: 'bg-emerald-500', path: '/owner/financials' },
-                        { title: 'Leases Expiring', value: 4, subValue: 'Next 30 Days', icon: Clock, color: 'bg-purple-500', path: '/owner/properties' },
-                        { title: 'Maintenance', value: 12, subValue: 'Open Tickets', icon: Wrench, color: 'bg-amber-500', path: '/owner/properties' },
+                        { title: 'Leases Expiring', value: rawData?.leasesExpiring ?? 0, subValue: 'Next 30 Days', icon: Clock, color: 'bg-purple-500', path: '/owner/properties' },
+                        { title: 'Maintenance', value: rawData?.openTickets ?? 0, subValue: 'Open Tickets', icon: Wrench, color: 'bg-amber-500', path: '/owner/properties' },
                         { title: 'Vacant Units', value: vacantUnits, subValue: 'Available Units', icon: Home, color: 'bg-blue-500', path: '/owner/properties' }
                     ].map((card, idx) => (
                         <Link

@@ -15,6 +15,13 @@ import { Button } from '../../components/Button';
 import api from '../../api/client';
 import { useGetOwnerPropertiesQuery } from '../../store';
 import clsx from 'clsx';
+const PROPERTY_IMAGES = [
+    'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1574362848149-11496d93a7c7?w=600&h=400&fit=crop',
+];
+
 export const OwnerProperties = () => {
 const [viewingProperty, setViewingProperty] = useState(null);
 
@@ -26,7 +33,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
             try {
                 const res = propertiesData.length > 0 ? { data: propertiesData } : await api.get('/api/owner/properties');
                 // Map to UI model
-                const mapped = res.data.map(p => ({
+                const mapped = res.data.map((p, idx) => ({
                     id: p.id,
                     name: p.name,
                     address: p.address,
@@ -44,7 +51,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
                     vacantUnits: p.vacantUnits || 0,
                     occupiedBedrooms: p.occupiedBedrooms || 0,
                     vacantBedrooms: p.vacantBedrooms || 0,
-                    image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=250&fit=crop'
+                    image: p.imageUrl || PROPERTY_IMAGES[idx % PROPERTY_IMAGES.length]
                 }));
                 setOwnerProperties(mapped);
             } catch (e) {
@@ -70,11 +77,11 @@ const [viewingProperty, setViewingProperty] = useState(null);
 
                 {/* Property Grid */}
                 {ownerProperties.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-stretch">
                         {ownerProperties.map((prop) => (
                             <div
                                 key={prop.id}
-                                className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-zinc-200/50 hover:-translate-y-2 transition-all duration-500 overflow-hidden group"
+                                className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-zinc-200/50 hover:-translate-y-2 transition-all duration-500 overflow-hidden group flex flex-col h-full"
                             >
                                 {/* Card Image */}
                                 <div className="h-56 relative overflow-hidden group-hover:scale-95 group-hover:m-2 group-hover:rounded-[2rem] transition-all duration-700">
@@ -82,7 +89,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
                                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
                                     <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
                                         <div className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/30 text-white text-xs font-black uppercase tracking-widest">
-                                            {prop.units} Units
+                                            {prop.units} {prop.units === 1 ? 'Unit' : 'Units'}
                                         </div>
                                         <div className="text-right">
                                             {/* Removed Monthly Revenue as per request */}
@@ -91,19 +98,19 @@ const [viewingProperty, setViewingProperty] = useState(null);
                                 </div>
 
                                 {/* Card Content */}
-                                <div className="p-8 space-y-6">
+                                <div className="p-8 flex flex-col flex-1 justify-between gap-6">
                                     <div>
-                                        <div className="flex justify-between items-start mb-2 text-slate-400">
-                                            <div className="flex items-center gap-1">
-                                                <MapPin size={12} className="text-indigo-400" />
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{prop.address}</span>
+                                        <div className="flex justify-between items-start mb-2 text-slate-400 min-h-[24px]">
+                                            <div className="flex items-start gap-1">
+                                                <MapPin size={12} className="text-indigo-400 shrink-0 mt-0.5" />
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest line-clamp-2">{prop.address}</span>
                                             </div>
                                             {/* Occupancy badge removed as requested */}
                                         </div>
-                                        <h4 className="text-xl font-bold text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors uppercase">{prop.name}</h4>
+                                        <h4 className="text-xl font-bold text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors uppercase min-h-[56px] line-clamp-2">{prop.name}</h4>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4 pb-6 border-b border-slate-50">
+                                    <div className="grid grid-cols-2 gap-4 pb-6 border-b border-slate-50 mt-auto">
                                         <div className="bg-slate-50 rounded-2xl p-4 transition-colors group-hover:bg-indigo-50/50">
                                             <Layers size={18} className="text-indigo-600 mb-2" />
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ownership</p>
@@ -118,7 +125,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
 
                                     <button
                                         onClick={() => setViewingProperty(prop)}
-                                        className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-zinc-900 text-white font-black text-sm tracking-widest uppercase transition-all flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-slate-200"
+                                        className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-zinc-900 text-white font-black text-sm tracking-widest uppercase transition-all flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-slate-200 mt-auto"
                                     >
                                         View Summary
                                         <ArrowRight size={18} />
@@ -216,7 +223,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
                         {/* Modal Footer */}
                         <div className="p-8 bg-slate-50 border-t border-slate-100 mt-auto">
                             <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest italic decoration-indigo-200">
-                                This property is managed by PropManage Admin. Full records are audit-locked.
+                                This property is managed by Horizex Real Estate. Full records are audit-locked.
                             </p>
                         </div>
                     </div>

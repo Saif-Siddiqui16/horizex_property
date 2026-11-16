@@ -158,7 +158,7 @@ export const OwnerReports = () => {
                                                         }
 
                                                         const token = localStorage.getItem('accessToken');
-                                                        const downloadUrl = `${api.defaults.baseURL}/api/owner/reports/${report.id || report.type}/download${query}&token=${token}`;
+                                                        const downloadUrl = `${api.defaults.baseURL}/owner/reports/${report.id || report.type}/download${query}&token=${token}`;
                                                         window.open(downloadUrl, '_blank');
                                                     } catch (e) {
                                                         console.error(e);

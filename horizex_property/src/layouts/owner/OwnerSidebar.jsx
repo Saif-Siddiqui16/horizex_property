@@ -5,6 +5,7 @@ import {
     Building2,
     CircleDollarSign,
     BarChart3,
+    FileSpreadsheet,
     LogOut,
     ShieldCheck,
     MessageSquare,
@@ -26,7 +27,7 @@ export const OwnerSidebar = ({ isOpen, setIsOpen }) => {
         { icon: Building2, label: 'Properties', path: '/owner/properties' },
         { icon: CircleDollarSign, label: 'Financials', path: '/owner/financials' },
         { icon: BarChart3, label: 'Reports', path: '/owner/reports' },
-        { icon: BarChart3, label: 'Rent Roll', path: '/owner/rent-roll' },
+        { icon: FileSpreadsheet, label: 'Rent Roll', path: '/owner/rent-roll' },
         { icon: MessageSquare, label: 'Messages', path: '/owner/communication' },
     ];
 
