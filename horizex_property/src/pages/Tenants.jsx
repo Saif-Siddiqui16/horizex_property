@@ -1773,7 +1773,13 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
       fetchTenantData();
     } catch (e) {
       console.error("Failed to save lease", e);
-      alert(e.data?.message || e.response?.data?.message || "Error saving lease");
+      const errMsg = e?.data?.error?.message 
+        || (e?.data?.error?.details && e.data.error.details.map(d => `${d.field ? d.field + ': ' : ''}${d.issue}`).join(', '))
+        || e?.data?.message 
+        || e?.response?.data?.message 
+        || e?.message 
+        || "Error saving lease";
+      alert(errMsg);
     }
   };
 

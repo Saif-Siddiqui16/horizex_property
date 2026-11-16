@@ -95,7 +95,13 @@ export const LeaseForm = () => {
       navigate('/leases');
     } catch (error) {
       console.error('Failed to create lease', error);
-      alert(error?.data?.message || error.response?.data?.message || 'Error creating lease');
+      const errMsg = error?.data?.error?.message 
+        || (error?.data?.error?.details && error.data.error.details.map(d => `${d.field ? d.field + ': ' : ''}${d.issue}`).join(', '))
+        || error?.data?.message 
+        || error.response?.data?.message 
+        || error?.message 
+        || 'Error creating lease';
+      alert(errMsg);
     }
   };
 

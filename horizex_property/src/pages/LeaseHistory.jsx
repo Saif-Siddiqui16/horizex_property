@@ -139,7 +139,8 @@ export const LeaseHistory = () => {
             alert('Credentials sent successfully!');
         } catch (error) {
             console.error(error);
-            alert(error?.data?.message || 'Failed to send credentials');
+            const errMsg = error?.data?.error?.message || error?.data?.message || 'Failed to send credentials';
+            alert(errMsg);
         }
     };
 
@@ -150,7 +151,8 @@ export const LeaseHistory = () => {
             await deleteLease(id).unwrap();
         } catch (error) {
             console.error(error);
-            alert(error?.data?.message || 'Failed to delete lease');
+            const errMsg = error?.data?.error?.message || error?.data?.message || 'Failed to delete lease';
+            alert(errMsg);
         }
     };
 
@@ -176,7 +178,8 @@ export const LeaseHistory = () => {
             setEditLease(null);
         } catch (error) {
             console.error(error);
-            alert(error?.data?.message || 'Failed to update lease');
+            const errMsg = error?.data?.error?.message || error?.data?.message || 'Failed to update lease';
+            alert(errMsg);
         }
     };
 

@@ -55,8 +55,9 @@ export const LeaseFormBedroom = () => {
             const match = String(u.propertyId || u.property?.id) === String(selectedBuilding);
             if (!match) return false;
             if (u.hasCompanyLease) return true;
-            if (u.status === 'Fully Booked') return false;
-            if ((u.rentalMode === 'FULL_UNIT' || !u.rentalMode) && u.status === 'Occupied') return false;
+            const uStatus = (u.status || '').toUpperCase();
+            if (uStatus === 'FULLY BOOKED') return false;
+            if ((u.rentalMode === 'FULL_UNIT' || !u.rentalMode) && uStatus === 'OCCUPIED') return false;
             return true;
         });
     }, [allUnits, selectedBuilding]);
@@ -168,7 +169,13 @@ export const LeaseFormBedroom = () => {
             navigate('/leases');
         } catch (error) {
             console.error('Failed to create lease', error);
-            alert(error?.data?.message || error.response?.data?.message || 'Error creating lease');
+            const errMsg = error?.data?.error?.message 
+                || (error?.data?.error?.details && error.data.error.details.map(d => `${d.field ? d.field + ': ' : ''}${d.issue}`).join(', '))
+                || error?.data?.message 
+                || error.response?.data?.message 
+                || error?.message 
+                || 'Error creating lease';
+            alert(errMsg);
         }
     };
 
