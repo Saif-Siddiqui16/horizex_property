@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
-import { Mail, Search, Filter, History, Paperclip, Eye, RotateCw, X, FileText } from 'lucide-react';
+import { Mail, Search, Filter, History, Paperclip, Eye, RotateCw, X, FileText, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 
-import { hasPermission } from '../utils/permissions';
+import { hasPermission } from '../utils/permissions';
+
 const EmailHistory = () => {
-const [__forceUpdate, __setForceUpdate] = useState(0);
+    const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
         const handleUpdate = () => __setForceUpdate(p => p + 1);
         window.addEventListener('permissionsUpdated', handleUpdate);
@@ -53,13 +54,36 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         fetchMetadata();
     }, []);
 
-    const fetchHistory = async (page = 1) => {
+    const fetchHistory = async (page = 1, activeFilters = filters) => {
         setLoading(true);
         try {
-            const params = { ...filters, page, limit: pagination.limit };
+            const pageNum = typeof page === 'number' ? page : 1;
+            const searchVal = (activeFilters.tenantName || '').trim();
+            const params = {
+                page: pageNum,
+                limit: pagination.limit
+            };
+
+            if (searchVal) {
+                params.search = searchVal;
+                params.tenantName = searchVal;
+            }
+            if (activeFilters.buildingId && activeFilters.buildingId !== 'all') {
+                params.buildingId = activeFilters.buildingId;
+            }
+            if (activeFilters.templateId && activeFilters.templateId !== 'all') {
+                params.templateId = activeFilters.templateId;
+            }
+            if (activeFilters.startDate) {
+                params.startDate = activeFilters.startDate;
+            }
+            if (activeFilters.endDate) {
+                params.endDate = activeFilters.endDate;
+            }
+
             const queryParams = new URLSearchParams(params).toString();
             const response = await api.get(`/api/admin/email/history?${queryParams}`);
-            
+
             // Handle new paginated structure
             let apiLogs = [];
             if (response.data && response.data.data) {
@@ -70,16 +94,27 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             }
 
             const localMails = JSON.parse(localStorage.getItem('mock_integrations_emails') || '[]');
-            const formattedLocal = localMails.map(m => ({
-                id: m.id,
-                subject: m.subject,
-                body: m.body,
-                timestamp: m.createdAt,
-                status: m.status,
-                recipientUser: { name: m.recipients.split('@')[0] },
-                recipient: m.recipients,
-                emailTemplate: { name: m.templateName }
-            }));
+            const formattedLocal = localMails
+                .map(m => ({
+                    id: m.id,
+                    subject: m.subject,
+                    body: m.body,
+                    timestamp: m.createdAt,
+                    status: m.status,
+                    recipientUser: { name: (m.recipients || '').split('@')[0] },
+                    recipient: m.recipients,
+                    emailTemplate: { name: m.templateName }
+                }))
+                .filter(m => {
+                    if (!searchVal) return true;
+                    const lower = searchVal.toLowerCase();
+                    return (
+                        (m.recipientUser?.name || '').toLowerCase().includes(lower) ||
+                        (m.recipient || '').toLowerCase().includes(lower) ||
+                        (m.subject || '').toLowerCase().includes(lower) ||
+                        (m.emailTemplate?.name || '').toLowerCase().includes(lower)
+                    );
+                });
 
             setHistory([...formattedLocal, ...apiLogs]);
         } catch (error) {
@@ -87,6 +122,19 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleResetFilters = () => {
+        const resetFilters = {
+            startDate: '',
+            endDate: '',
+            tenantName: '',
+            buildingId: '',
+            subject: '',
+            templateId: ''
+        };
+        setFilters(resetFilters);
+        fetchHistory(1, resetFilters);
     };
 
     const handleResend = async (id) => {
@@ -157,6 +205,12 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 name="tenantName"
                                 value={filters.tenantName}
                                 onChange={handleFilterChange}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        fetchHistory(1);
+                                    }
+                                }}
                                 placeholder="Recipient name..."
                                 className="w-full pl-9 pr-4 py-2 h-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all outline-none text-xs font-semibold text-slate-800"
                             />
@@ -188,20 +242,30 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                     </div>
                     <div className="flex gap-2 items-end">
                         <button
-                            onClick={fetchHistory}
+                            type="button"
+                            onClick={() => fetchHistory(1)}
                             className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white px-4 h-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 text-xs font-bold"
                         >
                             <Filter className="h-4 w-4" />
                             Apply Filters
                         </button>
+                        {(filters.tenantName || filters.buildingId || filters.templateId) && (
+                            <button
+                                type="button"
+                                onClick={handleResetFilters}
+                                className="px-3 h-10 border border-gray-200 hover:bg-gray-100 text-gray-600 rounded-xl flex items-center justify-center transition-all text-xs font-bold"
+                                title="Reset Filters"
+                            >
+                                <RotateCcw className="h-4 w-4" />
+                            </button>
+                        )}
                     </div>
                 </div>
 
                 {/* Status Alert */}
                 {statusMsg && (
-                    <div className={`p-4 rounded-xl border text-sm font-bold anim-slide-up ${
-                        statusMsg.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
-                    }`}>
+                    <div className={`p-4 rounded-xl border text-sm font-bold anim-slide-up ${statusMsg.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
+                        }`}>
                         {statusMsg.text}
                     </div>
                 )}
@@ -259,7 +323,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
-                                            <button 
+                                            <button
                                                 onClick={async () => {
                                                     setLoading(true);
                                                     try {
@@ -272,13 +336,13 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                                         setLoading(false);
                                                     }
                                                 }}
-                                                className="p-1.5 hover:bg-indigo-50 rounded-lg bg-gray-50 text-indigo-600 transition-colors" 
+                                                className="p-1.5 hover:bg-indigo-50 rounded-lg bg-gray-50 text-indigo-600 transition-colors"
                                                 title="View Email Body"
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </button>
                                             {hasPermission('Sent Emails', 'add') && (
-                                                <button 
+                                                <button
                                                     onClick={() => handleResend(log.id)}
                                                     disabled={actionLoading}
                                                     className="p-1.5 hover:bg-orange-50 rounded-lg bg-gray-50 text-orange-600 transition-colors disabled:opacity-50"
@@ -334,16 +398,15 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         <X className="h-4 w-4 rotate-45" /> {/* Using X as a generic arrow fallback if chevron not available */}
                                         <span className="sr-only">Previous</span>
                                     </button>
-                                    
+
                                     {[...Array(pagination.totalPages)].map((_, i) => (
                                         <button
                                             key={i + 1}
                                             onClick={() => fetchHistory(i + 1)}
-                                            className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
-                                                pagination.page === i + 1
+                                            className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${pagination.page === i + 1
                                                     ? 'z-10 bg-zinc-900 text-white'
                                                     : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
-                                            }`}
+                                                }`}
                                         >
                                             {i + 1}
                                         </button>
@@ -372,7 +435,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     <h3 className="text-lg font-bold text-gray-900">Email Broadcast Details</h3>
                                     <p className="text-xs text-gray-500">Sent to {selectedLog.recipient} on {format(new Date(selectedLog.timestamp), 'PPP p')}</p>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => setSelectedLog(null)}
                                     className="p-2 hover:bg-white hover:shadow-sm rounded-full transition-all"
                                 >
@@ -387,9 +450,9 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 <div className="h-px bg-gray-100 mb-6" />
                                 <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 min-h-[200px]">
                                     <span className="text-[10px] font-black text-indigo-400 block uppercase mb-4">HTML Body Content</span>
-                                    <div 
-                                        className="prose prose-indigo max-w-none text-gray-700" 
-                                        dangerouslySetInnerHTML={{ __html: selectedLog.content }}
+                                    <div
+                                        className="prose prose-indigo max-w-none text-gray-700"
+                                        dangerouslySetInnerHTML={{ __html: selectedLog.body || selectedLog.content || '' }}
                                     />
                                 </div>
                                 {selectedLog.hasAttachments && (
@@ -397,7 +460,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         <span className="text-[10px] font-black text-orange-400 block uppercase">Attachments in Browser</span>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             {selectedLog.attachments?.map((doc, idx) => (
-                                                <a 
+                                                <a
                                                     key={idx}
                                                     href={doc.fileUrl}
                                                     target="_blank"
@@ -424,7 +487,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                 )}
                             </div>
                             <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                                <button 
+                                <button
                                     onClick={() => setSelectedLog(null)}
                                     className="px-8 py-3 bg-white border border-gray-200 text-gray-600 font-black rounded-2xl hover:bg-gray-100 transition-all shadow-sm active:scale-95"
                                 >

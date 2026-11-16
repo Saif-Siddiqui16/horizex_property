@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import api from '../api/client';
-import { Mail, Edit2, Trash2, Plus, X, Search, FileText, Paperclip, Check } from 'lucide-react';
+import { Mail, Edit2, Trash2, Plus, X, Search, FileText, Paperclip, Check, Eye } from 'lucide-react';
 
-import { hasPermission } from '../utils/permissions';
+import { hasPermission } from '../utils/permissions';
+
 const EmailTemplates = () => {
 const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
@@ -29,6 +30,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [previewTemplate, setPreviewTemplate] = useState(null);
     const [currentTemplate, setCurrentTemplate] = useState({ name: '', subject: '', body: '', language: 'en', type: '', documentIds: [] });
     const [availableDocs, setAvailableDocs] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -202,6 +204,127 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             <span className="whitespace-nowrap">New Template</span>
                         </button>
                     )}
+
+            {/* Email Preview Modal */}
+            {previewTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/50 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white w-full max-w-3xl rounded-2xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+                        {/* Header */}
+                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-indigo-300">
+                                    <Mail className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-base text-white m-0">Email Preview</h3>
+                                        <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 rounded text-[10px] font-bold uppercase">
+                                            {previewTemplate.language || 'en'}
+                                        </span>
+                                        {previewTemplate.type && (
+                                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded text-[10px] font-bold uppercase">
+                                                {previewTemplate.type}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-400 m-0 mt-0.5">Template: {previewTemplate.name}</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setPreviewTemplate(null)} 
+                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Email Meta Info */}
+                        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 space-y-2 text-xs">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">Subject:</span>
+                                <span className="font-semibold text-slate-900 text-sm">{previewTemplate.subject}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">From:</span>
+                                <span className="text-slate-700">Horizex Property Management &lt;notifications@horizex.com&gt;</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">To:</span>
+                                <span className="text-slate-500 italic">&lt;recipient@example.com&gt;</span>
+                            </div>
+                        </div>
+
+                        {/* Email Styled Container */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-100/60">
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 max-w-2xl mx-auto">
+                                <div className="border-b border-slate-100 pb-4 mb-6 flex justify-between items-center">
+                                    <div className="text-sm font-black tracking-wider text-slate-900">HORIZEX REAL ESTATE</div>
+                                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Official Notification</span>
+                                </div>
+
+                                <div 
+                                    className="text-slate-800 leading-relaxed text-sm prose max-w-none [&>p]:mb-3 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4"
+                                    dangerouslySetInnerHTML={{ __html: previewTemplate.body || '<p class="text-slate-400 italic">No content in this template.</p>' }}
+                                />
+
+                                {previewTemplate.documents && previewTemplate.documents.length > 0 && (
+                                    <div className="mt-6 pt-4 border-t border-slate-100">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                            <Paperclip size={13} />
+                                            Attachments ({previewTemplate.documents.length})
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {previewTemplate.documents.map(doc => (
+                                                <span key={doc.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+                                                    <FileText size={13} className="text-indigo-600" />
+                                                    {doc.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center leading-normal">
+                                    This is an automated notification from Horizex Property Management.
+                                    <br />
+                                    © {new Date().getFullYear()} Horizex Real Estate. All rights reserved.
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="bg-white border-t border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
+                            <span className="text-xs text-slate-400 font-medium">
+                                Template ID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono text-[11px]">{previewTemplate.id}</code>
+                            </span>
+                            <div className="flex items-center gap-2">
+                                {hasPermission('Email Templates', 'edit') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const t = previewTemplate;
+                                            setPreviewTemplate(null);
+                                            openModal(t);
+                                        }}
+                                        className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                                    >
+                                        <Edit2 size={14} />
+                                        Edit Template
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewTemplate(null)}
+                                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
                 </div>
 
                 {/* Search Bar */}
@@ -238,17 +361,259 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     <div className="bg-indigo-50 p-2.5 rounded-xl">
                                         <FileText className="h-6 w-6 text-indigo-600" />
                                     </div>
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button type="button" title="Preview in Email Format" onClick={() => setPreviewTemplate(template)} className="p-2 hover:bg-indigo-50 rounded-lg transition-colors text-indigo-600"><Eye className="h-4 w-4" /></button>
                                         {hasPermission('Email Templates', 'edit') && (
                                             <button onClick={() => openModal(template)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600">
                                                 <Edit2 className="h-4 w-4" />
                                             </button>
                                         )}
+
+            {/* Email Preview Modal */}
+            {previewTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/50 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white w-full max-w-3xl rounded-2xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+                        {/* Header */}
+                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-indigo-300">
+                                    <Mail className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-base text-white m-0">Email Preview</h3>
+                                        <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 rounded text-[10px] font-bold uppercase">
+                                            {previewTemplate.language || 'en'}
+                                        </span>
+                                        {previewTemplate.type && (
+                                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded text-[10px] font-bold uppercase">
+                                                {previewTemplate.type}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-400 m-0 mt-0.5">Template: {previewTemplate.name}</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setPreviewTemplate(null)} 
+                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Email Meta Info */}
+                        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 space-y-2 text-xs">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">Subject:</span>
+                                <span className="font-semibold text-slate-900 text-sm">{previewTemplate.subject}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">From:</span>
+                                <span className="text-slate-700">Horizex Property Management &lt;notifications@horizex.com&gt;</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">To:</span>
+                                <span className="text-slate-500 italic">&lt;recipient@example.com&gt;</span>
+                            </div>
+                        </div>
+
+                        {/* Email Styled Container */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-100/60">
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 max-w-2xl mx-auto">
+                                <div className="border-b border-slate-100 pb-4 mb-6 flex justify-between items-center">
+                                    <div className="text-sm font-black tracking-wider text-slate-900">HORIZEX REAL ESTATE</div>
+                                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Official Notification</span>
+                                </div>
+
+                                <div 
+                                    className="text-slate-800 leading-relaxed text-sm prose max-w-none [&>p]:mb-3 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4"
+                                    dangerouslySetInnerHTML={{ __html: previewTemplate.body || '<p class="text-slate-400 italic">No content in this template.</p>' }}
+                                />
+
+                                {previewTemplate.documents && previewTemplate.documents.length > 0 && (
+                                    <div className="mt-6 pt-4 border-t border-slate-100">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                            <Paperclip size={13} />
+                                            Attachments ({previewTemplate.documents.length})
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {previewTemplate.documents.map(doc => (
+                                                <span key={doc.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+                                                    <FileText size={13} className="text-indigo-600" />
+                                                    {doc.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center leading-normal">
+                                    This is an automated notification from Horizex Property Management.
+                                    <br />
+                                    © {new Date().getFullYear()} Horizex Real Estate. All rights reserved.
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="bg-white border-t border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
+                            <span className="text-xs text-slate-400 font-medium">
+                                Template ID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono text-[11px]">{previewTemplate.id}</code>
+                            </span>
+                            <div className="flex items-center gap-2">
+                                {hasPermission('Email Templates', 'edit') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const t = previewTemplate;
+                                            setPreviewTemplate(null);
+                                            openModal(t);
+                                        }}
+                                        className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                                    >
+                                        <Edit2 size={14} />
+                                        Edit Template
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewTemplate(null)}
+                                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
                                         {hasPermission('Email Templates', 'delete') && (
                                             <button onClick={() => handleDelete(template.id)} className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-500">
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
                                         )}
+
+            {/* Email Preview Modal */}
+            {previewTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/50 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white w-full max-w-3xl rounded-2xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+                        {/* Header */}
+                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-indigo-300">
+                                    <Mail className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-base text-white m-0">Email Preview</h3>
+                                        <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 rounded text-[10px] font-bold uppercase">
+                                            {previewTemplate.language || 'en'}
+                                        </span>
+                                        {previewTemplate.type && (
+                                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded text-[10px] font-bold uppercase">
+                                                {previewTemplate.type}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-400 m-0 mt-0.5">Template: {previewTemplate.name}</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setPreviewTemplate(null)} 
+                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Email Meta Info */}
+                        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 space-y-2 text-xs">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">Subject:</span>
+                                <span className="font-semibold text-slate-900 text-sm">{previewTemplate.subject}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">From:</span>
+                                <span className="text-slate-700">Horizex Property Management &lt;notifications@horizex.com&gt;</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">To:</span>
+                                <span className="text-slate-500 italic">&lt;recipient@example.com&gt;</span>
+                            </div>
+                        </div>
+
+                        {/* Email Styled Container */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-100/60">
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 max-w-2xl mx-auto">
+                                <div className="border-b border-slate-100 pb-4 mb-6 flex justify-between items-center">
+                                    <div className="text-sm font-black tracking-wider text-slate-900">HORIZEX REAL ESTATE</div>
+                                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Official Notification</span>
+                                </div>
+
+                                <div 
+                                    className="text-slate-800 leading-relaxed text-sm prose max-w-none [&>p]:mb-3 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4"
+                                    dangerouslySetInnerHTML={{ __html: previewTemplate.body || '<p class="text-slate-400 italic">No content in this template.</p>' }}
+                                />
+
+                                {previewTemplate.documents && previewTemplate.documents.length > 0 && (
+                                    <div className="mt-6 pt-4 border-t border-slate-100">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                            <Paperclip size={13} />
+                                            Attachments ({previewTemplate.documents.length})
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {previewTemplate.documents.map(doc => (
+                                                <span key={doc.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+                                                    <FileText size={13} className="text-indigo-600" />
+                                                    {doc.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center leading-normal">
+                                    This is an automated notification from Horizex Property Management.
+                                    <br />
+                                    © {new Date().getFullYear()} Horizex Real Estate. All rights reserved.
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="bg-white border-t border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
+                            <span className="text-xs text-slate-400 font-medium">
+                                Template ID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono text-[11px]">{previewTemplate.id}</code>
+                            </span>
+                            <div className="flex items-center gap-2">
+                                {hasPermission('Email Templates', 'edit') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const t = previewTemplate;
+                                            setPreviewTemplate(null);
+                                            openModal(t);
+                                        }}
+                                        className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                                    >
+                                        <Edit2 size={14} />
+                                        Edit Template
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewTemplate(null)}
+                                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
                                     </div>
                                 </div>
                                 <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{template.name}</h3>
@@ -261,6 +626,127 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     {template.type && (
                                         <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase">{template.type}</span>
                                     )}
+
+            {/* Email Preview Modal */}
+            {previewTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/50 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white w-full max-w-3xl rounded-2xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+                        {/* Header */}
+                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-indigo-300">
+                                    <Mail className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-base text-white m-0">Email Preview</h3>
+                                        <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 rounded text-[10px] font-bold uppercase">
+                                            {previewTemplate.language || 'en'}
+                                        </span>
+                                        {previewTemplate.type && (
+                                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded text-[10px] font-bold uppercase">
+                                                {previewTemplate.type}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-400 m-0 mt-0.5">Template: {previewTemplate.name}</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setPreviewTemplate(null)} 
+                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Email Meta Info */}
+                        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 space-y-2 text-xs">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">Subject:</span>
+                                <span className="font-semibold text-slate-900 text-sm">{previewTemplate.subject}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">From:</span>
+                                <span className="text-slate-700">Horizex Property Management &lt;notifications@horizex.com&gt;</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">To:</span>
+                                <span className="text-slate-500 italic">&lt;recipient@example.com&gt;</span>
+                            </div>
+                        </div>
+
+                        {/* Email Styled Container */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-100/60">
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 max-w-2xl mx-auto">
+                                <div className="border-b border-slate-100 pb-4 mb-6 flex justify-between items-center">
+                                    <div className="text-sm font-black tracking-wider text-slate-900">HORIZEX REAL ESTATE</div>
+                                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Official Notification</span>
+                                </div>
+
+                                <div 
+                                    className="text-slate-800 leading-relaxed text-sm prose max-w-none [&>p]:mb-3 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4"
+                                    dangerouslySetInnerHTML={{ __html: previewTemplate.body || '<p class="text-slate-400 italic">No content in this template.</p>' }}
+                                />
+
+                                {previewTemplate.documents && previewTemplate.documents.length > 0 && (
+                                    <div className="mt-6 pt-4 border-t border-slate-100">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                            <Paperclip size={13} />
+                                            Attachments ({previewTemplate.documents.length})
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {previewTemplate.documents.map(doc => (
+                                                <span key={doc.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+                                                    <FileText size={13} className="text-indigo-600" />
+                                                    {doc.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center leading-normal">
+                                    This is an automated notification from Horizex Property Management.
+                                    <br />
+                                    © {new Date().getFullYear()} Horizex Real Estate. All rights reserved.
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="bg-white border-t border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
+                            <span className="text-xs text-slate-400 font-medium">
+                                Template ID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono text-[11px]">{previewTemplate.id}</code>
+                            </span>
+                            <div className="flex items-center gap-2">
+                                {hasPermission('Email Templates', 'edit') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const t = previewTemplate;
+                                            setPreviewTemplate(null);
+                                            openModal(t);
+                                        }}
+                                        className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                                    >
+                                        <Edit2 size={14} />
+                                        Edit Template
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewTemplate(null)}
+                                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
                                 </div>
                             </div>
                             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
@@ -269,11 +755,132 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     {template.documents?.length || 0} Attachments
                                 </span>
                                 <span className="text-[10px] text-gray-400 font-medium italic">
-                                    Last updated: {new Date(template.updatedAt).toLocaleDateString()}
+                                    Last updated: {template.updatedAt && !isNaN(new Date(template.updatedAt).getTime()) ? new Date(template.updatedAt).toLocaleDateString() : (template.createdAt && !isNaN(new Date(template.createdAt).getTime()) ? new Date(template.createdAt).toLocaleDateString() : new Date().toLocaleDateString())}
                                 </span>
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Email Preview Modal */}
+            {previewTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/50 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white w-full max-w-3xl rounded-2xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+                        {/* Header */}
+                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-indigo-300">
+                                    <Mail className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-base text-white m-0">Email Preview</h3>
+                                        <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 rounded text-[10px] font-bold uppercase">
+                                            {previewTemplate.language || 'en'}
+                                        </span>
+                                        {previewTemplate.type && (
+                                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded text-[10px] font-bold uppercase">
+                                                {previewTemplate.type}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-400 m-0 mt-0.5">Template: {previewTemplate.name}</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setPreviewTemplate(null)} 
+                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Email Meta Info */}
+                        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 space-y-2 text-xs">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">Subject:</span>
+                                <span className="font-semibold text-slate-900 text-sm">{previewTemplate.subject}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">From:</span>
+                                <span className="text-slate-700">Horizex Property Management &lt;notifications@horizex.com&gt;</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">To:</span>
+                                <span className="text-slate-500 italic">&lt;recipient@example.com&gt;</span>
+                            </div>
+                        </div>
+
+                        {/* Email Styled Container */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-100/60">
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 max-w-2xl mx-auto">
+                                <div className="border-b border-slate-100 pb-4 mb-6 flex justify-between items-center">
+                                    <div className="text-sm font-black tracking-wider text-slate-900">HORIZEX REAL ESTATE</div>
+                                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Official Notification</span>
+                                </div>
+
+                                <div 
+                                    className="text-slate-800 leading-relaxed text-sm prose max-w-none [&>p]:mb-3 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4"
+                                    dangerouslySetInnerHTML={{ __html: previewTemplate.body || '<p class="text-slate-400 italic">No content in this template.</p>' }}
+                                />
+
+                                {previewTemplate.documents && previewTemplate.documents.length > 0 && (
+                                    <div className="mt-6 pt-4 border-t border-slate-100">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                            <Paperclip size={13} />
+                                            Attachments ({previewTemplate.documents.length})
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {previewTemplate.documents.map(doc => (
+                                                <span key={doc.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+                                                    <FileText size={13} className="text-indigo-600" />
+                                                    {doc.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center leading-normal">
+                                    This is an automated notification from Horizex Property Management.
+                                    <br />
+                                    © {new Date().getFullYear()} Horizex Real Estate. All rights reserved.
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="bg-white border-t border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
+                            <span className="text-xs text-slate-400 font-medium">
+                                Template ID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono text-[11px]">{previewTemplate.id}</code>
+                            </span>
+                            <div className="flex items-center gap-2">
+                                {hasPermission('Email Templates', 'edit') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const t = previewTemplate;
+                                            setPreviewTemplate(null);
+                                            openModal(t);
+                                        }}
+                                        className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                                    >
+                                        <Edit2 size={14} />
+                                        Edit Template
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewTemplate(null)}
+                                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -415,6 +1022,127 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                             >
                                 {currentTemplate.id ? 'Update Template' : 'Create Template'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Email Preview Modal */}
+            {previewTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/50 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white w-full max-w-3xl rounded-2xl md:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+                        {/* Header */}
+                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-indigo-300">
+                                    <Mail className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-base text-white m-0">Email Preview</h3>
+                                        <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 rounded text-[10px] font-bold uppercase">
+                                            {previewTemplate.language || 'en'}
+                                        </span>
+                                        {previewTemplate.type && (
+                                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded text-[10px] font-bold uppercase">
+                                                {previewTemplate.type}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-400 m-0 mt-0.5">Template: {previewTemplate.name}</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setPreviewTemplate(null)} 
+                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Email Meta Info */}
+                        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 space-y-2 text-xs">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">Subject:</span>
+                                <span className="font-semibold text-slate-900 text-sm">{previewTemplate.subject}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">From:</span>
+                                <span className="text-slate-700">Horizex Property Management &lt;notifications@horizex.com&gt;</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-500 w-16 uppercase tracking-wider text-[11px]">To:</span>
+                                <span className="text-slate-500 italic">&lt;recipient@example.com&gt;</span>
+                            </div>
+                        </div>
+
+                        {/* Email Styled Container */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-100/60">
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 max-w-2xl mx-auto">
+                                <div className="border-b border-slate-100 pb-4 mb-6 flex justify-between items-center">
+                                    <div className="text-sm font-black tracking-wider text-slate-900">HORIZEX REAL ESTATE</div>
+                                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Official Notification</span>
+                                </div>
+
+                                <div 
+                                    className="text-slate-800 leading-relaxed text-sm prose max-w-none [&>p]:mb-3 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4"
+                                    dangerouslySetInnerHTML={{ __html: previewTemplate.body || '<p class="text-slate-400 italic">No content in this template.</p>' }}
+                                />
+
+                                {previewTemplate.documents && previewTemplate.documents.length > 0 && (
+                                    <div className="mt-6 pt-4 border-t border-slate-100">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                            <Paperclip size={13} />
+                                            Attachments ({previewTemplate.documents.length})
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {previewTemplate.documents.map(doc => (
+                                                <span key={doc.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+                                                    <FileText size={13} className="text-indigo-600" />
+                                                    {doc.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 text-center leading-normal">
+                                    This is an automated notification from Horizex Property Management.
+                                    <br />
+                                    © {new Date().getFullYear()} Horizex Real Estate. All rights reserved.
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="bg-white border-t border-slate-200 px-6 py-4 flex justify-between items-center shrink-0">
+                            <span className="text-xs text-slate-400 font-medium">
+                                Template ID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono text-[11px]">{previewTemplate.id}</code>
+                            </span>
+                            <div className="flex items-center gap-2">
+                                {hasPermission('Email Templates', 'edit') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const t = previewTemplate;
+                                            setPreviewTemplate(null);
+                                            openModal(t);
+                                        }}
+                                        className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                                    >
+                                        <Edit2 size={14} />
+                                        Edit Template
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewTemplate(null)}
+                                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
