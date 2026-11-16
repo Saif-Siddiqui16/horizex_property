@@ -538,13 +538,13 @@ export const Maintenance = () => {
   const tabs = [
     { id: 'overview', label: 'Operations Dashboard' },
     { id: 'requests', label: 'Maintenance Requests' },
-    { id: 'workorders', label: 'Work Orders' },
-    { id: 'preventive', label: 'Preventive Checks' },
-    { id: 'techs', label: 'Technicians clock' },
-    { id: 'vendors', label: 'Vendors contracts' },
-    { id: 'assets', label: 'Asset lifecycle' },
-    { id: 'furniture', label: 'Furniture checklist' },
-    { id: 'inventory', label: 'Warehouse Stock' },
+    // { id: 'workorders', label: 'Work Orders' },
+    // { id: 'preventive', label: 'Preventive Checks' },
+    // { id: 'techs', label: 'Technicians clock' },
+    // { id: 'vendors', label: 'Vendors contracts' },
+    // { id: 'assets', label: 'Asset lifecycle' },
+    // { id: 'furniture', label: 'Furniture checklist' },
+    // { id: 'inventory', label: 'Warehouse Stock' },
     { id: 'calendar', label: 'Repairs Calendar' }
   ];
 
@@ -635,7 +635,7 @@ export const Maintenance = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <OpenRepairsWidget stats={stats} onTabRedirect={setActiveTab} />
             <EmergencyRepairsWidget stats={stats} onTabRedirect={setActiveTab} />
-            <InventoryAlertsWidget summary={inventoryStats} onTabRedirect={setActiveTab} />
+            <InventoryAlertsWidget summary={inventoryStats} onTabRedirect={() => setActiveTab('requests')} />
 
             <div className="lg:col-span-2 flex flex-col gap-6">
               <TechnicianUtilizationWidget analytics={techStats} />
@@ -645,8 +645,8 @@ export const Maintenance = () => {
             <div className="flex flex-col gap-6">
               <MaintenanceQuickActions
                 onCreateRequest={() => setShowRequestModal(true)}
-                onClockTech={() => setActiveTab('techs')}
-                onPostInventory={() => setActiveTab('inventory')}
+                onClockTech={() => setShowRequestModal(true)}
+                onPostInventory={() => setShowRequestModal(true)}
               />
               <AssetHealthWidget summary={assetStats} />
             </div>
