@@ -12,8 +12,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../api/client';
 import { NOTE_CATEGORIES, NOTE_PRIORITIES } from '../../constants/notes';
 import {
-  StickyNote, Plus, Pin, Trash2, Lock, X, ChevronDown, ChevronUp,
-  Search, Tag, AlertCircle
+  StickyNote, Plus, Pin, Trash2, Lock, X,
+  Search, Tag, AlertCircle, Eye, Edit2
 } from 'lucide-react';
 
 const PRIORITY_STYLES = {
@@ -46,7 +46,7 @@ const formatDate = (iso) => {
 };
 
 /* ── Note Card ─────────────────────────────────────────────── */
-const NoteCard = ({ note, onDelete, onTogglePin, onToggleExpand, expanded }) => (
+const NoteCard = ({ note, onEdit, onView, onDelete, onTogglePin }) => (
   <div className={`group bg-white border rounded-2xl p-4 transition-all hover:shadow-md ${
     note.isPinned ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'
   }`}>
@@ -74,11 +74,7 @@ const NoteCard = ({ note, onDelete, onTogglePin, onToggleExpand, expanded }) => 
 
         <p className="text-sm font-bold text-slate-800 leading-snug">{note.title}</p>
 
-        {expanded ? (
-          <p className="text-xs text-slate-500 font-medium mt-1.5 whitespace-pre-wrap leading-relaxed">{note.content}</p>
-        ) : (
-          <p className="text-xs text-slate-400 font-medium mt-1 line-clamp-2">{note.content}</p>
-        )}
+        <p className="text-xs text-slate-500 font-medium mt-1 line-clamp-2 leading-relaxed">{note.content}</p>
 
         <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-400 font-semibold">
           <span>{note.createdBy}</span>
@@ -96,11 +92,18 @@ const NoteCard = ({ note, onDelete, onTogglePin, onToggleExpand, expanded }) => 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
         <button
-          onClick={onToggleExpand}
+          onClick={onView}
           className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-          title={expanded ? 'Collapse' : 'Expand'}
+          title="View note"
         >
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          <Eye size={14} />
+        </button>
+        <button
+          onClick={onEdit}
+          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+          title="Edit note"
+        >
+          <Edit2 size={14} />
         </button>
         <button
           onClick={onTogglePin}
@@ -133,8 +136,9 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
-  const [expandedIds, setExpandedIds] = useState(new Set());
   const [showForm, setShowForm] = useState(false);
+  const [editNote, setEditNote] = useState(null);
+  const [viewNote, setViewNote] = useState(null);
   const [form, setForm] = useState({
     title: '', content: '',
     category: 'GENERAL', priority: 'MEDIUM',
@@ -156,24 +160,57 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
     return matchSearch && matchCat && matchPri;
   });
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    await api.post('/admin/notes', {
-      entityType,
-      entityId,
-      title: form.title,
-      content: form.content,
-      category: form.category,
-      priority: form.priority,
-      isPinned: form.isPinned,
-      isPrivate: form.isPrivate,
-      mentions: form.mentions ? form.mentions.split(',').map(m => m.trim()).filter(Boolean) : [],
-    }).catch((err) => {
-      console.error('Failed to create note in panel:', err);
+  const handleOpenAdd = () => {
+    setEditNote(null);
+    setForm({
+      title: '', content: '', category: 'GENERAL', priority: 'MEDIUM',
+      isPinned: false, isPrivate: false, mentions: '',
     });
-    setForm({ title: '', content: '', category: 'GENERAL', priority: 'MEDIUM', isPinned: false, isPrivate: false, mentions: '' });
-    setShowForm(false);
-    load();
+    setShowForm(true);
+  };
+
+  const handleOpenEdit = (note) => {
+    setEditNote(note);
+    setForm({
+      title: note.title || '',
+      content: note.content || '',
+      category: note.category || 'GENERAL',
+      priority: note.priority || 'MEDIUM',
+      isPinned: Boolean(note.isPinned),
+      isPrivate: Boolean(note.isPrivate),
+      mentions: Array.isArray(note.mentions) ? note.mentions.join(', ') : (note.mentions || ''),
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        entityType,
+        entityId,
+        title: form.title,
+        content: form.content,
+        category: form.category,
+        priority: form.priority,
+        isPinned: form.isPinned,
+        isPrivate: form.isPrivate,
+        mentions: form.mentions ? form.mentions.split(',').map(m => m.trim()).filter(Boolean) : [],
+      };
+
+      if (editNote) {
+        await api.put(`/admin/notes/${editNote.id}`, payload);
+      } else {
+        await api.post('/admin/notes', payload);
+      }
+      setForm({ title: '', content: '', category: 'GENERAL', priority: 'MEDIUM', isPinned: false, isPrivate: false, mentions: '' });
+      setEditNote(null);
+      setShowForm(false);
+      load();
+    } catch (err) {
+      console.error('Failed to save note:', err);
+      alert(err.response?.data?.message || 'Failed to save note');
+    }
   };
 
   const handleDelete = async (id) => {
@@ -187,14 +224,6 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
     const isCurrentlyPinned = Boolean(currentNote?.isPinned);
     await api.put(`/admin/notes/${id}`, { isPinned: !isCurrentlyPinned }).catch(() => {});
     load();
-  };
-
-  const toggleExpand = (id) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
   };
 
   const pinnedCount = notes.filter(n => n.isPinned).length;
@@ -215,7 +244,7 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
           </div>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={handleOpenAdd}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm shadow-indigo-200"
         >
           <Plus size={14} /> Add Note
@@ -278,10 +307,10 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
             <NoteCard
               key={note.id}
               note={note}
-              expanded={expandedIds.has(note.id)}
+              onView={() => setViewNote(note)}
+              onEdit={() => handleOpenEdit(note)}
               onDelete={() => handleDelete(note.id)}
               onTogglePin={() => handleTogglePin(note.id)}
-              onToggleExpand={() => toggleExpand(note.id)}
             />
           ))}
         </div>
@@ -296,18 +325,20 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
               <div className="flex items-center gap-2">
                 <StickyNote size={18} className="text-indigo-600" />
                 <div>
-                  <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Add Note</h2>
+                  <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                    {editNote ? 'Edit Note' : 'Add Note'}
+                  </h2>
                   <p className="text-[10px] text-slate-400 font-semibold capitalize">
                     Linked to this {entityLabel}
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+              <button onClick={() => { setShowForm(false); setEditNote(null); }} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
                 <X size={16} className="text-slate-500" />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="p-5 space-y-4">
+            <form onSubmit={handleSave} className="p-5 space-y-4">
               {/* Title */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Title *</label>
@@ -398,7 +429,7 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => { setShowForm(false); setEditNote(null); }}
                   className="px-5 py-2.5 text-xs font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
                 >
                   Cancel
@@ -407,10 +438,114 @@ export const EntityNotesPanel = ({ entityType, entityId, entityLabel = 'entity',
                   type="submit"
                   className="px-5 py-2.5 text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm shadow-indigo-200"
                 >
-                  Save Note
+                  {editNote ? 'Update Note' : 'Save Note'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Note Modal */}
+      {viewNote && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[28px] border border-slate-200 shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                  <StickyNote size={18} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Note Details</h2>
+                  <p className="text-[10px] text-slate-400 font-semibold capitalize">
+                    Linked to this {entityLabel}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setViewNote(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                <X size={16} className="text-slate-500" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Badges */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {viewNote.isPinned && (
+                  <span className="flex items-center gap-1 text-[9px] font-black text-amber-600 uppercase tracking-wider bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    <Pin size={10} /> Pinned
+                  </span>
+                )}
+                {viewNote.isPrivate && (
+                  <span className="flex items-center gap-1 text-[9px] font-black text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    <Lock size={10} /> Private
+                  </span>
+                )}
+                <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${PRIORITY_STYLES[viewNote.priority] || PRIORITY_STYLES.MEDIUM}`}>
+                  {NOTE_PRIORITIES[viewNote.priority]?.label || viewNote.priority}
+                </span>
+                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${CATEGORY_STYLES[viewNote.category] || CATEGORY_STYLES.GENERAL}`}>
+                  {NOTE_CATEGORIES[viewNote.category]?.label || viewNote.category}
+                </span>
+              </div>
+
+              {/* Title */}
+              <div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Title</span>
+                <h3 className="text-base font-bold text-slate-800 leading-snug">{viewNote.title}</h3>
+              </div>
+
+              {/* Content */}
+              <div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Content</span>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {viewNote.content}
+                </div>
+              </div>
+
+              {/* Mentions */}
+              {viewNote.mentions?.length > 0 && (
+                <div>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Mentions</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {viewNote.mentions.map((m, idx) => (
+                      <span key={idx} className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                        @{m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Meta info */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-semibold">
+                <span>Created by: {viewNote.createdBy || 'Administrator'}</span>
+                <span>{formatDate(viewNote.createdAt)}</span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center p-4 bg-slate-50/60 border-t border-slate-100 rounded-b-[28px]">
+              <button
+                type="button"
+                onClick={() => {
+                  const n = viewNote;
+                  setViewNote(null);
+                  handleOpenEdit(n);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-all"
+              >
+                <Edit2 size={13} /> Edit Note
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewNote(null)}
+                className="px-5 py-2 text-xs font-black text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-all"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

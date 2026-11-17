@@ -21,7 +21,10 @@ import {   Users,
   UserMinus,
   Briefcase,
   ExternalLink,
-  Trash2
+  Trash2,
+  Lock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 const getModuleDisplayName = (name, t) => {
@@ -33,24 +36,18 @@ const map = {
     'Properties': t('sidebar.properties'),
     'Buildings': `↳ ${t('sidebar.buildings')}`,
     'Units': `↳ ${t('sidebar.units')}`,
-    'Unit Readiness': `↳ ${t('sidebar.unit_readiness')}`,
     'Tenants': t('sidebar.tenants'),
     'Tenant List': `↳ ${t('sidebar.tenant_list')}`,
     'Vehicles': `↳ ${t('sidebar.vehicles')}`,
-    'Insurance': `↳ ${t('sidebar.insurance')}`,
+    'Owners': t('sidebar.owners'),
     'Leases': t('sidebar.leases'),
     'Rent Roll': t('sidebar.rent_roll'),
     'Documents': t('sidebar.documents'),
     'Payments': t('sidebar.payments'),
-    'Invoices': `↳ ${t('sidebar.invoices')}`,
+    'Invoices': `↳ ${t('sidebar.collection') || 'Rent Collection & Ledger'}`,
     'Payments Received': `↳ ${t('sidebar.received')}`,
     'Outstanding Dues': `↳ ${t('sidebar.outstanding')}`,
-    'Refunds': `↳ ${t('sidebar.refunds')}`,
     'Accounting': t('sidebar.accounting'),
-    'General Ledger': `↳ ${t('sidebar.ledger')}`,
-    'QuickBooks Sync': `↳ ${t('sidebar.quickbooks')}`,
-    'Chart of Accounts': `↳ ${t('sidebar.chart_of_accounts')}`,
-    'Tax Settings': `↳ ${t('sidebar.tax_settings')}`,
     'TAL Cases': t('sidebar.tal_cases'),
     'Notes Hub': t('sidebar.notes_hub'),
     'Reports': t('sidebar.reports'),
@@ -62,12 +59,8 @@ const map = {
     'Send Email': `↳ ${t('sidebar.send_email')}`,
     'Email Templates': `↳ ${t('sidebar.email_templates')}`,
     'Sent Emails': `↳ ${t('sidebar.email_history')}`,
-    'Shuttle': t('sidebar.shuttle'),
     'Maintenance': t('sidebar.maintenance'),
     'Tickets': t('sidebar.tickets'),
-    'Inspections': t('sidebar.inspections'),
-    'Inspection List': `↳ ${t('sidebar.inspection_list')}`,
-    'Inspection Templates': `↳ ${t('sidebar.templates')}`,
     'Settings': t('sidebar.team')
   };
   return map[name] || name;
@@ -75,14 +68,14 @@ const map = {
 
 const MODULES = [
   'Dashboard', 'Overview', 'Vacancy Dashboard', 'Revenue Dashboard',
-  'Properties', 'Buildings', 'Units', 'Unit Readiness',
-  'Tenants', 'Tenant List', 'Vehicles', 'Insurance', 
-  'Shuttle',
+  'Properties', 'Buildings', 'Units',
+  'Tenants', 'Tenant List', 'Vehicles',
+  'Owners',
   'Leases',
   'Rent Roll',
   'Documents',
-  'Payments', 'Invoices', 'Payments Received', 'Outstanding Dues', 'Refunds',
-  'Accounting', 'General Ledger',
+  'Payments', 'Invoices', 'Payments Received', 'Outstanding Dues',
+  'Accounting',
   'TAL Cases',
   'Notes Hub',
   'Reports',
@@ -90,11 +83,10 @@ const MODULES = [
   'Email Hub', 'Send Email', 'Email Templates', 'Sent Emails',
   'Maintenance',
   'Tickets',
-  'Inspections', 'Inspection List', 'Inspection Templates',
   'Settings'
 ];
 
-const PARENTS = ['Dashboard', 'Properties', 'Tenants', 'Payments', 'Accounting', 'Communication', 'Email Hub', 'Inspections'];
+const PARENTS = ['Dashboard', 'Properties', 'Tenants', 'Payments', 'Accounting', 'Communication', 'Email Hub'];
 
 const sortPermissions = (perms) => {
     return [...(perms || [])].sort((a, b) => {
@@ -123,10 +115,12 @@ export const TeamManagement = () => {
   const [selectedMember, setSelectedMember] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     phone: '+1',
     title: '',
     preferredLanguage: 'English',
@@ -167,6 +161,19 @@ export const TeamManagement = () => {
     }
   };
 
+  const notifyPermissionSync = () => {
+    try {
+      localStorage.setItem('last_permission_update', Date.now().toString());
+      if (typeof BroadcastChannel !== 'undefined') {
+        const channel = new BroadcastChannel('permissions_channel');
+        channel.postMessage({ type: 'PERMISSIONS_CHANGED', timestamp: Date.now() });
+        channel.close();
+      }
+    } catch (e) {
+      console.error('Permission sync broadcast error:', e);
+    }
+  };
+
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -181,6 +188,7 @@ export const TeamManagement = () => {
         await createCoworkerMutation(formData).unwrap();
         alert('Team member created with selected permissions');
       }
+      notifyPermissionSync();
       setShowModal(false);
       resetForm();
     } catch (error) {
@@ -194,6 +202,7 @@ export const TeamManagement = () => {
       firstName: '',
       lastName: '',
       email: '',
+      password: '',
       phone: '+1',
       title: '',
       preferredLanguage: 'English',
@@ -205,6 +214,7 @@ export const TeamManagement = () => {
         canDelete: false
       }))
     });
+    setShowPassword(false);
     setIsEditing(false);
     setSelectedMember(null);
   };
@@ -215,6 +225,7 @@ export const TeamManagement = () => {
       firstName: member.firstName || '',
       lastName: member.lastName || '',
       email: member.email || '',
+      password: '',
       phone: member.phone || '',
       title: member.title || '',
       preferredLanguage: member.preferredLanguage || 'English',
@@ -286,6 +297,7 @@ export const TeamManagement = () => {
                 [field]: value 
             }]
         }).unwrap();
+        notifyPermissionSync();
     } catch (error) {
         console.error('Error updating permission:', error);
         alert('Failed to update permission');
@@ -597,7 +609,7 @@ export const TeamManagement = () => {
                         <button onClick={() => setShowModal(false)} className="p-2 text-slate-400 hover:text-slate-600 transition-all"><X size={24} /></button>
                     </div>
                     
-                    <form onSubmit={handleSubmit} className="p-8 pt-4 flex flex-col gap-4 overflow-y-auto">
+                    <form onSubmit={handleSubmit} autoComplete="off" className="p-8 pt-4 flex flex-col gap-4 overflow-y-auto">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col gap-2">
                                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">{t('team.first_name')}</label>
@@ -606,6 +618,7 @@ export const TeamManagement = () => {
                                     value={formData.firstName} 
                                     onChange={handleInputChange} 
                                     required 
+                                    autoComplete="off"
                                     className="px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold transition-all"
                                     placeholder="e.g. John"
                                 />
@@ -617,6 +630,7 @@ export const TeamManagement = () => {
                                     value={formData.lastName} 
                                     onChange={handleInputChange} 
                                     required 
+                                    autoComplete="off"
                                     className="px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold transition-all"
                                     placeholder="e.g. Doe"
                                 />
@@ -628,12 +642,43 @@ export const TeamManagement = () => {
                             <input 
                                 name="email" 
                                 type="email"
+                                autoComplete="off"
                                 value={formData.email} 
                                 onChange={handleInputChange} 
                                 required 
                                 className="px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold transition-all"
                                 placeholder="john.doe@horizex.com"
                             />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                                    {isEditing ? 'Password (Leave blank to keep current)' : 'Password'}
+                                </label>
+                                {!isEditing && <span className="text-[10px] text-slate-400 font-bold">Min 6 characters</span>}
+                            </div>
+                            <div className="relative">
+                                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                                <input 
+                                    name="password" 
+                                    type={showPassword ? "text" : "password"}
+                                    autoComplete="new-password"
+                                    value={formData.password} 
+                                    onChange={handleInputChange} 
+                                    required={!isEditing}
+                                    minLength={6}
+                                    className="w-full pl-12 pr-12 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold transition-all"
+                                    placeholder={isEditing ? "Leave blank to keep current password" : "Enter password"}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex flex-col gap-2">

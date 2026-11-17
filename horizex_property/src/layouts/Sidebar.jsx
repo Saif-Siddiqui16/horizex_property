@@ -360,7 +360,18 @@ export const Sidebar = ({ isOpen, onClose }) => {
             const reduxUser = useSelector(selectCurrentUser);
             const reduxPermissions = useSelector(selectUserPermissions);
             const user = reduxUser || JSON.parse(localStorage.getItem('user') || '{}');
-            const permissions = (reduxPermissions && reduxPermissions.length > 0) ? reduxPermissions : JSON.parse(localStorage.getItem('permissions') || '[]');
+            
+            let permissions = [];
+            if (Array.isArray(reduxPermissions) && reduxPermissions.length > 0) {
+              permissions = reduxPermissions;
+            } else {
+              try {
+                const stored = JSON.parse(localStorage.getItem('permissions') || '[]');
+                permissions = Array.isArray(stored) ? stored : (stored?.data && Array.isArray(stored.data) ? stored.data : []);
+              } catch (e) {
+                permissions = [];
+              }
+            }
 
             // Re-render trigger from custom event
             const [forceUpdate, setForceUpdate] = React.useState(0);
@@ -373,21 +384,27 @@ export const Sidebar = ({ isOpen, onClose }) => {
             const labelToModule = {
               'Dashboard': 'Dashboard',
               'Overview': 'Overview',
+              'Overview Dashboard': 'Overview',
               'Vacancy Dashboard': 'Vacancy Dashboard',
               'Revenue Dashboard': 'Revenue Dashboard',
               'Properties': 'Properties',
               'Buildings': 'Buildings',
+              'Buildings List': 'Buildings',
               'Units': 'Units',
               'Unit Readiness': 'Unit Readiness',
               'Tenants': 'Tenants',
               'Tenant List': 'Tenant List',
+              'Vehicles': 'Vehicles',
               'Vehicle Management': 'Vehicles',
               'Owners': 'Owners',
               'Leases': 'Leases',
               'Rental Applications': 'Leases',
+              'Lease History': 'Leases',
+              'Lease Renewals': 'Leases',
               'Rent Roll': 'Rent Roll',
               'Documents': 'Documents',
               'Payments': 'Payments',
+              'Rent Collection & Ledger': 'Invoices',
               'Rent Invoices': 'Invoices',
               'Payments Received': 'Payments Received',
               'Outstanding Dues': 'Outstanding Dues',
@@ -402,6 +419,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               'Notes Hub': 'Notes Hub',
               'Reports': 'Reports',
               'SMS Hub': 'Communication',
+              'Communication': 'Communication',
               'Inbox': 'Inbox',
               'Campaign Manager': 'Campaign Manager',
               'Templates': 'Templates',
@@ -423,21 +441,31 @@ export const Sidebar = ({ isOpen, onClose }) => {
               if (navItem.label === 'Profile') return true;
 
               // Hide admin-only configuration panels from coworkers entirely
-              const adminOnlyLabels = ['QuickBooks Sync', 'Chart of Accounts', 'Tax Settings', 'Team Access Control', 'Settings'];
+              const adminOnlyLabels = [
+                'Companies',
+                'Time & Payroll',
+                'QuickBooks Sync',
+                'Chart of Accounts',
+                'Tax Settings',
+                'Team Access Control',
+                'Settings'
+              ];
               if (adminOnlyLabels.includes(navItem.label)) return false;
-
-              const moduleName = labelToModule[navItem.label];
 
               // If it has children, the parent is visible if at least one child is visible
               if (navItem.children?.length > 0) {
                 return navItem.children.some(child => canUserView(child));
               }
 
-              // If no mapping exists for a leaf node, show it by default
-              if (!moduleName) return true;
+              const moduleName = labelToModule[navItem.label];
 
-              const perm = Array.isArray(permissions) ? permissions.find(p => p.moduleName === moduleName) : null;
-              return perm ? perm.canView : false;
+              // If no mapping exists for a leaf node, deny access by default for non-admins
+              if (!moduleName) return false;
+
+              const perm = Array.isArray(permissions) 
+                ? permissions.find(p => p.moduleName?.toLowerCase() === moduleName.toLowerCase()) 
+                : null;
+              return perm ? !!perm.canView : false;
             };
 
             const getVisibleItems = (items) => {

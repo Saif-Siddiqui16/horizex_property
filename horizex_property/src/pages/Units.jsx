@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/Button';
 import {
   Plus,
@@ -53,6 +53,7 @@ const getCalculatedBedRate = (type) => {
 };
 
 export const Units = () => {
+  const location = useLocation();
   const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
     const handleUpdate = () => __setForceUpdate(p => p + 1);
@@ -324,6 +325,13 @@ export const Units = () => {
       showToast('Error loading unit details', 'error');
     }
   };
+
+  useEffect(() => {
+    if (location.state?.editUnitId) {
+      openEditModal({ id: location.state.editUnitId });
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state?.editUnitId]);
 
   const closeModal = () => {
     setShowModal(false);
