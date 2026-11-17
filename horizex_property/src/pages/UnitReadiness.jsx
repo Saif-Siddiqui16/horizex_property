@@ -156,6 +156,7 @@ const UnitReadiness = () => {
 
       await api.put(`/api/admin/readiness/update-step/${unitId}`, payload);
       fetchData(); // Refresh UI
+      window.dispatchEvent(new Event('unitUpdated'));
     } catch (err) {
       if (err.response?.status === 409) {
           // Manual Override Prompt

@@ -50,13 +50,31 @@ export const LeaseFormBedroom = () => {
                 const uId = String(l.unitId || l.unit?.id || '');
                 if (!uId) return;
                 if (!map[uId]) {
-                    map[uId] = { hasFullUnitLease: false, occupiedBedrooms: new Set() };
+                    map[uId] = { hasFullUnitLease: false, occupiedBedrooms: new Set(), bedroomLeaseCount: 0 };
                 }
+
                 const lType = String(l.leaseType || l.type || '').toUpperCase();
-                if (!l.bedroomId || lType === 'FULL UNIT LEASE' || lType === 'FULL_UNIT') {
+                const bedStr = String(l.bedroom || '').trim();
+                const isBedLease =
+                    Boolean(l.bedroomId) ||
+                    lType === 'BEDROOM LEASE' ||
+                    lType === 'BEDROOM' ||
+                    (bedStr && bedStr !== '-' && !bedStr.toLowerCase().includes('bed') && !bedStr.toLowerCase().includes('room'));
+
+                if (Boolean(l.bedroomId) || isBedLease || (bedStr && bedStr.toLowerCase().startsWith('bedroom'))) {
+                    map[uId].bedroomLeaseCount += 1;
+                    if (l.bedroomId) {
+                        map[uId].occupiedBedrooms.add(String(l.bedroomId).trim());
+                    }
+                    if (bedStr) {
+                        map[uId].occupiedBedrooms.add(bedStr);
+                        const match = bedStr.match(/(\d+)/);
+                        if (match) {
+                            map[uId].occupiedBedrooms.add(match[1]);
+                        }
+                    }
+                } else if (lType === 'FULL UNIT LEASE' || lType === 'FULL_UNIT' || !l.bedroomId) {
                     map[uId].hasFullUnitLease = true;
-                } else {
-                    map[uId].occupiedBedrooms.add(String(l.bedroomId));
                 }
             }
         });
@@ -70,17 +88,32 @@ export const LeaseFormBedroom = () => {
         const occupiedBeds = leaseInfo ? leaseInfo.occupiedBedrooms : new Set();
 
         return (Array.isArray(rawBedrooms) ? rawBedrooms : []).filter(b => {
-            const bedKey = String(b.bedroomId ?? b.id ?? '');
-            return !occupiedBeds.has(bedKey);
+            const idStr = String(b.id ?? '').trim();
+            const bedIdStr = String(b.bedroomId ?? '').trim();
+            const bedNumStr = String(b.bedroomNumber ?? b.displayName ?? b.roomNumber ?? '').trim();
+
+            if (idStr && occupiedBeds.has(idStr)) return false;
+            if (bedIdStr && occupiedBeds.has(bedIdStr)) return false;
+            if (bedNumStr && occupiedBeds.has(bedNumStr)) return false;
+
+            for (const occ of occupiedBeds) {
+                if (bedNumStr && (occ === bedNumStr || bedNumStr.endsWith(`-${occ}`))) return false;
+            }
+
+            return true;
         });
     }, [form.unitId, rawBedrooms, activeUnitLeaseInfo]);
 
     // Derived tenants
     const tenants = useMemo(() => {
-        return (Array.isArray(rawTenants) ? rawTenants : []).map(t => ({
-            ...t,
-            name: t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim()
-        }));
+        return (Array.isArray(rawTenants) ? rawTenants : []).map(t => {
+            const fullName = `${t.firstName || ''} ${t.lastName || ''}`.trim();
+            const displayName = t.name || fullName || t.companyName || 'Tenant';
+            return {
+                ...t,
+                name: displayName
+            };
+        });
     }, [rawTenants]);
 
     // Filter available units for bedroom-wise leasing:
@@ -97,15 +130,16 @@ export const LeaseFormBedroom = () => {
             // 1. If unit already has an active full unit lease, no bedrooms can be leased
             if (leaseInfo?.hasFullUnitLease) return false;
 
-            // 2. If unit's activeLease is a full unit lease
-            if (u.activeLease && (!u.activeLease.bedroomId || String(u.activeLease.leaseType || '').toUpperCase() === 'FULL UNIT LEASE')) {
-                return false;
+            // 2. If unit's activeLease is explicitly a full unit lease with no bedrooms
+            if (u.activeLease && !u.activeLease.bedroomId && String(u.activeLease.leaseType || '').toUpperCase() === 'FULL UNIT LEASE') {
+                if (!leaseInfo || leaseInfo.bedroomLeaseCount === 0) {
+                    return false;
+                }
             }
 
-            // 3. If unit is marked FULLY BOOKED or OCCUPIED (full unit mode)
+            // 3. Status check: fully booked
             const uStatus = String(u.status || '').toUpperCase();
             if (uStatus === 'FULLY BOOKED') return false;
-            if ((u.rentalMode === 'FULL_UNIT' || !u.rentalMode) && uStatus === 'OCCUPIED' && !u.hasCompanyLease) return false;
 
             // 4. Exclude if unit is in construction phase / inactive / not ready
             const isConstruction =
@@ -118,10 +152,22 @@ export const LeaseFormBedroom = () => {
                 uStatus === 'TURNOVER';
             if (isConstruction) return false;
 
-            // 5. If all bedrooms in this unit are already leased
-            const totalBeds = Math.max(1, Number(u.bedrooms) || 1);
-            if (leaseInfo && leaseInfo.occupiedBedrooms.size >= totalBeds) {
-                return false;
+            // 5. Total bedrooms capacity check:
+            const metaIdentifiers = (() => {
+                try {
+                    const notes = typeof u.readiness?.notes === 'string' ? JSON.parse(u.readiness.notes) : u.readiness?.notes;
+                    if (Array.isArray(notes?.bedroomIdentifiers)) return notes.bedroomIdentifiers.length;
+                } catch {}
+                return 0;
+            })();
+            const totalBeds = Math.max(1, Number(u.bedrooms) || 0, metaIdentifiers, Array.isArray(u.bedroomDetails) ? u.bedroomDetails.length : 0);
+
+            // Exclude only if all bedrooms in this unit are already leased
+            if (leaseInfo) {
+                const leasedCount = Math.max(leaseInfo.bedroomLeaseCount, leaseInfo.occupiedBedrooms.size);
+                if (leasedCount >= totalBeds) {
+                    return false;
+                }
             }
 
             return true;
@@ -136,6 +182,7 @@ export const LeaseFormBedroom = () => {
             unitId: '',
             bedroomId: '',
             tenantId: '',
+            coTenantIds: [],
             startDate: '',
             endDate: '',
             monthlyRent: '',
@@ -148,7 +195,7 @@ export const LeaseFormBedroom = () => {
         const unitId = e.target.value;
         const selectedUnit = units.find(u => u.id.toString() === unitId);
 
-        let newForm = { ...form, unitId, bedroomId: '', tenantId: '' };
+        let newForm = { ...form, unitId, bedroomId: '', tenantId: '', coTenantIds: [] };
         let isLocked = false;
 
         const currentTenant = tenants.find(t => t.id.toString() === form.tenantId);
@@ -170,6 +217,68 @@ export const LeaseFormBedroom = () => {
 
         setForm(newForm);
         setLockedFields(isLocked);
+    };
+
+    const handleBedroomChange = (e) => {
+        const bedId = e.target.value;
+        if (!bedId) {
+            setForm(prev => ({
+                ...prev,
+                bedroomId: '',
+                tenantId: '',
+                coTenantIds: []
+            }));
+            return;
+        }
+
+        const selectedBed = bedrooms.find(b => String(b.id) === String(bedId));
+        const selectedBedNum = String(selectedBed?.bedroomNumber || selectedBed?.roomNumber || selectedBed?.displayName || '').trim();
+        const selectedUnit = units.find(u => String(u.id) === String(form.unitId));
+
+        // Find assigned resident for this unit & bedroom
+        const assignedResident = tenants.find(t => {
+            const isResidentType = String(t.type || '').toUpperCase() === 'RESIDENT';
+            if (!isResidentType) return false;
+
+            const matchesUnit =
+                (t.unitId && String(t.unitId) === String(form.unitId)) ||
+                (selectedUnit && (
+                    (t.unitNumber && String(t.unitNumber).trim().toLowerCase() === String(selectedUnit.unitNumber || selectedUnit.name).trim().toLowerCase()) ||
+                    (t.unit && String(t.unit).trim().toLowerCase() === String(selectedUnit.unitNumber || selectedUnit.name).trim().toLowerCase())
+                ));
+
+            if (!matchesUnit) return false;
+
+            const resBed = String(t.bedroomId || '').trim();
+            if (!resBed) return false;
+
+            const bedIdStr = String(bedId).trim();
+            const matchesBed =
+                resBed.toLowerCase() === bedIdStr.toLowerCase() ||
+                (selectedBedNum && resBed.toLowerCase() === selectedBedNum.toLowerCase()) ||
+                (selectedBedNum && (resBed.endsWith(`-${bedIdStr}`) || selectedBedNum.endsWith(`-${resBed}`)));
+
+            return Boolean(matchesBed);
+        });
+
+        let targetTenantId = '';
+        let newCoTenantIds = [];
+
+        if (assignedResident) {
+            if (assignedResident.parentId) {
+                targetTenantId = String(assignedResident.parentId);
+                newCoTenantIds = [String(assignedResident.id)];
+            } else {
+                targetTenantId = String(assignedResident.id);
+            }
+        }
+
+        setForm(prev => ({
+            ...prev,
+            bedroomId: bedId,
+            tenantId: targetTenantId,
+            coTenantIds: newCoTenantIds
+        }));
     };
 
     // Handle field locking when tenant changes
@@ -298,11 +407,30 @@ export const LeaseFormBedroom = () => {
                                     className="w-full pl-12 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-slate-800 appearance-none disabled:opacity-50"
                                 >
                                     <option value="">{selectedBuilding && units.length === 0 ? 'No units with vacant bedrooms available' : 'Select Unit'}</option>
-                                    {units.map(u => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.unitNumber || u.unit_identifier || u.name} ({u.status})
-                                        </option>
-                                    ))}
+                                    {units.map(u => {
+                                        const leaseInfo = activeUnitLeaseInfo[String(u.id)];
+                                        const metaIdentifiers = (() => {
+                                            try {
+                                                const notes = typeof u.readiness?.notes === 'string' ? JSON.parse(u.readiness.notes) : u.readiness?.notes;
+                                                if (Array.isArray(notes?.bedroomIdentifiers)) return notes.bedroomIdentifiers.length;
+                                            } catch {}
+                                            return 0;
+                                        })();
+                                        const totalBeds = Math.max(1, Number(u.bedrooms) || 0, metaIdentifiers, Array.isArray(u.bedroomDetails) ? u.bedroomDetails.length : 0);
+                                        const leasedCount = leaseInfo ? Math.max(leaseInfo.bedroomLeaseCount, leaseInfo.occupiedBedrooms.size) : 0;
+                                        const vacantCount = Math.max(0, totalBeds - leasedCount);
+
+                                        let displayStatus = u.status || 'VACANT';
+                                        if (leasedCount > 0 && vacantCount > 0) {
+                                            displayStatus = `${vacantCount} BEDROOM${vacantCount > 1 ? 'S' : ''} VACANT`;
+                                        }
+
+                                        return (
+                                            <option key={u.id} value={u.id}>
+                                                {u.unitNumber || u.unit_identifier || u.name} ({displayStatus})
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                     <ChevronDown size={18} />
@@ -318,7 +446,7 @@ export const LeaseFormBedroom = () => {
                                 <select
                                     name="bedroomId"
                                     value={form.bedroomId}
-                                    onChange={handleChange}
+                                    onChange={handleBedroomChange}
                                     disabled={!form.unitId}
                                     className="w-full pl-12 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-slate-800 appearance-none disabled:opacity-50"
                                 >

@@ -67,6 +67,14 @@ export const DocumentLibrary = () => {
     const [linkSearch, setLinkSearch] = useState("");
     const [linkType, setLinkType] = useState("USER");
 
+    // Topbar context
+    const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+        return localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+    });
+    const [selectedBuildingId, setSelectedBuildingId] = useState(() => {
+        return localStorage.getItem('global_selected_building_id') || '';
+    });
+
     // Close preview on Escape key
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -125,19 +133,33 @@ export const DocumentLibrary = () => {
 
         try {
             setUploading(true);
-            const formData = new FormData();
-            formData.append("file", uploadFile);
-            formData.append("type", uploadType);
-            formData.append("name", uploadName);
-            formData.append("expiryDate", expiryDate);
-            formData.append("links", JSON.stringify(selectedLinks.map(l => ({
-                entityType: l.entityType,
-                entityId: l.entityId
-            }))));
 
-            await api.post("/api/admin/documents/upload", formData, {
-                headers: { "Content-Type": "multipart/form-data" }
+            // Read file content as Base64 Data URL for real upload & preview
+            const fileBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(uploadFile);
             });
+
+            const fileName = (uploadName && uploadName.trim()) || uploadFile.name;
+            const sizeInMB = (uploadFile.size / (1024 * 1024)).toFixed(1);
+            const fileSizeStr = `${sizeInMB} MB`;
+
+            const payload = {
+                fileBase64,
+                name: fileName,
+                type: uploadType,
+                expiryDate: expiryDate || null,
+                fileSize: fileSizeStr,
+                mimeType: uploadFile.type || (uploadFile.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+                links: selectedLinks.map(l => ({
+                    entityType: l.entityType,
+                    entityId: l.entityId
+                }))
+            };
+
+            await api.post("/api/admin/documents/upload", payload);
 
             alert("Document uploaded successfully");
             setShowUploadModal(false);
@@ -145,7 +167,8 @@ export const DocumentLibrary = () => {
             fetchDocuments();
         } catch (error) {
             console.error(error);
-            alert("Upload failed");
+            const errMsg = error?.response?.data?.message || error?.message || 'Upload failed';
+            alert(`Upload failed: ${errMsg}`);
         } finally {
             setUploading(false);
         }
@@ -205,15 +228,124 @@ export const DocumentLibrary = () => {
     };
 
     useEffect(() => {
-        fetchDocuments();
-        fetchDropdownData();
-        const handleCompanyChange = () => {
+        const handleSync = () => {
+            setSelectedCompanyId(localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
+            setSelectedBuildingId(localStorage.getItem('global_selected_building_id') || '');
             fetchDocuments();
             fetchDropdownData();
         };
-        window.addEventListener('companyChanged', handleCompanyChange);
-        return () => window.removeEventListener('companyChanged', handleCompanyChange);
+
+        fetchDocuments();
+        fetchDropdownData();
+
+        window.addEventListener('companyChanged', handleSync);
+        window.addEventListener('buildingChanged', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('buildingChanged', handleSync);
+            window.removeEventListener('storage', handleSync);
+        };
     }, []);
+
+    // Filtered dropdown options based on topbar context & already selected links
+    const availableEntityOptions = useMemo(() => {
+        const linkedSet = new Set(selectedLinks.map(l => `${l.entityType}_${String(l.entityId)}`));
+
+        if (linkType === 'PROPERTY') {
+            return (dropdownData.properties || [])
+                .filter(p => {
+                    if (linkedSet.has(`PROPERTY_${String(p.id)}`)) return false;
+                    if (selectedCompanyId && selectedCompanyId !== 'all') {
+                        if (p.companyId && String(p.companyId) !== String(selectedCompanyId)) return false;
+                    }
+                    if (selectedBuildingId && selectedBuildingId !== 'all') {
+                        if (String(p.id) !== String(selectedBuildingId)) return false;
+                    }
+                    return true;
+                })
+                .map(p => ({
+                    id: p.id,
+                    label: p.civicNumber ? `${p.name} - ${p.civicNumber}` : p.name
+                }));
+        }
+
+        if (linkType === 'UNIT') {
+            return (dropdownData.units || [])
+                .filter(u => {
+                    if (linkedSet.has(`UNIT_${String(u.id)}`)) return false;
+                    const uCompId = u.companyId || u.property?.companyId || u.property?.company?.id;
+                    if (selectedCompanyId && selectedCompanyId !== 'all') {
+                        if (uCompId && String(uCompId) !== String(selectedCompanyId)) return false;
+                    }
+                    const uBldgId = u.propertyId || u.property?.id;
+                    if (selectedBuildingId && selectedBuildingId !== 'all') {
+                        if (uBldgId && String(uBldgId) !== String(selectedBuildingId)) return false;
+                    }
+                    return true;
+                })
+                .map(u => {
+                    const bName = u.buildingName || u.property?.name || u.building || '';
+                    return {
+                        id: u.id,
+                        label: bName ? `${u.unitNumber} (${bName})` : (u.unitNumber || `Unit #${u.id}`)
+                    };
+                });
+        }
+
+        if (linkType === 'USER') {
+            return (dropdownData.tenants || [])
+                .filter(t => {
+                    if (linkedSet.has(`USER_${String(t.id)}`)) return false;
+                    const tCompId = t.companyId || t.company_id || t.company?.id;
+                    if (selectedCompanyId && selectedCompanyId !== 'all') {
+                        if (tCompId && String(tCompId) !== String(selectedCompanyId)) return false;
+                    }
+                    const tBldgId = t.propertyId || t.buildingId || t.property?.id;
+                    if (selectedBuildingId && selectedBuildingId !== 'all') {
+                        if (tBldgId && String(tBldgId) !== String(selectedBuildingId)) return false;
+                    }
+                    return true;
+                })
+                .map(t => {
+                    const fullName = `${t.firstName || ''} ${t.lastName || ''}`.trim();
+                    const tName = t.name || fullName || t.companyName || 'Tenant';
+                    const unitInfo = t.unitNumber || t.unit || '';
+                    return {
+                        id: t.id,
+                        label: unitInfo ? `${tName} (Unit ${unitInfo})` : tName
+                    };
+                });
+        }
+
+        if (linkType === 'LEASE') {
+            return (dropdownData.leases || [])
+                .filter(l => {
+                    if (linkedSet.has(`LEASE_${String(l.id)}`)) return false;
+                    const lCompId = l.companyId || l.unit?.property?.companyId;
+                    if (selectedCompanyId && selectedCompanyId !== 'all') {
+                        if (lCompId && String(lCompId) !== String(selectedCompanyId)) return false;
+                    }
+                    const lBldgId = l.propertyId || l.buildingId || l.unit?.propertyId || l.unit?.property?.id;
+                    if (selectedBuildingId && selectedBuildingId !== 'all') {
+                        if (lBldgId && String(lBldgId) !== String(selectedBuildingId)) return false;
+                    }
+                    return true;
+                })
+                .map(l => {
+                    const tenantName = typeof l.tenant === 'object'
+                        ? `${l.tenant?.firstName || ''} ${l.tenant?.lastName || ''}`.trim()
+                        : (l.tenantName || l.tenant || `Lease #${l.id}`);
+                    const unitNum = typeof l.unit === 'object' ? l.unit?.unitNumber : (l.unitNumber || l.unit || '');
+                    return {
+                        id: l.id,
+                        label: unitNum ? `${tenantName} - Unit ${unitNum}` : tenantName
+                    };
+                });
+        }
+
+        return [];
+    }, [linkType, dropdownData, selectedLinks, selectedCompanyId, selectedBuildingId]);
 
     const filteredDocuments = documents.filter(doc => {
         const matchesSearch = doc.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -657,21 +789,24 @@ export const DocumentLibrary = () => {
                                             </select>
                                             <div className="flex-1 relative">
                                                 <select
+                                                    value=""
                                                     onChange={(e) => {
                                                         const id = e.target.value;
                                                         if (!id) return;
-                                                        const label = e.target.options[e.target.selectedIndex].text;
-                                                        if (!selectedLinks.find(l => l.entityId === id && l.entityType === linkType)) {
+                                                        const selectedOpt = availableEntityOptions.find(opt => String(opt.id) === String(id));
+                                                        const label = selectedOpt ? selectedOpt.label : e.target.options[e.target.selectedIndex].text;
+                                                        if (!selectedLinks.find(l => String(l.entityId) === String(id) && l.entityType === linkType)) {
                                                             setSelectedLinks([...selectedLinks, { entityType: linkType, entityId: id, label }]);
                                                         }
                                                     }}
                                                     className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-100 text-xs font-bold outline-none text-slate-700"
                                                 >
-                                                    <option value="">Search & Add...</option>
-                                                    {linkType === 'USER' && (dropdownData.tenants || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                    {linkType === 'PROPERTY' && (dropdownData.properties || []).map(p => <option key={p.id} value={p.id}>{p.name} - {p.civicNumber}</option>)}
-                                                    {linkType === 'UNIT' && (dropdownData.units || []).map(u => <option key={u.id} value={u.id}>{u.unitNumber}</option>)}
-                                                    {linkType === 'LEASE' && (dropdownData.leases || []).map(l => <option key={l.id} value={l.id}>{l.tenant}</option>)}
+                                                    <option value="">
+                                                        {availableEntityOptions.length === 0 ? `No ${linkType === 'USER' ? 'tenants' : linkType.toLowerCase() + 's'} found` : 'Search & Add...'}
+                                                    </option>
+                                                    {availableEntityOptions.map(opt => (
+                                                        <option key={opt.id} value={opt.id}>{opt.label}</option>
+                                                    ))}
                                                 </select>
                                             </div>
                                         </div>
@@ -779,7 +914,7 @@ export const DocumentLibrary = () => {
 
                             {/* Preview Content Area */}
                             <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-slate-100/60">
-                                {previewDoc.fileUrl && (previewDoc.fileUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i) || previewDoc.name.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i)) ? (
+                                {previewDoc.fileUrl && (previewDoc.fileUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i) || previewDoc.name.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) || previewDoc.fileUrl.startsWith('data:image/')) ? (
                                     <div className="w-full flex items-center justify-center py-2">
                                         <img
                                             src={previewDoc.fileUrl}
@@ -787,7 +922,7 @@ export const DocumentLibrary = () => {
                                             className="max-h-[58vh] max-w-full rounded-xl object-contain shadow-sm border border-slate-200 bg-white"
                                         />
                                     </div>
-                                ) : previewDoc.fileUrl && (previewDoc.fileUrl.match(/\.pdf($|\?)/i) || previewDoc.name.toLowerCase().endsWith('.pdf')) ? (
+                                ) : previewDoc.fileUrl && (previewDoc.fileUrl.match(/\.pdf($|\?)/i) || previewDoc.name.toLowerCase().endsWith('.pdf') || previewDoc.fileUrl.startsWith('data:application/pdf')) ? (
                                     <iframe
                                         src={
                                             previewDoc.fileUrl.startsWith('blob:') || previewDoc.fileUrl.startsWith('data:')

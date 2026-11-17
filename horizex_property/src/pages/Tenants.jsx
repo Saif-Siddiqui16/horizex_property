@@ -23,6 +23,7 @@ import api from '../api/client';
 import { AccessControl } from '../components/AccessControl';
 // talCaseService removed
 import { EntityNotesPanel } from '../components/notes/EntityNotesPanel';
+import { formatDisplayDate } from '../utils/dateUtils';
 const initialTenants = [];
 
 export const Tenants = () => {
@@ -2052,7 +2053,7 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) =
                           <td className="px-6 py-4 text-sm text-slate-700">{lease.unit?.rentalMode || 'Full Unit'}</td>
                           <td className="px-6 py-4 text-sm text-slate-600">{lease.unit?.name || 'N/A'}</td>
                           <td className="px-6 py-4 text-sm text-slate-600">
-                            {lease.startDate ? new Date(lease.startDate).toLocaleDateString() : 'TBD'} - {lease.endDate ? new Date(lease.endDate).toLocaleDateString() : 'TBD'}
+                            {lease.startDate ? formatDisplayDate(lease.startDate) : 'TBD'} - {lease.endDate ? formatDisplayDate(lease.endDate) : 'TBD'}
                           </td>
                           <td className="px-6 py-4 text-sm text-slate-700 font-bold">
                             {(!lease.monthlyRent || parseFloat(lease.monthlyRent) === 0) ? (

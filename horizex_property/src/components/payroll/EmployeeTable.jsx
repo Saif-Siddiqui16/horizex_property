@@ -3,14 +3,18 @@ import { Edit2, Trash2, Eye, Award, DollarSign, Calendar } from 'lucide-react';
 
 export const EmployeeTable = ({ employees = [], companies = [], buildings = [], shifts = [], onEdit, onDelete, onViewDetails, onShiftChange, onSalaryUpdate }) => {
   
-  const getCompanyName = (companyId) => {
+  const getCompanyName = (companyId, emp) => {
+    if (emp?.companyName) return emp.companyName;
+    if (emp?.company?.name) return emp.company.name;
     const c = companies.find(comp => String(comp.id) === String(companyId));
-    return c ? c.name : `Company #${companyId}`;
+    return c ? c.name : (companyId ? `Company #${companyId}` : '-');
   };
 
-  const getBuildingName = (buildingId) => {
+  const getBuildingName = (buildingId, emp) => {
+    if (emp?.buildingName) return emp.buildingName;
+    if (emp?.building?.name) return emp.building.name;
     const b = buildings.find(build => String(build.id) === String(buildingId));
-    return b ? b.name : `Building #${buildingId}`;
+    return b ? b.name : (buildingId ? `Building #${buildingId}` : '-');
   };
 
   const getShiftName = (shiftId) => {
@@ -58,8 +62,8 @@ export const EmployeeTable = ({ employees = [], companies = [], buildings = [], 
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-slate-700">{getCompanyName(emp.companyId)}</span>
-                    <span className="text-xs text-slate-400">{getBuildingName(emp.buildingId)}</span>
+                    <span className="font-semibold text-slate-700">{getCompanyName(emp.companyId, emp)}</span>
+                    <span className="text-xs text-slate-400">{getBuildingName(emp.buildingId, emp)}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4">

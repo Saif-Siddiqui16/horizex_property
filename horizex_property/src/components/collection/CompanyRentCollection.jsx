@@ -122,6 +122,11 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
 
     // Filter tenants who belong to any building owned by this company
     const matchingTenants = tenants.filter(t => {
+      // Exclude secondary residents / occupants without their own primary lease or invoice
+      if (t.type === 'Resident' || t.type === 'RESIDENT' || t.parentId) {
+        return false;
+      }
+
       if (!selectedCompanyId) return true;
       if (t.companyId && String(t.companyId) === String(selectedCompanyId)) return true;
       const tPropId = String(t.propertyId || t.unit?.propertyId || '');
@@ -140,7 +145,7 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
       const latestInvoice = matchingInvoices[matchingInvoices.length - 1];
 
       // Monthly rent defaults to active invoice amount (or lease/renewal rent)
-      let monthlyRent = parseFloat(t.rent || 600);
+      let monthlyRent = parseFloat(t.rent || 0);
       if (unpaidInvoices.length > 0 && (unpaidInvoices[0].amountDue || unpaidInvoices[0].amount)) {
         monthlyRent = parseFloat(unpaidInvoices[0].amountDue || unpaidInvoices[0].amount);
       } else if (latestInvoice && (latestInvoice.amountDue || latestInvoice.amount)) {
@@ -148,7 +153,7 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
       }
       
       // Calculate live current balance from database invoices
-      let currentBalance = monthlyRent;
+      let currentBalance = 0;
       if (unpaidInvoices.length > 0) {
         currentBalance = unpaidInvoices.reduce((sum, inv) => {
           const bal = inv.outstandingBalance !== undefined
@@ -162,6 +167,8 @@ export const CompanyRentCollection = ({ onPaymentRecorded = null }) => {
         currentBalance = parseFloat(storedBalances[t.id]);
       } else if (t.balanceDue !== undefined && t.balanceDue > 0) {
         currentBalance = parseFloat(t.balanceDue);
+      } else if (t.activeLeaseId && monthlyRent > 0) {
+        currentBalance = monthlyRent;
       }
 
       return {

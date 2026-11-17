@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { Search, UserPlus, Filter, X, Plus, Edit2, Mail, Phone, Building2, Briefcase, DollarSign, Calendar, Clock, ShieldCheck, CheckCircle2 } from 'lucide-react';
@@ -7,7 +7,9 @@ import {
   useGetEmployeesQuery,
   useCreateEmployeeMutation,
   useUpdateEmployeeMutation,
-  useDeleteEmployeeMutation
+  useDeleteEmployeeMutation,
+  useGetCompaniesQuery,
+  useGetPropertiesQuery
 } from '../../store';
 import departmentService from '../../services/departmentService';
 import shiftService from '../../services/shiftService';
@@ -27,9 +29,22 @@ const mockBuildings = [
 ];
 
 export const EmployeeDirectory = () => {
-const location = useLocation();
-  const [companies] = useState(mockCompanies);
-  const [buildings] = useState(mockBuildings);
+  const location = useLocation();
+  const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+    return localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+  });
+
+  const { data: companiesRaw = [] } = useGetCompaniesQuery();
+  const { data: propertiesRaw = [] } = useGetPropertiesQuery();
+
+  const companies = Array.isArray(companiesRaw) && companiesRaw.length > 0 ? companiesRaw : mockCompanies;
+  const rawBuildings = Array.isArray(propertiesRaw) && propertiesRaw.length > 0 ? propertiesRaw : mockBuildings;
+
+  const buildings = useMemo(() => {
+    if (!selectedCompanyId || selectedCompanyId === 'all') return rawBuildings;
+    return rawBuildings.filter(b => !b.companyId || String(b.companyId) === String(selectedCompanyId));
+  }, [rawBuildings, selectedCompanyId]);
+
   const [shifts, setShifts] = useState([]);
   const [departments, setDepartments] = useState([]);
   
@@ -57,30 +72,28 @@ const location = useLocation();
   // Form States
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', phone: '',
-    companyId: '1', buildingId: '1', department: 'Operations',
+    companyId: selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : '1',
+    buildingId: '1', department: 'Operations',
     designation: '', employmentType: 'Full-time', shiftId: '1',
     salary: '3500', status: 'Active'
   });
 
   // RTK Query hooks
-  const selectedCompanyId = localStorage.getItem('global_selected_company_id') || '';
   const {
     data: rtkEmployees = [],
     isLoading,
     refetch: refetchEmployees
   } = useGetEmployeesQuery({
     ...filters,
-    companyId: selectedCompanyId
+    companyId: selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined
   });
 
   const [createEmployeeMutation] = useCreateEmployeeMutation();
   const [updateEmployeeMutation] = useUpdateEmployeeMutation();
   const [deleteEmployeeMutation] = useDeleteEmployeeMutation();
 
-  // Unified employees list (RTK Query data with fallback to local store)
-  const employees = rtkEmployees && rtkEmployees.length > 0 
-    ? rtkEmployees 
-    : (employeeService.getAll(filters) || []);
+  // Unified employees list (Real RTK Query data only, no fake mock fallback)
+  const employees = Array.isArray(rtkEmployees) ? rtkEmployees : [];
 
   useEffect(() => {
     setShifts(shiftService.getAll());
@@ -89,11 +102,25 @@ const location = useLocation();
 
   useEffect(() => {
     const handleCompanyChange = () => {
+      const currentComp = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      setSelectedCompanyId(currentComp);
       refetchEmployees();
     };
     window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
+    window.addEventListener('buildingChanged', handleCompanyChange);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('buildingChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
   }, [refetchEmployees]);
+
+  useEffect(() => {
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      setForm(prev => ({ ...prev, companyId: selectedCompanyId }));
+    }
+  }, [selectedCompanyId]);
 
   useEffect(() => {
     if (location.state && location.state.openAddModal) {
@@ -104,8 +131,13 @@ const location = useLocation();
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     try {
-      await createEmployeeMutation(form).unwrap();
-      employeeService.create(form);
+      const activeCompId = (selectedCompanyId && selectedCompanyId !== 'all') ? selectedCompanyId : form.companyId;
+      const payload = {
+        ...form,
+        companyId: form.companyId || activeCompId
+      };
+      await createEmployeeMutation(payload).unwrap();
+      refetchEmployees();
       setAddModal(false);
       resetForm();
       alert('Employee created successfully.');
@@ -133,7 +165,7 @@ const location = useLocation();
         salary: parseFloat(form.salary) || 0,
         status: form.status
       }).unwrap();
-      employeeService.update(selectedEmp.id, form);
+      refetchEmployees();
       setEditModal(false);
       setSelectedEmp(null);
       resetForm();
@@ -147,7 +179,7 @@ const location = useLocation();
     if (!window.confirm('Are you sure you want to remove this employee?')) return;
     try {
       await deleteEmployeeMutation(id).unwrap();
-      employeeService.delete(id);
+      refetchEmployees();
     } catch (err) {
       alert(err?.data?.message || err?.message || 'Failed to delete employee');
     }
@@ -158,7 +190,7 @@ const location = useLocation();
     if (!selectedEmp) return;
     try {
       await updateEmployeeMutation({ id: selectedEmp.id, shiftId: form.shiftId }).unwrap();
-      employeeService.update(selectedEmp.id, { shiftId: form.shiftId });
+      refetchEmployees();
       setShiftModal(false);
       setSelectedEmp(null);
       alert('Shift schedule updated.');
@@ -172,7 +204,7 @@ const location = useLocation();
     if (!selectedEmp) return;
     try {
       await updateEmployeeMutation({ id: selectedEmp.id, salary: parseFloat(form.salary) }).unwrap();
-      employeeService.update(selectedEmp.id, { salary: parseFloat(form.salary) });
+      refetchEmployees();
       setSalaryModal(false);
       setSelectedEmp(null);
       alert('Salary structure updated.');
@@ -182,9 +214,11 @@ const location = useLocation();
   };
 
   const resetForm = () => {
+    const defaultComp = (selectedCompanyId && selectedCompanyId !== 'all') ? selectedCompanyId : (companies[0]?.id || '');
+    const defaultBldg = buildings[0]?.id || '';
     setForm({
       firstName: '', lastName: '', email: '', phone: '',
-      companyId: '1', buildingId: '1', department: 'Operations',
+      companyId: defaultComp, buildingId: defaultBldg, department: 'Operations',
       designation: '', employmentType: 'Full-time', shiftId: '1',
       salary: '3500', status: 'Active'
     });

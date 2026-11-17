@@ -6,6 +6,7 @@ import { Button } from '../components/Button';
 import { ArrowLeft, Edit2, Loader2, FileText, Download, AlertCircle, ArrowRight } from 'lucide-react';
 import api from '../api/client';
 import { EntityNotesPanel } from '../components/notes/EntityNotesPanel';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 export const UnitDetail = () => {
 const { id } = useParams();
@@ -185,7 +186,7 @@ const { id } = useParams();
                                         <div className="text-xs text-slate-400 uppercase font-black tracking-widest mb-1">Current Lease Holder</div>
                                         <div className="text-xl font-black text-slate-800 tracking-tight">{unit.activeLease?.tenantName || 'N/A'}</div>
                                         <div className="text-sm text-slate-500 font-medium">
-                                            {unit.activeLease.startDate ? new Date(unit.activeLease.startDate).toLocaleDateString() : 'N/A'} — {unit.activeLease.endDate ? new Date(unit.activeLease.endDate).toLocaleDateString() : 'N/A'}
+                                            {unit.activeLease.startDate ? formatDisplayDate(unit.activeLease.startDate) : 'N/A'} — {unit.activeLease.endDate ? formatDisplayDate(unit.activeLease.endDate) : 'N/A'}
                                         </div>
                                     </div>
                                 </div>
@@ -352,6 +353,7 @@ const { id } = useParams();
                                                 try {
                                                     await api.put(`/api/admin/readiness/activate/${unit.id}`, { ready: e.target.checked });
                                                     fetchUnitDetails();
+                                                    window.dispatchEvent(new Event('unitUpdated'));
                                                 } catch (err) { alert('Error activating unit'); }
                                             }}
                                         />
@@ -425,7 +427,10 @@ const { id } = useParams();
                                                                       isManual: true, // This fixes the 409 conflict error
                                                                       completed: unit[`${step.key}_completed`]
                                                                   })
-                                                                    .then(() => fetchUnitDetails())
+                                                                    .then(() => {
+                                                                      fetchUnitDetails();
+                                                                      window.dispatchEvent(new Event('unitUpdated'));
+                                                                    })
                                                                     .catch(err => alert('Error updating target date'));
                                                                 }}
                                                             />
@@ -443,7 +448,10 @@ const { id } = useParams();
                                                                         const confirmed = window.confirm("Do you want to recalculate future target dates based on this completion?");
                                                                         if (confirmed) {
                                                                             api.put(`/api/admin/readiness/update-step/${unit.id}`, { stepKey: 'gc_delivered', completed: true, recalculate: true })
-                                                                            .then(() => fetchUnitDetails())
+                                                                            .then(() => {
+                                                                        fetchUnitDetails();
+                                                                        window.dispatchEvent(new Event('unitUpdated'));
+                                                                      })
                                                                             .catch(err => alert(err.response?.data?.message || 'Error updating step'));
                                                                         }
                                                                     }}
@@ -461,7 +469,10 @@ const { id } = useParams();
                                                             onClick={() => {
                                                                 const recalculate = step.key === 'gc_delivered' && window.confirm("Recalculate future target dates based on today?");
                                                                 api.put(`/api/admin/readiness/update-step/${unit.id}`, { stepKey: step.key, completed: true, recalculate })
-                                                                .then(() => fetchUnitDetails())
+                                                                .then(() => {
+                                                                    fetchUnitDetails();
+                                                                    window.dispatchEvent(new Event('unitUpdated'));
+                                                                })
                                                                 .catch(err => alert(err.response?.data?.message || 'Error updating step'));
                                                             }}
                                                         >

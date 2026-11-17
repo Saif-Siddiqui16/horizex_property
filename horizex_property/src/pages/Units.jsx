@@ -106,12 +106,35 @@ export const Units = () => {
   const [buildingFilter, setBuildingFilter] = useState('');
 
   // RTK Query Hooks for cached server state and mutations
-  const { data: units = [], isLoading: isLoadingUnits, error: unitsError } = useGetUnitsQuery({
+  const { data: units = [], isLoading: isLoadingUnits, error: unitsError, refetch: refetchUnits } = useGetUnitsQuery({
     search,
     unitType: typeFilter,
     propertyId: buildingFilter,
     showInactive
+  }, {
+    refetchOnMountOrArgChange: true,
   });
+
+  // Always keep Units list fresh on route navigation, tab focus, or unit updates
+  useEffect(() => {
+    if (typeof refetchUnits === 'function') {
+      refetchUnits();
+    }
+  }, [location.pathname, location.key, location.search, refetchUnits]);
+
+  useEffect(() => {
+    const handleUnitRefresh = () => {
+      if (typeof refetchUnits === 'function') {
+        refetchUnits();
+      }
+    };
+    window.addEventListener('unitUpdated', handleUnitRefresh);
+    window.addEventListener('focus', handleUnitRefresh);
+    return () => {
+      window.removeEventListener('unitUpdated', handleUnitRefresh);
+      window.removeEventListener('focus', handleUnitRefresh);
+    };
+  }, [refetchUnits]);
   const { data: buildings = [] } = useGetPropertiesQuery();
   const { data: unitTypes = [] } = useGetUnitTypesQuery();
   const { data: tenants = [] } = useGetTenantsQuery();

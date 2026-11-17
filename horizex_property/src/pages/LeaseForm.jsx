@@ -43,10 +43,14 @@ export const LeaseForm = () => {
 
   // Derived tenants list
   const tenants = useMemo(() => {
-    return (Array.isArray(rawTenants) ? rawTenants : []).map(t => ({
-      ...t,
-      name: t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim()
-    }));
+    return (Array.isArray(rawTenants) ? rawTenants : []).map(t => {
+      const fullName = `${t.firstName || ''} ${t.lastName || ''}`.trim();
+      const displayName = t.name || fullName || t.companyName || 'Tenant';
+      return {
+        ...t,
+        name: displayName
+      };
+    });
   }, [rawTenants]);
 
   // Set of unit IDs that already have an active lease (Full Unit or Bedroom)
@@ -99,12 +103,115 @@ export const LeaseForm = () => {
   const handleBuildingChange = (e) => {
     const buildingId = e.target.value;
     setSelectedBuilding(buildingId);
-    setForm(prev => ({ ...prev, unitId: '', bedroomId: '', tenantId: '' }));
+    setForm(prev => ({ ...prev, unitId: '', bedroomId: '', tenantId: '', coTenantIds: [] }));
   };
 
   const handleUnitChange = (e) => {
     const unitId = e.target.value;
-    setForm(prev => ({ ...prev, unitId, bedroomId: '', tenantId: '' }));
+    const selectedUnit = units.find(u => String(u.id) === String(unitId));
+
+    // Check if there is an assigned resident for the whole unit (no bedroom specified)
+    const assignedResident = tenants.find(t => {
+      const isResidentType = String(t.type || '').toUpperCase() === 'RESIDENT';
+      if (!isResidentType) return false;
+
+      const matchesUnit =
+        (t.unitId && String(t.unitId) === String(unitId)) ||
+        (selectedUnit && (
+          (t.unitNumber && String(t.unitNumber).trim().toLowerCase() === String(selectedUnit.unitNumber || selectedUnit.name).trim().toLowerCase()) ||
+          (t.unit && String(t.unit).trim().toLowerCase() === String(selectedUnit.unitNumber || selectedUnit.name).trim().toLowerCase())
+        ));
+
+      return matchesUnit && !t.bedroomId;
+    });
+
+    let targetTenantId = '';
+    let newCoTenantIds = [];
+
+    if (assignedResident) {
+      if (assignedResident.parentId) {
+        targetTenantId = String(assignedResident.parentId);
+        newCoTenantIds = [String(assignedResident.id)];
+      } else {
+        targetTenantId = String(assignedResident.id);
+      }
+    }
+
+    setForm(prev => ({ ...prev, unitId, bedroomId: '', tenantId: targetTenantId, coTenantIds: newCoTenantIds }));
+  };
+
+  const handleBedroomChange = (e) => {
+    const bedId = e.target.value;
+    if (!bedId) {
+      const selectedUnit = units.find(u => String(u.id) === String(form.unitId));
+      const unitResident = tenants.find(t => {
+        const isResidentType = String(t.type || '').toUpperCase() === 'RESIDENT';
+        if (!isResidentType) return false;
+        const matchesUnit =
+          (t.unitId && String(t.unitId) === String(form.unitId)) ||
+          (selectedUnit && (
+            (t.unitNumber && String(t.unitNumber).trim().toLowerCase() === String(selectedUnit.unitNumber || selectedUnit.name).trim().toLowerCase()) ||
+            (t.unit && String(t.unit).trim().toLowerCase() === String(selectedUnit.unitNumber || selectedUnit.name).trim().toLowerCase())
+          ));
+        return matchesUnit && !t.bedroomId;
+      });
+
+      setForm(prev => ({
+        ...prev,
+        bedroomId: '',
+        tenantId: unitResident?.parentId ? String(unitResident.parentId) : (unitResident?.id ? String(unitResident.id) : ''),
+        coTenantIds: unitResident?.parentId ? [String(unitResident.id)] : []
+      }));
+      return;
+    }
+
+    const selectedBed = bedrooms.find(b => String(b.id) === String(bedId));
+    const selectedBedNum = String(selectedBed?.bedroomNumber || selectedBed?.roomNumber || selectedBed?.displayName || '').trim();
+    const selectedUnit = units.find(u => String(u.id) === String(form.unitId));
+
+    const assignedResident = tenants.find(t => {
+      const isResidentType = String(t.type || '').toUpperCase() === 'RESIDENT';
+      if (!isResidentType) return false;
+
+      const matchesUnit =
+        (t.unitId && String(t.unitId) === String(form.unitId)) ||
+        (selectedUnit && (
+          (t.unitNumber && String(t.unitNumber).trim().toLowerCase() === String(selectedUnit.unitNumber || selectedUnit.name).trim().toLowerCase()) ||
+          (t.unit && String(t.unit).trim().toLowerCase() === String(selectedUnit.unitNumber || selectedUnit.name).trim().toLowerCase())
+        ));
+
+      if (!matchesUnit) return false;
+
+      const resBed = String(t.bedroomId || '').trim();
+      if (!resBed) return false;
+
+      const bedIdStr = String(bedId).trim();
+      const matchesBed =
+        resBed.toLowerCase() === bedIdStr.toLowerCase() ||
+        (selectedBedNum && resBed.toLowerCase() === selectedBedNum.toLowerCase()) ||
+        (selectedBedNum && (resBed.endsWith(`-${bedIdStr}`) || selectedBedNum.endsWith(`-${resBed}`)));
+
+      return Boolean(matchesBed);
+    });
+
+    let targetTenantId = '';
+    let newCoTenantIds = [];
+
+    if (assignedResident) {
+      if (assignedResident.parentId) {
+        targetTenantId = String(assignedResident.parentId);
+        newCoTenantIds = [String(assignedResident.id)];
+      } else {
+        targetTenantId = String(assignedResident.id);
+      }
+    }
+
+    setForm(prev => ({
+      ...prev,
+      bedroomId: bedId,
+      tenantId: targetTenantId,
+      coTenantIds: newCoTenantIds
+    }));
   };
 
   const handleSave = async () => {
@@ -211,7 +318,7 @@ export const LeaseForm = () => {
               <select
                 name="bedroomId"
                 value={form.bedroomId}
-                onChange={(e) => setForm({ ...form, bedroomId: e.target.value })}
+                onChange={handleBedroomChange}
                 disabled={!form.unitId}
                 className="w-full pl-12 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-slate-800 appearance-none disabled:opacity-50"
               >

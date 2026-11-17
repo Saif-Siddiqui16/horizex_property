@@ -2,6 +2,7 @@ import React from 'react';
 import { FileText, Calendar, DollarSign, Home, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useGetTenantLeaseQuery } from '../../store';
+import { formatDisplayDate } from '../../utils/dateUtils';
 
 export const TenantLease = () => {
   const { data: lease, isLoading } = useGetTenantLeaseQuery();
@@ -64,7 +65,7 @@ export const TenantLease = () => {
                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Lease Period</p>
                 <h4 className="text-lg font-bold text-slate-800">Fixed Term</h4>
                 <p className="text-sm text-slate-500 font-medium tracking-tight">
-                  {lease.startDate ? new Date(lease.startDate).toLocaleDateString() : 'N/A'} – {lease.endDate ? new Date(lease.endDate).toLocaleDateString() : 'N/A'}
+                  {lease.startDate ? formatDisplayDate(lease.startDate) : 'N/A'} – {lease.endDate ? formatDisplayDate(lease.endDate) : 'N/A'}
                 </p>
               </div>
             </div>

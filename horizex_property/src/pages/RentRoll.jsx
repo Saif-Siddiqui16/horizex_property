@@ -3,6 +3,7 @@ import { Button } from '../components/Button';
 import { Search, Filter, Building2, Download, Building, Users, Wallet, KeySquare, DoorOpen, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Edit2, X, Trash2, ShieldAlert, Calendar } from 'lucide-react';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
+import { formatNumericDate } from '../utils/dateUtils';
 import clsx from 'clsx';
 
 export const RentRoll = () => {
@@ -112,8 +113,8 @@ export const RentRoll = () => {
                 `"${row.unitNumber || ''}"`,
                 `"${row.bedroomNumber === '-' ? '' : row.bedroomNumber}"`,
                 `"${row.tenantName || ''}"`,
-                row.startDate ? new Date(row.startDate).toLocaleDateString() : 'N/A',
-                row.endDate ? new Date(row.endDate).toLocaleDateString() : 'N/A',
+                row.startDate ? formatNumericDate(row.startDate) : 'N/A',
+                row.endDate ? formatNumericDate(row.endDate) : 'N/A',
                 `"${expiryInfo.text}"`,
                 row.monthlyRent || 0,
                 row.potentialRent || 0,
@@ -402,10 +403,10 @@ export const RentRoll = () => {
                                         <td className="px-3 py-4 text-indigo-600 font-black tracking-widest text-center">{row.bedroomNumber === '-' ? '' : row.bedroomNumber}</td>
                                         <td className="px-3 py-4 text-slate-700 font-bold group-hover:text-indigo-600 transition-colors uppercase whitespace-normal min-w-[180px]">{row.tenantName}</td>
                                         <td className="px-3 py-4 text-slate-600 whitespace-nowrap text-xs">
-                                            {row.startDate ? new Date(row.startDate).toLocaleDateString() : '-'}
+                                            {row.startDate ? formatNumericDate(row.startDate) : '-'}
                                         </td>
                                         <td className="px-3 py-4 text-slate-600 whitespace-nowrap font-bold text-xs">
-                                            {row.endDate ? new Date(row.endDate).toLocaleDateString() : '-'}
+                                            {row.endDate ? formatNumericDate(row.endDate) : '-'}
                                         </td>
                                         <td className="px-3 py-4">
                                             <span className={`px-2 py-1 rounded-md text-[10px] inline-block shadow-sm ${expiryInfo.class}`}>
@@ -504,25 +505,9 @@ export const RentRoll = () => {
                                                         Relocated
                                                     </span>
                                                 ) : (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const parts = row.id.split('-');
-                                                            const type = parts[0];
-                                                            const id = parts.slice(1).join('-');
-
-                                                            setSelectedUnit({
-                                                                id: type === 'bed' ? row.parentUnitId : id,
-                                                                bedroomId: type === 'bed' ? id : null,
-                                                                unitNumber: row.unitNumber,
-                                                                bedroomNumber: row.bedroomNumber !== '-' ? row.bedroomNumber : null
-                                                            });
-                                                            setShowReserveModal(true);
-                                                        }}
-                                                        className="px-3 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-[10px] font-black uppercase hover:bg-zinc-900 hover:text-white transition-all shadow-sm"
-                                                    >
-                                                        Reserve
-                                                    </button>
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-white border border-indigo-700 shadow-sm transition-all">
+                                                        {row.status || 'Vacant'}
+                                                    </span>
                                                 )}
                                             </div>
                                         </td>

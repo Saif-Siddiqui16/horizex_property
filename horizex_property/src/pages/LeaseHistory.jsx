@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, Pencil, Trash2, X, FileText, Calendar, User, Home, Bed, AlertTriangle, CheckCircle, Search, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { Button } from '../components/Button';
 import { hasPermission } from '../utils/permissions';
+import { formatDisplayDate } from '../utils/dateUtils';
 import {
   useGetLeasesQuery,
   useGetPropertiesQuery,
@@ -314,7 +315,7 @@ export const LeaseHistory = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">
                                                 {typeof lease.tenant === 'object' ? `${lease.tenant?.firstName || ''} ${lease.tenant?.lastName || ''}`.trim() : (lease.tenant || '-')}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-mono text-[13px]">{lease.term || (lease.startDate && lease.endDate ? `${new Date(lease.startDate).toLocaleDateString()} - ${new Date(lease.endDate).toLocaleDateString()}` : '-')}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-mono text-[13px]">{lease.term || (lease.startDate && lease.endDate ? `${formatDisplayDate(lease.startDate)} - ${formatDisplayDate(lease.endDate)}` : '-')}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">${(Number(lease.monthlyRent || lease.rentAmount) || 0).toLocaleString('en-CA')}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${(lease.status || '').toLowerCase() === 'active'
@@ -468,7 +469,7 @@ export const LeaseHistory = () => {
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Term</span>
-                                    <span className="text-sm font-medium text-slate-900">{selectedLease.term || (selectedLease.startDate && selectedLease.endDate ? `${new Date(selectedLease.startDate).toLocaleDateString()} - ${new Date(selectedLease.endDate).toLocaleDateString()}` : '-')}</span>
+                                    <span className="text-sm font-medium text-slate-900">{selectedLease.term || (selectedLease.startDate && selectedLease.endDate ? `${formatDisplayDate(selectedLease.startDate)} - ${formatDisplayDate(selectedLease.endDate)}` : '-')}</span>
                                 </div>
                                 <div className="flex justify-between py-3 border-b border-slate-100">
                                     <span className="text-sm font-medium text-slate-500">Monthly Rent</span>

@@ -27,7 +27,9 @@ export const LeaseRenewals = () => {
   const fetchRenewals = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/admin/leases/renewals');
+      const compId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      const params = compId && compId !== 'all' ? `?companyId=${compId}` : '';
+      const res = await api.get(`/admin/leases/renewals${params}`);
       const data = res.data?.data || res.data || [];
       setRenewals(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -40,7 +42,9 @@ export const LeaseRenewals = () => {
 
   const fetchBuildings = async () => {
     try {
-      const res = await api.get('/api/admin/properties');
+      const compId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      const params = compId && compId !== 'all' ? `?companyId=${compId}` : '';
+      const res = await api.get(`/api/admin/properties${params}`);
       setBuildings(res.data?.data || res.data || []);
     } catch (e) {
       console.error(e);
@@ -58,7 +62,13 @@ export const LeaseRenewals = () => {
       fetchBuildings();
     };
     window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
+    window.addEventListener('buildingChanged', handleCompanyChange);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('buildingChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
   }, []);
 
   // Filter & Sort Logic
