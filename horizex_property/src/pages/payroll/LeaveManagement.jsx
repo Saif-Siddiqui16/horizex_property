@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import { Search, Calendar, FileText, Check, X, Plus } from 'lucide-react';
 import leaveService from '../../services/leaveService';
@@ -10,6 +10,7 @@ import {
   useCreateLeaveMutation,
   useUpdateLeaveStatusMutation,
   useDeleteLeaveMutation,
+  useGetEmployeesQuery,
 } from '../../store';
 export const LeaveManagement = () => {
   const [leaves, setLeaves] = useState([]);
@@ -23,7 +24,22 @@ export const LeaveManagement = () => {
     leaveType: ''
   });
 
-  const { data: rtkLeaves = [], refetch: refetchLeaves } = useGetLeavesQuery(filters);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(
+    () => localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || ''
+  );
+
+  const queryArgs = useMemo(() => {
+    const args = { ...filters };
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      args.companyId = selectedCompanyId;
+    }
+    return args;
+  }, [filters, selectedCompanyId]);
+
+  const { data: rtkLeaves = [], refetch: refetchLeaves } = useGetLeavesQuery(queryArgs);
+  const { data: apiEmployees = [] } = useGetEmployeesQuery({
+    companyId: selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined,
+  });
   const [createLeaveMutation] = useCreateLeaveMutation();
   const [updateLeaveStatusMutation] = useUpdateLeaveStatusMutation();
   const [deleteLeaveMutation] = useDeleteLeaveMutation();
@@ -83,40 +99,72 @@ export const LeaveManagement = () => {
   };
 
   const loadData = () => {
-    const compId = localStorage.getItem('global_selected_company_id') || '';
-    const localItems = leaveService.getAll({ ...filters, companyId: compId });
-    const merged = mergeLeaves(rtkLeaves, localItems);
-    setLeaves(merged);
-    setEmployees(employeeService.getAll({ companyId: compId }));
+    let items = Array.isArray(rtkLeaves) ? [...rtkLeaves] : [];
+
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      items = items.filter(
+        l => (l.employeeName && l.employeeName.toLowerCase().includes(q)) ||
+             (l.employeeNo && l.employeeNo.toLowerCase().includes(q)) ||
+             (l.reason && l.reason.toLowerCase().includes(q))
+      );
+    }
+    if (filters.status) {
+      items = items.filter(l => l.status === filters.status);
+    }
+    if (filters.leaveType) {
+      items = items.filter(l => l.leaveType === filters.leaveType);
+    }
+
+    setLeaves(items);
+
+    const compId = selectedCompanyId || localStorage.getItem('global_selected_company_id') || '';
+    const emps = Array.isArray(apiEmployees) && apiEmployees.length > 0
+      ? apiEmployees
+      : employeeService.getAll({ companyId: compId });
+    setEmployees(emps);
   };
 
   useEffect(() => {
     loadData();
-  }, [rtkLeaves, filters.search, filters.status, filters.leaveType]);
+  }, [rtkLeaves, apiEmployees, filters.search, filters.status, filters.leaveType]);
 
   useEffect(() => {
     const handleCompanyChange = () => {
+      const newCompanyId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      setSelectedCompanyId(newCompanyId);
       refetchLeaves();
     };
     window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, []);
+    window.addEventListener('buildingChanged', handleCompanyChange);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('buildingChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
+  }, [refetchLeaves]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.employeeId || !form.startDate || !form.endDate) {
       return alert('Please fill in all required fields');
     }
+    const payload = {
+      ...form,
+      companyId: selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined,
+    };
     try {
       try {
-        await createLeaveMutation(form).unwrap();
+        await createLeaveMutation(payload).unwrap();
       } catch (err) {
         console.warn('Backend create leave fallback:', err);
       }
-      leaveService.create(form);
+      leaveService.create(payload);
       setRequestModal(false);
       resetForm();
       loadData();
+      if (typeof refetchLeaves === 'function') refetchLeaves();
       alert('Leave request submitted successfully.');
     } catch (err) {
       alert(err.message);
@@ -131,6 +179,7 @@ export const LeaveManagement = () => {
     }
     leaveService.updateStatus(id, 'Approved');
     loadData();
+    if (typeof refetchLeaves === 'function') refetchLeaves();
   };
 
   const handleReject = async (id) => {
@@ -143,6 +192,7 @@ export const LeaveManagement = () => {
       }
       leaveService.updateStatus(id, 'Rejected', reason);
       loadData();
+      if (typeof refetchLeaves === 'function') refetchLeaves();
     }
   };
 

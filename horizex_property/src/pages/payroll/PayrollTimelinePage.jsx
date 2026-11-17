@@ -11,7 +11,7 @@ const [events, setEvents] = useState([]);
   });
 
   const loadData = () => {
-    const compId = localStorage.getItem('global_selected_company_id') || '';
+    const compId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
     const list = payrollTimelineService.getAll({ ...filters, companyId: compId });
     setEvents(list);
   };
@@ -20,7 +20,13 @@ const [events, setEvents] = useState([]);
     loadData();
     const handleCompanyChange = () => loadData();
     window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
+    window.addEventListener('buildingChanged', handleCompanyChange);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('buildingChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
   }, [filters]);
 
   const getEventBadgeColor = (type) => {
@@ -83,7 +89,7 @@ const [events, setEvents] = useState([]);
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wide border uppercase ${getEventBadgeColor(evt.eventType)}`}>
                         {evt.eventType}
                       </span>
-                      {evt.employeeName && (
+                      {evt.employeeName && evt.employeeName !== 'undefined undefined' && !evt.employeeName.includes('undefined') && (
                         <span className="font-bold text-slate-800 text-xs flex items-center gap-1">
                           <User size={12} className="text-slate-400" />
                           {evt.employeeName}

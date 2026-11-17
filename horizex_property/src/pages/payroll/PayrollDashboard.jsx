@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import { Card } from '../../components/Card';
 import { Link, useNavigate } from 'react-router-dom';
@@ -11,31 +11,71 @@ import employeeService from '../../services/employeeService';
 import payrollTimelineService from '../../services/payrollTimelineService';
 import { PayrollKPICards } from '../../components/payroll/PayrollKPICards';
 import { PendingLeaveWidget } from '../../components/payroll/PendingLeaveWidget';
-import { UpcomingPayrollWidget } from '../../components/payroll/UpcomingPayrollWidget';
+import { UpcomingPayrollWidget } from '../../components/payroll/UpcomingPayrollWidget';
+import { useGetEmployeesQuery, useGetClockLogsQuery, useClockInMutation, useClockOutMutation } from '../../store';
+
 export const PayrollDashboard = () => {
-const navigate = useNavigate();
-  const [companyId, setCompanyId] = useState(localStorage.getItem('global_selected_company_id') || '');
+  const navigate = useNavigate();
+  const [companyId, setCompanyId] = useState(
+    () => localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || ''
+  );
+
+  const queryArgs = useMemo(() => {
+    const args = {};
+    if (companyId && companyId !== 'all') {
+      args.companyId = companyId;
+    }
+    return args;
+  }, [companyId]);
+
+  const { data: apiEmployees = [], refetch: refetchEmployees } = useGetEmployeesQuery(queryArgs);
+  const { data: apiClockLogs = [] } = useGetClockLogsQuery(queryArgs);
+  const [clockInMutation] = useClockInMutation();
+  const [clockOutMutation] = useClockOutMutation();
   const [kpis, setKpis] = useState({});
   const [pendingLeaves, setPendingLeaves] = useState([]);
   const [pendingCorrections, setPendingCorrections] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [settings, setSettings] = useState({});
   const [timeline, setTimeline] = useState([]);
-  
+
   // Quick Clock Modal State
   const [clockModal, setClockModal] = useState(false);
   const [selectedEmpClock, setSelectedEmpClock] = useState('');
   const [clockMessage, setClockMessage] = useState('');
+  const [isClocking, setIsClocking] = useState(false);
 
   // Submit Leave Modal State
   const [leaveModal, setLeaveModal] = useState(false);
   const [leaveForm, setLeaveForm] = useState({ employeeId: '', leaveType: 'Annual', startDate: '', endDate: '', reason: '' });
 
   const loadData = () => {
-    const compId = localStorage.getItem('global_selected_company_id') || '';
+    const compId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
     setCompanyId(compId);
 
-    const stats = payrollAnalyticsService.getKPIs(compId);
+    const emps = Array.isArray(apiEmployees) && apiEmployees.length > 0
+      ? apiEmployees
+      : employeeService.getAll({ companyId: compId });
+    setEmployees(emps);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayLogs = (Array.isArray(apiClockLogs) ? apiClockLogs : []).filter(
+      l => l.date === todayStr && l.clockIn
+    );
+    const presentToday = todayLogs.length;
+    const lateArrivals = todayLogs.filter(l => l.status === 'Late').length;
+    const activeCount = emps.filter(e => e.status === 'Active' || e.status === 'ACTIVE' || !e.status).length;
+    const absentToday = Math.max(0, activeCount - presentToday);
+
+    const baseKPIs = payrollAnalyticsService.getKPIs(compId);
+    const stats = {
+      ...baseKPIs,
+      totalEmployees: emps.length,
+      activeEmployees: activeCount,
+      presentToday,
+      lateArrivals,
+      absentToday,
+    };
     setKpis(stats);
 
     const leaves = leaveService.getAll({ companyId: compId, status: 'Pending' });
@@ -43,9 +83,6 @@ const navigate = useNavigate();
 
     const corrections = attendanceService.getCorrections({ companyId: compId, status: 'Pending' });
     setPendingCorrections(corrections);
-
-    const emps = employeeService.getAll({ companyId: compId });
-    setEmployees(emps);
 
     const config = payrollSettingsService.getSettings();
     setSettings(config);
@@ -56,10 +93,25 @@ const navigate = useNavigate();
 
   useEffect(() => {
     loadData();
-    const handleCompanyChange = () => loadData();
+  }, [apiEmployees, apiClockLogs, companyId]);
+
+  useEffect(() => {
+    const handleCompanyChange = () => {
+      const compId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      setCompanyId(compId);
+      if (typeof refetchEmployees === 'function') {
+        refetchEmployees();
+      }
+    };
     window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, []);
+    window.addEventListener('buildingChanged', handleCompanyChange);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('buildingChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
+  }, [refetchEmployees]);
 
   const handleApproveLeave = (id) => {
     leaveService.updateStatus(id, 'Approved');
@@ -95,33 +147,57 @@ const navigate = useNavigate();
   };
 
   // Clock Actions
-  const handleClockIn = () => {
+  const handleClockIn = async () => {
     if (!selectedEmpClock) return alert('Select an employee first');
+    if (isClocking) return;
+    setIsClocking(true);
     try {
-      attendanceService.clockIn(selectedEmpClock);
+      try {
+        await clockInMutation({ employeeId: selectedEmpClock, notes: { status: 'Present' } }).unwrap();
+      } catch (apiErr) {
+        console.warn('API clock-in sync warning:', apiErr);
+      }
+      try {
+        attendanceService.clockIn(selectedEmpClock);
+      } catch (ignored) { }
+
       setClockMessage('Successfully clocked in!');
       setTimeout(() => {
         setClockMessage('');
         setClockModal(false);
+        setIsClocking(false);
         loadData();
       }, 1500);
     } catch (e) {
-      alert(e.message);
+      setIsClocking(false);
+      alert(e?.data?.message || e.message || 'Failed to clock in');
     }
   };
 
-  const handleClockOut = () => {
+  const handleClockOut = async () => {
     if (!selectedEmpClock) return alert('Select an employee first');
+    if (isClocking) return;
+    setIsClocking(true);
     try {
-      attendanceService.clockOut(selectedEmpClock);
+      try {
+        await clockOutMutation({ employeeId: selectedEmpClock, notes: { status: 'Present' } }).unwrap();
+      } catch (apiErr) {
+        console.warn('API clock-out sync warning:', apiErr);
+      }
+      try {
+        attendanceService.clockOut(selectedEmpClock);
+      } catch (ignored) { }
+
       setClockMessage('Successfully clocked out!');
       setTimeout(() => {
         setClockMessage('');
         setClockModal(false);
+        setIsClocking(false);
         loadData();
       }, 1500);
     } catch (e) {
-      alert(e.message);
+      setIsClocking(false);
+      alert(e?.data?.message || e.message || 'Failed to clock out');
     }
   };
 
@@ -145,7 +221,7 @@ const navigate = useNavigate();
   return (
     <>
       <div className="flex flex-col gap-8">
-        
+
         {/* KPI Cards Grid */}
         <PayrollKPICards kpis={kpis} />
 
@@ -153,42 +229,42 @@ const navigate = useNavigate();
         <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-card">
           <h4 className="font-bold text-slate-800 text-sm mb-4">Quick Management Actions</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            <button 
+            <button
               onClick={() => navigate('/payroll/employees', { state: { openAddModal: true } })}
               className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-blue-50/50 hover:border-blue-100 text-slate-700 hover:text-blue-600 transition-all gap-2 cursor-pointer font-bold text-xs"
             >
               <UserPlus size={18} />
               Add Employee
             </button>
-            <button 
+            <button
               onClick={() => setClockModal(true)}
               className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-emerald-50/50 hover:border-emerald-100 text-slate-700 hover:text-emerald-600 transition-all gap-2 cursor-pointer font-bold text-xs"
             >
               <Clock size={18} />
               Record Attendance
             </button>
-            <button 
+            <button
               onClick={() => setLeaveModal(true)}
               className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-amber-50/50 hover:border-amber-100 text-slate-700 hover:text-amber-600 transition-all gap-2 cursor-pointer font-bold text-xs"
             >
               <FilePlus2 size={18} />
               Submit Leave
             </button>
-            <button 
+            <button
               onClick={() => navigate('/payroll/leaves')}
               className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-indigo-50/50 hover:border-indigo-100 text-slate-700 hover:text-indigo-600 transition-all gap-2 cursor-pointer font-bold text-xs"
             >
               <CheckCircle size={18} />
               Approve Leaves
             </button>
-            <button 
+            <button
               onClick={() => navigate('/payroll/run')}
               className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-violet-50/50 hover:border-violet-100 text-slate-700 hover:text-violet-600 transition-all gap-2 cursor-pointer font-bold text-xs"
             >
               <DollarSign size={18} />
               Process Payroll
             </button>
-            <button 
+            <button
               onClick={() => navigate('/payroll/employees')}
               className="flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-sky-50/50 hover:border-sky-100 text-slate-700 hover:text-sky-600 transition-all gap-2 cursor-pointer font-bold text-xs"
             >
@@ -200,10 +276,10 @@ const navigate = useNavigate();
 
         {/* Dashboard Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* Main Widgets Column */}
           <div className="lg:col-span-2 flex flex-col gap-8">
-            
+
             {/* Attendance Corrections Widget (Workflow) */}
             <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-card flex flex-col gap-6">
               <div className="flex items-center justify-between border-b border-slate-50 pb-4">
@@ -224,8 +300,8 @@ const navigate = useNavigate();
                   </div>
                 ) : (
                   pendingCorrections.map((corr) => (
-                    <div 
-                      key={corr.id} 
+                    <div
+                      key={corr.id}
                       className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-2xl border border-slate-50 bg-slate-50/20 hover:bg-slate-50/50 transition-all gap-4"
                     >
                       <div className="flex flex-col gap-1 text-xs">
@@ -238,13 +314,13 @@ const navigate = useNavigate();
                         <span className="italic text-slate-500 mt-1">"Reason: {corr.reason}"</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button 
+                        <button
                           onClick={() => handleApproveCorrection(corr.id)}
                           className="px-3 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all border border-emerald-100"
                         >
                           Approve
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleRejectCorrection(corr.id)}
                           className="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-all border border-rose-100"
                         >
@@ -258,17 +334,17 @@ const navigate = useNavigate();
             </div>
 
             {/* Reusable Leave Requests Widget */}
-            <PendingLeaveWidget 
-              requests={pendingLeaves} 
-              onApprove={handleApproveLeave} 
-              onReject={handleRejectLeave} 
+            <PendingLeaveWidget
+              requests={pendingLeaves}
+              onApprove={handleApproveLeave}
+              onReject={handleRejectLeave}
             />
 
           </div>
 
           {/* Side Column widgets */}
           <div className="flex flex-col gap-8">
-            
+
             {/* Reusable Upcoming Payroll Widget */}
             <UpcomingPayrollWidget employees={employees} settings={settings} />
 
@@ -309,11 +385,11 @@ const navigate = useNavigate();
               <h3 className="font-bold text-slate-800 text-sm">Roster Attendance Override</h3>
               <button onClick={() => setClockModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm bg-transparent border-none">×</button>
             </div>
-            
+
             <div className="flex flex-col gap-2.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Employee</label>
-              <select 
-                value={selectedEmpClock} 
+              <select
+                value={selectedEmpClock}
                 onChange={(e) => setSelectedEmpClock(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium"
               >
@@ -331,14 +407,16 @@ const navigate = useNavigate();
             )}
 
             <div className="flex gap-3 mt-2">
-              <button 
+              <button
                 onClick={handleClockIn}
+                disabled={isClocking}
                 className="flex-1 py-2.5 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl border-none shadow-lg shadow-blue-600/10 transition-all cursor-pointer"
               >
                 Clock In Today
               </button>
-              <button 
+              <button
                 onClick={handleClockOut}
+                disabled={isClocking}
                 className="flex-1 py-2.5 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl border-none shadow-lg shadow-indigo-600/10 transition-all cursor-pointer"
               >
                 Clock Out Today
@@ -356,11 +434,11 @@ const navigate = useNavigate();
               <h3 className="font-bold text-slate-800 text-sm">Submit New Leave Request</h3>
               <button type="button" onClick={() => setLeaveModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm bg-transparent border-none">×</button>
             </div>
-            
+
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Employee</label>
-              <select 
-                value={leaveForm.employeeId} 
+              <select
+                value={leaveForm.employeeId}
                 onChange={(e) => setLeaveForm(p => ({ ...p, employeeId: e.target.value }))}
                 className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium"
                 required
@@ -374,8 +452,8 @@ const navigate = useNavigate();
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leave Type</label>
-              <select 
-                value={leaveForm.leaveType} 
+              <select
+                value={leaveForm.leaveType}
                 onChange={(e) => setLeaveForm(p => ({ ...p, leaveType: e.target.value }))}
                 className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium"
                 required
@@ -393,9 +471,9 @@ const navigate = useNavigate();
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
-                <input 
+                <input
                   type="date"
-                  value={leaveForm.startDate} 
+                  value={leaveForm.startDate}
                   onChange={(e) => setLeaveForm(p => ({ ...p, startDate: e.target.value }))}
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium"
                   required
@@ -403,9 +481,9 @@ const navigate = useNavigate();
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">End Date</label>
-                <input 
+                <input
                   type="date"
-                  value={leaveForm.endDate} 
+                  value={leaveForm.endDate}
                   onChange={(e) => setLeaveForm(p => ({ ...p, endDate: e.target.value }))}
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium"
                   required
@@ -415,8 +493,8 @@ const navigate = useNavigate();
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason / Notes</label>
-              <textarea 
-                value={leaveForm.reason} 
+              <textarea
+                value={leaveForm.reason}
                 onChange={(e) => setLeaveForm(p => ({ ...p, reason: e.target.value }))}
                 rows={2}
                 className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium resize-none"
@@ -424,7 +502,7 @@ const navigate = useNavigate();
               />
             </div>
 
-            <button 
+            <button
               type="submit"
               className="w-full mt-2 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl border-none shadow-lg cursor-pointer transition-all"
             >

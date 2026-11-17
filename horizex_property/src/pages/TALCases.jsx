@@ -111,234 +111,86 @@ const [activeTab, setActiveTab] = useState(defaultTab);
 
 
   const loadData = async () => {
-
     try {
-
       setLoading(true);
+      const compId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      const buildId = localStorage.getItem('global_selected_building_id') || '';
 
-      const casesRes = await api.get('/admin/tal-cases').catch(() => ({ data: [] }));
-
-      const apiCases = casesRes.data?.data || casesRes.data || [];
-
-
-
-      const DEFAULT_TAL_CASES = [
-
-        {
-
-          id: 'tal-case-1',
-
-          caseNumber: 'TAL-2026-0001',
-
-          docketNumber: 'TAL-2026-0001',
-
-          companyId: 1,
-
-          propertyId: 1,
-
-          propertyName: 'Parkview Heights',
-
-          unitId: 1,
-
-          unitNumber: 'Unit 101',
-
-          tenantId: 1,
-
-          tenantName: 'Demo Tenant',
-
-          leaseId: 1,
-
-          caseType: 'Non-Payment of Rent',
-
-          reason: 'Unpaid Rent for October & November 2026',
-
-          subject: 'Rent Recovery and Late Fee Arrears',
-
-          caseSummary: 'Tenant has not paid rent for 2 consecutive months despite formal notices sent.',
-
-          status: 'Preparing Documents',
-
-          priority: 'HIGH',
-
-          amountOwed: 2500,
-
-          amountClaimed: 2948,
-
-          filingFee: 98,
-
-          legalFees: 350,
-
-          outstandingRent: 2500,
-
-          recoveredAmount: 0,
-
-          paymentStatus: 'Unpaid',
-
-          filedDate: '2026-11-01',
-
-          assignedManagerName: 'Admin Administrator',
-
-          assignedLawyerId: 'lwy-001',
-
-          assignedLawyerName: 'Me. Jean Tremblay (Tremblay Legal Group)',
-
-          nextHearingDate: '2026-12-15T10:00:00Z',
-
-          courtRoom: 'Room 302 - TAL Montreal',
-
-          createdAt: '2026-11-01T10:00:00Z'
-
-        }
-
-      ];
-
-
-
-      const localSaved = JSON.parse(localStorage.getItem('mock_tal_cases') || 'null');
-
-      const localCases = localSaved !== null ? localSaved : DEFAULT_TAL_CASES;
-
-      if (localSaved === null) {
-
-        localStorage.setItem('mock_tal_cases', JSON.stringify(DEFAULT_TAL_CASES));
-
+      const queryParams = {};
+      if (compId && compId !== 'all') {
+        queryParams.companyId = compId;
       }
 
+      const casesRes = await api.get('/admin/tal-cases', { params: queryParams }).catch(() => ({ data: [] }));
+      const apiCases = casesRes.data?.data || casesRes.data || [];
 
+      let formattedCases = apiCases.map(c => ({
+        ...c,
+        id: c.id,
+        companyId: c.property?.companyId || c.companyId,
+        propertyId: c.property?.id || c.propertyId,
+        caseNumber: c.caseNumber || c.docketNumber,
+        tenantName: c.tenantName || (c.tenant ? `${c.tenant.firstName || ''} ${c.tenant.lastName || ''}`.trim() : 'Tenant'),
+        propertyName: c.propertyName || c.property?.name || '',
+        unitNumber: c.unitNumber || c.unit?.unitNumber || '',
+      }));
 
-      const map = new Map();
+      // Apply company filter strictly if active
+      if (compId && compId !== 'all') {
+        formattedCases = formattedCases.filter(c => String(c.companyId) === String(compId));
+      }
+      // Apply building filter if selected
+      if (buildId && buildId !== 'all') {
+        formattedCases = formattedCases.filter(c => String(c.propertyId) === String(buildId));
+      }
 
-      localCases.forEach(c => map.set(String(c.id || c.caseNumber || c.docketNumber), c));
+      setCases(formattedCases);
 
-      apiCases.forEach(c => {
-
-        const id = String(c.id || c.caseNumber || c.docketNumber);
-
-        const existing = map.get(id) || {};
-
-        map.set(id, {
-
-          ...existing,
-
-          ...c,
-
-          caseNumber: c.caseNumber || c.docketNumber || existing.caseNumber,
-
-          tenantName: c.tenantName || (c.tenant ? `${c.tenant.firstName || ''} ${c.tenant.lastName || ''}`.trim() : existing.tenantName),
-
-          propertyName: c.propertyName || c.property?.name || existing.propertyName,
-
-          unitNumber: c.unitNumber || c.unit?.unitNumber || existing.unitNumber,
-
-        });
-
-      });
-
-      const caseList = Array.from(map.values());
-
-      setCases(caseList);
-
-
-
-      const openCases = caseList.filter(c => !['Closed', 'Archived', 'RESOLVED'].includes(c.status)).length;
-
-      const draftCases = caseList.filter(c => c.status === 'Draft' || c.status === 'DRAFTED').length;
-
-      const filedCases = caseList.filter(c => ['Filed', 'FILED', 'Ready to File', 'Preparing Documents'].includes(c.status)).length;
-
-      const hearingsScheduled = caseList.filter(c => c.status === 'Hearing Scheduled' || c.status === 'HEARING_SCHEDULED' || c.nextHearingDate).length;
-
-      const awaitingDecision = caseList.filter(c => ['Hearing Completed', 'Decision Received'].includes(c.status)).length;
-
-      const ordersIssued = caseList.filter(c => ['Order Issued', 'Payment Ordered', 'Eviction Approved'].includes(c.status)).length;
-
-      const closedCases = caseList.filter(c => ['Closed', 'Archived', 'RESOLVED'].includes(c.status)).length;
-
-      const urgentList = caseList.filter(c => (c.priority || '').toUpperCase() === 'URGENT');
-
-
+      const openCases = formattedCases.filter(c => !['Closed', 'Archived', 'RESOLVED'].includes(c.status)).length;
+      const draftCases = formattedCases.filter(c => c.status === 'Draft' || c.status === 'DRAFTED').length;
+      const filedCases = formattedCases.filter(c => ['Filed', 'FILED', 'Ready to File', 'Preparing Documents'].includes(c.status)).length;
+      const hearingsScheduled = formattedCases.filter(c => c.status === 'Hearing Scheduled' || c.status === 'HEARING_SCHEDULED' || c.nextHearingDate).length;
+      const awaitingDecision = formattedCases.filter(c => ['Hearing Completed', 'Decision Received'].includes(c.status)).length;
+      const ordersIssued = formattedCases.filter(c => ['Order Issued', 'Payment Ordered', 'Eviction Approved'].includes(c.status)).length;
+      const closedCases = formattedCases.filter(c => ['Closed', 'Archived', 'RESOLVED'].includes(c.status)).length;
+      const urgentList = formattedCases.filter(c => (c.priority || '').toUpperCase() === 'URGENT');
 
       setMetrics({
-
         openCases,
-
         draftCases,
-
         filedCases,
-
         hearingsScheduled,
-
         awaitingDecision,
-
         ordersIssued,
-
         closedCases,
-
         urgentCases: urgentList.length,
-
-        totalCases: caseList.length,
-
+        totalCases: formattedCases.length,
         activeLitigation: openCases
-
       });
 
-
-
       const statusMap = {};
-
-      caseList.forEach(c => {
-
+      formattedCases.forEach(c => {
         statusMap[c.status] = (statusMap[c.status] || 0) + 1;
-
       });
 
       setStatusBreakdown(Object.entries(statusMap).map(([status, count]) => ({ status, count })));
-
-      setUpcomingHearings(caseList.filter(c => c.nextHearingDate));
-
+      setUpcomingHearings(formattedCases.filter(c => c.nextHearingDate));
       setUrgentCases(urgentList);
 
-      let allTasks = caseList.flatMap(c => (c.tasks || []).map(t => ({
+      let allTasks = formattedCases.flatMap(c => (c.tasks || []).map(t => ({
         ...t,
         caseId: c.id,
         caseNumber: c.caseNumber,
         tenantName: c.tenantName
       })));
-      if (allTasks.length === 0) {
-        allTasks = [
-          {
-            id: 'task-1',
-            title: 'Serve Formal Notice of Non-Payment',
-            description: 'Send registered demand letter before filing TAL application',
-            dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'PENDING',
-            priority: 'HIGH'
-          },
-          {
-            id: 'task-2',
-            title: 'Prepare Evidence Dossier',
-            description: 'Compile lease agreement, payment ledger, and communication records',
-            dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'PENDING',
-            priority: 'MEDIUM'
-          }
-        ];
-      }
       setOverdueTasks(allTasks);
 
     } catch (e) {
-
       console.error(e);
-
     } finally {
-
       setLoading(false);
-
     }
-
   };
-
-
 
   const loadDropdownData = async () => {
 
@@ -377,19 +229,18 @@ const [activeTab, setActiveTab] = useState(defaultTab);
 
 
   useEffect(() => {
-
     const handleCompanyChange = () => {
-
       loadData();
-
       loadDropdownData();
-
     };
-
     window.addEventListener('companyChanged', handleCompanyChange);
-
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
-
+    window.addEventListener('buildingChanged', handleCompanyChange);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('buildingChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
   }, []);
 
 

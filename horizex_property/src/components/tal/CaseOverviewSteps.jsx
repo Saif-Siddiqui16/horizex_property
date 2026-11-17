@@ -81,7 +81,7 @@ export const CaseOverviewSteps = ({
   title = "TAL Case Overview Steps to Follow"
 }) => {
   // Case selection state
-  const [activeCaseId, setActiveCaseId] = useState(selectedCaseId || (availableCases[0]?.id || 1));
+  const [activeCaseId, setActiveCaseId] = useState(selectedCaseId || (availableCases[0]?.id || ''));
   const [completedSteps, setCompletedSteps] = useState({});
   const [completionTimestamps, setCompletionTimestamps] = useState({});
 
@@ -89,8 +89,10 @@ export const CaseOverviewSteps = ({
   useEffect(() => {
     if (selectedCaseId) {
       setActiveCaseId(selectedCaseId);
-    } else if (availableCases.length > 0 && !activeCaseId) {
+    } else if (availableCases.length > 0) {
       setActiveCaseId(availableCases[0].id);
+    } else {
+      setActiveCaseId('');
     }
   }, [selectedCaseId, availableCases]);
 
@@ -170,10 +172,10 @@ export const CaseOverviewSteps = ({
   const percentComplete = Math.round((completedCount / totalSteps) * 100);
 
   // Active case data
-  const currentCase = availableCases.find(c => c.id === parseInt(activeCaseId)) || {
-    caseNumber: `TAL-CASE-${activeCaseId}`,
-    tenantName: 'Tenant Case File',
-    propertyName: 'Property'
+  const currentCase = availableCases.find(c => String(c.id) === String(activeCaseId)) || (availableCases.length > 0 ? availableCases[0] : null) || {
+    caseNumber: activeCaseId ? (String(activeCaseId).startsWith('TAL-') ? activeCaseId : `TAL-CASE-${activeCaseId}`) : 'No Active Case',
+    tenantName: availableCases.length > 0 ? 'Tenant Case File' : 'No Cases Available',
+    propertyName: 'N/A'
   };
 
   return (
@@ -201,7 +203,7 @@ export const CaseOverviewSteps = ({
               <select
                 value={activeCaseId}
                 onChange={(e) => {
-                  const id = parseInt(e.target.value);
+                  const id = e.target.value;
                   setActiveCaseId(id);
                   if (onCaseChange) onCaseChange(id);
                 }}

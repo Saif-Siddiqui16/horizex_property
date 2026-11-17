@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import { Search, Calendar, Clock, Edit3, ShieldAlert, FileText, Zap } from 'lucide-react';
 import attendanceService from '../../services/attendanceService';
@@ -73,43 +73,40 @@ const [logs, setLogs] = useState([]);
     clockIn: '', clockOut: '', breakStart: '', breakEnd: '', reason: ''
   });
 
-  const { data: rtkLogs = [], refetch: refetchClockLogs } = useGetClockLogsQuery(filters);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(() => 
+    localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || ''
+  );
 
-  const mergeLogs = (apiList = [], localList = []) => {
-    const map = new Map();
-    (localList || []).forEach(item => {
-      const key = `${item.employeeName || item.employeeId}_${item.date}`;
-      map.set(key, item);
-      map.set(String(item.id), item);
-    });
-    (apiList || []).forEach(item => {
-      const key = `${item.employeeName || item.employeeId}_${item.date}`;
-      if (!map.has(key)) {
-        map.set(key, item);
-      } else {
-        const existing = map.get(key);
-        map.set(key, { ...existing, ...item });
-      }
-      map.set(String(item.id), item);
-    });
-
-    const seen = new Set();
-    const result = [];
-    for (const val of map.values()) {
-      const uniqueKey = `${val.employeeName || val.employeeId}_${val.date}`;
-      if (!seen.has(uniqueKey)) {
-        seen.add(uniqueKey);
-        result.push(val);
-      }
+  const queryArgs = useMemo(() => {
+    const args = {};
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      args.companyId = selectedCompanyId;
     }
+    return args;
+  }, [selectedCompanyId]);
 
-    return result.sort((a, b) => new Date(b.date || b.clockIn) - new Date(a.date || a.clockIn));
-  };
+  const { data: rtkLogs = [], refetch: refetchClockLogs } = useGetClockLogsQuery(queryArgs);
 
   const loadData = () => {
-    const compId = localStorage.getItem('global_selected_company_id') || '';
-    const localItems = attendanceService.getAll({ ...filters, companyId: compId });
-    const items = mergeLogs(rtkLogs, localItems);
+    let items = Array.isArray(rtkLogs) ? [...rtkLogs] : [];
+
+    if (filters.search) {
+      const q = filters.search.toLowerCase().trim();
+      items = items.filter(
+        i => (i.employeeName && i.employeeName.toLowerCase().includes(q)) ||
+             (i.employeeNo && i.employeeNo.toLowerCase().includes(q))
+      );
+    }
+    if (filters.department) {
+      items = items.filter(i => i.department === filters.department);
+    }
+    if (filters.status) {
+      items = items.filter(i => i.status === filters.status);
+    }
+    if (filters.date) {
+      items = items.filter(i => i.date === filters.date);
+    }
+
     setLogs(items);
     
     // Auto-select first log if none selected using functional updater to prevent loop
@@ -119,8 +116,11 @@ const [logs, setLogs] = useState([]);
         const updated = items.find(i => String(i.id) === String(prev.id));
         return updated || items[0];
       });
+    } else {
+      setSelectedLog(null);
     }
 
+    const compId = selectedCompanyId || localStorage.getItem('global_selected_company_id') || '';
     setEmployees(employeeService.getAll({ companyId: compId }));
     setDepartments(departmentService.getAll());
   };
@@ -131,12 +131,20 @@ const [logs, setLogs] = useState([]);
 
   useEffect(() => {
     const handleCompanyChange = () => {
+      const newCompanyId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      setSelectedCompanyId(newCompanyId);
       setSelectedLog(null);
       refetchClockLogs();
     };
     window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, []);
+    window.addEventListener('buildingChanged', handleCompanyChange);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('buildingChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
+  }, [refetchClockLogs]);
 
   const handleOverrideOpen = (log) => {
     setSelectedLog(log);
@@ -167,6 +175,7 @@ const [logs, setLogs] = useState([]);
     
     setOverrideModal(false);
     loadData();
+    if (typeof refetchClockLogs === 'function') refetchClockLogs();
     alert('Attendance details updated successfully.');
   };
 
@@ -200,6 +209,7 @@ const [logs, setLogs] = useState([]);
 
     setCorrectionModal(false);
     loadData();
+    if (typeof refetchClockLogs === 'function') refetchClockLogs();
     alert('Correction request submitted for approval.');
   };
 

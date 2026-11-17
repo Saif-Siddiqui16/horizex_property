@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import { Search, Calendar, FileText, Check, X, Plus, Clock, Zap } from 'lucide-react';
 import overtimeService from '../../services/overtimeService';
@@ -9,6 +9,7 @@ import {
   useCreateOvertimeMutation,
   useUpdateOvertimeStatusMutation,
   useDeleteOvertimeMutation,
+  useGetEmployeesQuery,
 } from '../../store';
 export const OvertimeTracking = () => {
   const [logs, setLogs] = useState([]);
@@ -21,7 +22,22 @@ export const OvertimeTracking = () => {
     status: ''
   });
 
-  const { data: rtkOvertime = [], refetch: refetchOvertime } = useGetOvertimeQuery(filters);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(
+    () => localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || ''
+  );
+
+  const queryArgs = useMemo(() => {
+    const args = { ...filters };
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      args.companyId = selectedCompanyId;
+    }
+    return args;
+  }, [filters, selectedCompanyId]);
+
+  const { data: rtkOvertime = [], refetch: refetchOvertime } = useGetOvertimeQuery(queryArgs);
+  const { data: apiEmployees = [] } = useGetEmployeesQuery({
+    companyId: selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined,
+  });
   const [createOvertimeMutation] = useCreateOvertimeMutation();
   const [updateOvertimeStatusMutation] = useUpdateOvertimeStatusMutation();
   const [deleteOvertimeMutation] = useDeleteOvertimeMutation();
@@ -79,49 +95,76 @@ export const OvertimeTracking = () => {
   };
 
   const loadData = () => {
-    const compId = localStorage.getItem('global_selected_company_id') || '';
-    const localItems = overtimeService.getAll({ ...filters, companyId: compId });
-    const merged = mergeOvertime(rtkOvertime, localItems);
-    setLogs(merged);
-    setEmployees(employeeService.getAll({ companyId: compId }));
+    let items = Array.isArray(rtkOvertime) ? [...rtkOvertime] : [];
+
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      items = items.filter(
+        l => (l.employeeName && l.employeeName.toLowerCase().includes(q)) ||
+             (l.employeeNo && l.employeeNo.toLowerCase().includes(q))
+      );
+    }
+    if (filters.status) {
+      items = items.filter(l => l.status === filters.status);
+    }
+
+    setLogs(items);
+
+    const compId = selectedCompanyId || localStorage.getItem('global_selected_company_id') || '';
+    const emps = Array.isArray(apiEmployees) && apiEmployees.length > 0
+      ? apiEmployees
+      : employeeService.getAll({ companyId: compId });
+    setEmployees(emps);
 
     // Compute metrics
-    const rawList = merged;
-    const approved = rawList.filter(l => l.status === 'Approved').reduce((s, l) => s + (Number(l.hours) || 0), 0);
-    const pending = rawList.filter(l => l.status === 'Pending').reduce((s, l) => s + (Number(l.hours) || 0), 0);
-    const rejected = rawList.filter(l => l.status === 'Rejected').reduce((s, l) => s + (Number(l.hours) || 0), 0);
-    const cost = rawList.filter(l => l.status === 'Approved').reduce((s, l) => s + (Number(l.cost) || 0), 0);
+    const approved = items.filter(l => l.status === 'Approved').reduce((s, l) => s + (Number(l.hours) || 0), 0);
+    const pending = items.filter(l => l.status === 'Pending').reduce((s, l) => s + (Number(l.hours) || 0), 0);
+    const rejected = items.filter(l => l.status === 'Rejected').reduce((s, l) => s + (Number(l.hours) || 0), 0);
+    const cost = items.filter(l => l.status === 'Approved').reduce((s, l) => s + (Number(l.cost) || 0), 0);
 
     setMetrics({ approved, pending, rejected, cost });
   };
 
   useEffect(() => {
     loadData();
-  }, [rtkOvertime, filters.search, filters.status]);
+  }, [rtkOvertime, apiEmployees, filters.search, filters.status]);
 
   useEffect(() => {
     const handleCompanyChange = () => {
+      const newCompanyId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      setSelectedCompanyId(newCompanyId);
       refetchOvertime();
     };
     window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, []);
+    window.addEventListener('buildingChanged', handleCompanyChange);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('buildingChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
+  }, [refetchOvertime]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.employeeId || !form.hours || !form.date) {
       return alert('Please fill in all required fields');
     }
+    const payload = {
+      ...form,
+      companyId: selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined,
+    };
     try {
       try {
-        await createOvertimeMutation(form).unwrap();
+        await createOvertimeMutation(payload).unwrap();
       } catch (err) {
         console.warn('Backend overtime create fallback:', err);
       }
-      overtimeService.create(form);
+      overtimeService.create(payload);
       setLogModal(false);
       resetForm();
       loadData();
+      if (typeof refetchOvertime === 'function') refetchOvertime();
       alert('Overtime log logged successfully.');
     } catch (err) {
       alert(err.message);
@@ -136,6 +179,7 @@ export const OvertimeTracking = () => {
     }
     overtimeService.updateStatus(id, 'Approved');
     loadData();
+    if (typeof refetchOvertime === 'function') refetchOvertime();
   };
 
   const handleReject = async (id) => {
@@ -146,6 +190,7 @@ export const OvertimeTracking = () => {
     }
     overtimeService.updateStatus(id, 'Rejected');
     loadData();
+    if (typeof refetchOvertime === 'function') refetchOvertime();
   };
 
   const resetForm = () => {

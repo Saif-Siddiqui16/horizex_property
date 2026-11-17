@@ -10,12 +10,15 @@ import {
   useCreateShiftMutation,
   useUpdateShiftMutation,
   useDeleteShiftMutation,
+  useGetEmployeesQuery,
 } from '../../store';
 export const ShiftManagement = () => {
   const [shifts, setShifts] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(() => localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
   
   const { data: rtkShifts = [], refetch: refetchShifts } = useGetShiftsQuery();
+  const { data: apiEmployees = [] } = useGetEmployeesQuery({ companyId: selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined });
   const [createShiftMutation] = useCreateShiftMutation();
   const [updateShiftMutation] = useUpdateShiftMutation();
   const [deleteShiftMutation] = useDeleteShiftMutation();
@@ -52,24 +55,37 @@ export const ShiftManagement = () => {
   };
 
   const loadData = () => {
-    const compId = localStorage.getItem('global_selected_company_id') || '';
-    const localItems = shiftService.getAll();
-    const merged = mergeShifts(rtkShifts, localItems);
-    setShifts(merged);
-    setEmployees(employeeService.getAll({ companyId: compId }));
+    const compId = selectedCompanyId || localStorage.getItem('global_selected_company_id') || '';
+    const shiftList = Array.isArray(rtkShifts) && rtkShifts.length > 0
+      ? [...rtkShifts]
+      : shiftService.getAll();
+    shiftList.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+    setShifts(shiftList);
+    const emps = Array.isArray(apiEmployees) && apiEmployees.length > 0
+      ? apiEmployees
+      : employeeService.getAll({ companyId: compId });
+    setEmployees(emps);
   };
 
   useEffect(() => {
     loadData();
-  }, [rtkShifts]);
+  }, [rtkShifts, apiEmployees]);
 
   useEffect(() => {
     const handleCompanyChange = () => {
+      const newCompanyId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      setSelectedCompanyId(newCompanyId);
       refetchShifts();
     };
     window.addEventListener('companyChanged', handleCompanyChange);
-    return () => window.removeEventListener('companyChanged', handleCompanyChange);
-  }, []);
+    window.addEventListener('buildingChanged', handleCompanyChange);
+    window.addEventListener('storage', handleCompanyChange);
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('buildingChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
+  }, [refetchShifts]);
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
