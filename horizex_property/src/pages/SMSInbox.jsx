@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 import { Search, Send, User, MessageSquare, Clock, Filter, CheckCheck, RefreshCw, ChevronLeft, LayoutPanelLeft } from 'lucide-react';
 
-import { hasPermission } from '../utils/permissions';
+import { hasPermission } from '../utils/permissions';
 const SMSInbox = () => {
 const [__forceUpdate, __setForceUpdate] = useState(0);
     useEffect(() => {
@@ -23,15 +23,40 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     const [showSidebar, setShowSidebar] = useState(true);
     const [activeTab, setActiveTab] = useState('ALL'); // ALL, TENANT, COWORKER, OWNER, RESIDENT
     
+    const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+        return localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+    });
+    const [selectedBuildingId, setSelectedBuildingId] = useState(() => {
+        return localStorage.getItem('global_selected_building_id') || '';
+    });
+
     const messagesEndRef = useRef(null);
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
     useEffect(() => {
+        const handleSync = () => {
+            const comp = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+            const bld = localStorage.getItem('global_selected_building_id') || '';
+            setSelectedCompanyId(comp);
+            setSelectedBuildingId(bld);
+        };
+        window.addEventListener('companyChanged', handleSync);
+        window.addEventListener('buildingChanged', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('buildingChanged', handleSync);
+            window.removeEventListener('storage', handleSync);
+        };
+    }, []);
+
+    useEffect(() => {
+        setSelectedUser(null);
         fetchConversations();
         fetchTemplates();
         const interval = setInterval(fetchConversations, 10000); // Poll for new threads
         return () => clearInterval(interval);
-    }, []);
+    }, [selectedCompanyId, selectedBuildingId]);
 
     useEffect(() => {
         if (selectedUser) {
@@ -47,7 +72,11 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
     const fetchConversations = async () => {
         try {
-            const response = await api.get('/api/communication/conversations');
+            const params = {};
+            if (selectedCompanyId) params.companyId = selectedCompanyId;
+            if (selectedBuildingId) params.buildingId = selectedBuildingId;
+
+            const response = await api.get('/api/communication/conversations', { params });
             // Sort by most recent message
             const sorted = (response.data || []).sort((a, b) => {
                 const dateA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt) : new Date(0);
@@ -119,12 +148,27 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     };
 
     const filteredConversations = conversations.filter(c => {
+        // Exclude mock / demo contacts
+        if (c.name === 'Demo Tenant' || c.email === 'tenant@property.com' || c.name === 'Demo Owner' || c.email === 'owner@property.com') {
+            return false;
+        }
+
+        // Scope to selected company
+        if (selectedCompanyId && c.companyId && c.companyId !== selectedCompanyId) {
+            return false;
+        }
+
+        // Scope to selected building
+        if (selectedBuildingId && c.propertyId && c.propertyId !== selectedBuildingId) {
+            return false;
+        }
+
         const matchesSearch = c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone?.includes(searchTerm);
         if (!matchesSearch) return false;
         
         if (activeTab === 'ALL') return true;
-        if (activeTab === 'TENANT') return c.role === 'TENANT' || c.role === 'RESIDENT';
-        if (activeTab === 'RESIDENT') return c.role === 'RESIDENT' || c.role === 'TENANT';
+        if (activeTab === 'TENANT') return c.role === 'TENANT';
+        if (activeTab === 'RESIDENT') return c.role === 'RESIDENT';
         if (activeTab === 'COWORKER') return c.role === 'COWORKER';
         if (activeTab === 'OWNER') return c.role === 'OWNER';
         return true;

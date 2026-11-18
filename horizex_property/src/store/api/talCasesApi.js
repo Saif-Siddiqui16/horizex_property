@@ -3,7 +3,10 @@ import { masterApi } from '../baseApi';
 export const talCasesApi = masterApi.injectEndpoints({
   endpoints: (builder) => ({
     getTalCases: builder.query({
-      query: () => '/admin/tal-cases',
+      query: (params) => ({
+        url: '/admin/tal-cases',
+        params,
+      }),
       transformResponse: (response) => response.data || [],
       providesTags: ['TalCases'],
     }),

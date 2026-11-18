@@ -14,7 +14,10 @@ export const accountingApi = masterApi.injectEndpoints({
           : [{ type: 'Invoices', id: 'LIST' }],
     }),
     getPaymentsReceived: builder.query({
-      query: () => '/admin/payments-received',
+      query: (params) => ({
+        url: '/admin/payments-received',
+        params,
+      }),
       transformResponse: (response) => response.data || [],
       providesTags: ['Payments'],
     }),

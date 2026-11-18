@@ -18,8 +18,10 @@ import {
 } from '../store/api/extraApi';
 import { useGetCompaniesQuery } from '../store/api/companiesApi';
 import { useGetTenantsQuery } from '../store/api/tenantsApi';
-import { useGetPropertiesQuery } from '../store/api/propertiesApi';
+import { useGetPropertiesQuery, useGetUnitsQuery } from '../store/api/propertiesApi';
 import { useGetLeasesQuery } from '../store/api/leasesApi';
+import { useGetInvoicesQuery, useGetPaymentsReceivedQuery } from '../store/api/accountingApi';
+import { useGetTalCasesQuery } from '../store/api/talCasesApi';
 import { NOTE_ENTITY_TYPES } from '../constants/notes';
 
 export const NotesHub = () => {
@@ -71,9 +73,13 @@ export const NotesHub = () => {
     refetchOnMountOrArgChange: true,
   });
   const { data: companiesData = [] } = useGetCompaniesQuery(undefined, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
-  const { data: tenantsData = [] } = useGetTenantsQuery(undefined, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
-  const { data: propertiesData = [] } = useGetPropertiesQuery(undefined, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
-  const { data: leasesData = [] } = useGetLeasesQuery(undefined, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
+  const { data: tenantsData = [] } = useGetTenantsQuery(queryParams, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
+  const { data: propertiesData = [] } = useGetPropertiesQuery(queryParams, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
+  const { data: leasesData = [] } = useGetLeasesQuery(queryParams, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
+  const { data: unitsData = [] } = useGetUnitsQuery(queryParams, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
+  const { data: invoicesData = [] } = useGetInvoicesQuery(queryParams, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
+  const { data: paymentsData = [] } = useGetPaymentsReceivedQuery(queryParams, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
+  const { data: talCasesData = [] } = useGetTalCasesQuery(queryParams, { skip: !showCreate && activeTab !== 'overview' && activeTab !== 'notes' });
 
   // RTK Mutations
   const [createNoteMutation, { isLoading: isCreating }] = useCreateNoteMutation();
@@ -198,6 +204,46 @@ export const NotesHub = () => {
         route = '/companies';
         exists = true;
       }
+    } else if (typeKey === 'APARTMENT') {
+      const u = (unitsData || []).find((x) => String(x.id) === String(note.entityId || note.targetId));
+      if (u) {
+        label = `Unit ${u.unitNumber || u.id}`;
+        subtitle = u.property?.name || u.propertyName || '';
+        route = u.propertyId ? `/properties/${u.propertyId}` : '/properties';
+        exists = true;
+      }
+    } else if (typeKey === 'INVOICE') {
+      const inv = (invoicesData || []).find((x) => String(x.id) === String(note.entityId || note.targetId));
+      if (inv) {
+        label = inv.invoiceNo || `Invoice #${String(inv.id).slice(0, 6)}`;
+        subtitle = [inv.tenantName, inv.totalAmount ? `$${inv.totalAmount}` : ''].filter(Boolean).join(' · ');
+        route = '/accounting/invoices';
+        exists = true;
+      }
+    } else if (typeKey === 'PAYMENT') {
+      const pay = (paymentsData || []).find((x) => String(x.id) === String(note.entityId || note.targetId));
+      if (pay) {
+        label = `Payment #${String(pay.id).slice(0, 8)}`;
+        subtitle = [pay.tenantName, pay.amount ? `$${pay.amount}` : ''].filter(Boolean).join(' · ');
+        route = '/payments/received';
+        exists = true;
+      }
+    } else if (typeKey === 'TAL_CASE') {
+      const tal = (talCasesData || []).find((x) => String(x.id) === String(note.entityId || note.targetId));
+      if (tal) {
+        label = tal.caseNumber || `TAL Case #${String(tal.id).slice(0, 8)}`;
+        subtitle = [tal.tenantName, tal.propertyName || tal.property?.name].filter(Boolean).join(' · ');
+        route = '/tal-cases';
+        exists = true;
+      }
+    } else if (typeKey === 'RENEWAL') {
+      const r = (leasesData || []).find((x) => String(x.id) === String(note.entityId || note.targetId));
+      if (r) {
+        label = `Renewal: ${r.tenantName || 'Lease'} (${r.unitNumber || 'Unit'})`;
+        subtitle = r.propertyName || '';
+        route = '/leases';
+        exists = true;
+      }
     }
 
     return {
@@ -211,21 +257,32 @@ export const NotesHub = () => {
       label,
       subtitle,
     };
-  }, [tenantsData, propertiesData, leasesData, companiesData]);
+  }, [tenantsData, propertiesData, leasesData, companiesData, unitsData, invoicesData, paymentsData, talCasesData]);
 
   // Filter by company in addition to backend query
   const companyMatchedNotes = useMemo(() => {
     if (!notesData || !Array.isArray(notesData)) return [];
-    if (!selectedCompanyId || selectedCompanyId === 'all') return notesData;
+
+    // Keep all valid company notes (exclude shift schedules, payroll runs, leaves, overtime, and employee metadata)
+    const validNotes = notesData.filter((n) => {
+      const type = String(n.entityType || n.targetType || '').toUpperCase();
+      return (
+        !type.startsWith('PAYROLL_') &&
+        !type.startsWith('EMPLOYEE_') &&
+        type !== 'COWORKER_CHAT' &&
+        type !== 'OWNER_CHAT'
+      );
+    });
+
+    if (!selectedCompanyId || selectedCompanyId === 'all') return validNotes;
     const compIdStr = String(selectedCompanyId);
 
-    return notesData.filter((n) => {
+    return validNotes.filter((n) => {
       if (n.companyId && String(n.companyId) === compIdStr) return true;
-      if (n.author?.companyId && String(n.author.companyId) === compIdStr) return true;
       if ((n.entityType === 'COMPANY' || n.targetType === 'COMPANY') && String(n.entityId || n.targetId) === compIdStr) {
         return true;
       }
-      if (n.entityType === 'BUILDING' || n.targetType === 'BUILDING') {
+      if (n.entityType === 'BUILDING' || n.targetType === 'BUILDING' || n.entityType === 'PROPERTY') {
         const prop = (propertiesData || []).find((p) => String(p.id) === String(n.entityId || n.targetId));
         if (prop && String(prop.companyId) === compIdStr) return true;
       }
@@ -235,9 +292,27 @@ export const NotesHub = () => {
           return true;
         }
       }
+      if (n.entityType === 'APARTMENT' || n.targetType === 'APARTMENT' || n.entityType === 'UNIT') {
+        const un = (unitsData || []).find((u) => String(u.id) === String(n.entityId || n.targetId));
+        if (un && (String(un.companyId) === compIdStr || (un.property && String(un.property.companyId) === compIdStr))) {
+          return true;
+        }
+      }
+      if (n.entityType === 'LEASE' || n.targetType === 'LEASE' || n.entityType === 'RENEWAL' || n.targetType === 'RENEWAL') {
+        const ls = (leasesData || []).find((l) => String(l.id) === String(n.entityId || n.targetId));
+        if (ls && (String(ls.companyId) === compIdStr || (ls.property && String(ls.property.companyId) === compIdStr))) {
+          return true;
+        }
+      }
+      if (n.entityType === 'TAL_CASE' || n.targetType === 'TAL_CASE') {
+        const tc = (talCasesData || []).find((c) => String(c.id) === String(n.entityId || n.targetId));
+        if (tc && (String(tc.companyId) === compIdStr || (tc.property && String(tc.property.companyId) === compIdStr))) {
+          return true;
+        }
+      }
       return false;
     });
-  }, [notesData, selectedCompanyId, propertiesData, tenantsData]);
+  }, [notesData, selectedCompanyId, propertiesData, tenantsData, unitsData, leasesData, talCasesData]);
 
   // Enriched notes
   const enrichedNotes = useMemo(() => {
@@ -318,13 +393,30 @@ export const NotesHub = () => {
     const sorted = [...enrichedNotes].sort(
       (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     );
-    return sorted.slice(0, 10).map((n) => ({
-      id: n.id,
-      eventType: n.isPinned ? 'NOTE_PINNED' : 'NOTE_CREATED',
-      description: `${n.title}: ${n.content ? (n.content.length > 60 ? n.content.slice(0, 60) + '...' : n.content) : 'Note recorded'}`,
-      actorName: n.createdBy || n.authorName || 'Admin User',
-      createdAt: n.createdAt,
-    }));
+    return sorted.slice(0, 10).map((n) => {
+      let desc = n.content || 'Note recorded';
+      if (typeof desc === 'string' && desc.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(desc);
+          if (parsed.text) desc = parsed.text;
+          else if (parsed.leaveType) desc = `${parsed.leaveType} Leave (${parsed.startDate || ''} to ${parsed.endDate || ''})`;
+          else if (parsed.hours) desc = `Overtime: ${parsed.hours} hrs`;
+          else if (parsed.payrollNo) desc = `Payroll Run: ${parsed.payrollNo}`;
+          else if (parsed.employeeNo) desc = `Employee: ${parsed.employeeNo}`;
+          else desc = n.title;
+        } catch {
+          desc = n.title;
+        }
+      }
+      const snippet = desc ? (desc.length > 70 ? desc.slice(0, 70) + '...' : desc) : 'Note recorded';
+      return {
+        id: n.id,
+        eventType: n.isPinned ? 'NOTE_PINNED' : 'NOTE_CREATED',
+        description: `${n.title}: ${snippet}`,
+        actorName: n.createdBy || n.authorName || 'Admin User',
+        createdAt: n.createdAt,
+      };
+    });
   }, [enrichedNotes]);
 
   // Notes by Entity Type Breakdown
@@ -344,43 +436,169 @@ export const NotesHub = () => {
 
   // Dynamic Entity Options for Modal Select
   const entityOptions = useMemo(() => {
+    const isCompanyActive = selectedCompanyId && selectedCompanyId !== 'all';
+    const compIdStr = isCompanyActive ? String(selectedCompanyId) : null;
+
     if (form.entityType === 'TENANT') {
-      return (tenantsData || []).map((t) => ({
+      const list = (tenantsData || []).filter((t) => {
+        if (!compIdStr) return true;
+        if (t.companyId && String(t.companyId) === compIdStr) return true;
+        if (t.property?.companyId && String(t.property.companyId) === compIdStr) return true;
+        return false;
+      });
+      if (list.length === 0) {
+        return [{ entityId: '0', label: 'No tenants in selected company (General)', subtitle: '' }];
+      }
+      return list.map((t) => ({
         entityId: String(t.id),
         label: `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Tenant',
-        subtitle: t.unitNumber || t.phone || '',
+        subtitle: [t.unitNumber, t.propertyName || t.property?.name].filter(Boolean).join(' · ') || t.phone || '',
       }));
     }
+
     if (form.entityType === 'BUILDING') {
-      return (propertiesData || []).map((p) => ({
+      const list = (propertiesData || []).filter((p) => {
+        if (!compIdStr) return true;
+        return String(p.companyId) === compIdStr;
+      });
+      if (list.length === 0) {
+        return [{ entityId: '0', label: 'No buildings in selected company (General)', subtitle: '' }];
+      }
+      return list.map((p) => ({
         entityId: String(p.id),
         label: p.name || 'Building',
         subtitle: p.address || '',
       }));
     }
+
     if (form.entityType === 'LEASE') {
-      return (leasesData || []).map((l) => ({
+      const list = (leasesData || []).filter((l) => {
+        if (!compIdStr) return true;
+        if (l.companyId && String(l.companyId) === compIdStr) return true;
+        if (l.property?.companyId && String(l.property.companyId) === compIdStr) return true;
+        return false;
+      });
+      if (list.length === 0) {
+        return [{ entityId: '0', label: 'No leases in selected company (General)', subtitle: '' }];
+      }
+      return list.map((l) => ({
         entityId: String(l.id),
         label: l.tenantName ? `${l.tenantName} (${l.unitNumber || 'Lease'})` : `Lease #${String(l.id).slice(0, 6)}`,
-        subtitle: l.propertyName || '',
+        subtitle: l.propertyName || l.property?.name || '',
       }));
     }
+
+    if (form.entityType === 'APARTMENT') {
+      const list = (unitsData || []).filter((u) => {
+        if (!compIdStr) return true;
+        if (u.companyId && String(u.companyId) === compIdStr) return true;
+        if (u.property?.companyId && String(u.property.companyId) === compIdStr) return true;
+        return false;
+      });
+      if (list.length === 0) {
+        return [{ entityId: '0', label: 'No apartments in selected company (General)', subtitle: '' }];
+      }
+      return list.map((u) => ({
+        entityId: String(u.id),
+        label: `Unit ${u.unitNumber || u.id}`,
+        subtitle: u.property?.name || u.propertyName || '',
+      }));
+    }
+
+    if (form.entityType === 'INVOICE') {
+      const list = (invoicesData || []).filter((inv) => {
+        if (!compIdStr) return true;
+        if (inv.companyId && String(inv.companyId) === compIdStr) return true;
+        return false;
+      });
+      if (list.length === 0) {
+        return [{ entityId: '0', label: 'No invoices in selected company (General)', subtitle: '' }];
+      }
+      return list.map((inv) => ({
+        entityId: String(inv.id),
+        label: inv.invoiceNo || `Invoice #${String(inv.id).slice(0, 6)}`,
+        subtitle: [inv.tenantName, inv.totalAmount ? `$${inv.totalAmount}` : ''].filter(Boolean).join(' · '),
+      }));
+    }
+
+    if (form.entityType === 'PAYMENT') {
+      const list = (paymentsData || []).filter((p) => {
+        if (!compIdStr) return true;
+        if (p.companyId && String(p.companyId) === compIdStr) return true;
+        return false;
+      });
+      if (list.length === 0) {
+        return [{ entityId: '0', label: 'No payments in selected company (General)', subtitle: '' }];
+      }
+      return list.map((p) => ({
+        entityId: String(p.id),
+        label: `Payment #${String(p.id).slice(0, 8)}`,
+        subtitle: [p.tenantName, p.amount ? `$${p.amount}` : ''].filter(Boolean).join(' · '),
+      }));
+    }
+
+    if (form.entityType === 'TAL_CASE') {
+      const list = (talCasesData || []).filter((c) => {
+        if (!compIdStr) return true;
+        if (c.companyId && String(c.companyId) === compIdStr) return true;
+        if (c.property?.companyId && String(c.property.companyId) === compIdStr) return true;
+        return false;
+      });
+      if (list.length === 0) {
+        return [{ entityId: '0', label: 'No TAL cases in selected company (General)', subtitle: '' }];
+      }
+      return list.map((c) => ({
+        entityId: String(c.id),
+        label: c.caseNumber || `TAL Case #${String(c.id).slice(0, 8)}`,
+        subtitle: [c.tenantName, c.property?.name || c.propertyName].filter(Boolean).join(' · '),
+      }));
+    }
+
+    if (form.entityType === 'RENEWAL') {
+      const list = (leasesData || []).filter((l) => {
+        if (!compIdStr) return true;
+        if (l.companyId && String(l.companyId) === compIdStr) return true;
+        if (l.property?.companyId && String(l.property.companyId) === compIdStr) return true;
+        return false;
+      });
+      if (list.length === 0) {
+        return [{ entityId: '0', label: 'No renewals in selected company (General)', subtitle: '' }];
+      }
+      return list.map((l) => ({
+        entityId: String(l.id),
+        label: `Renewal: ${l.tenantName || 'Lease'} (${l.unitNumber || 'Unit'})`,
+        subtitle: l.propertyName || l.property?.name || '',
+      }));
+    }
+
     if (form.entityType === 'COMPANY') {
-      if (companiesData && companiesData.length > 0) {
-        return companiesData.map((c) => ({
+      const list = (companiesData || []).filter((c) => {
+        if (!compIdStr) return true;
+        return String(c.id) === compIdStr;
+      });
+      if (list.length > 0) {
+        return list.map((c) => ({
           entityId: String(c.id),
           label: c.name || 'Company',
-          subtitle: c.email || '',
+          subtitle: c.email || c.code || '',
         }));
       }
-      return [{ entityId: 'comp-1', label: 'Horizex Real Estate Corp', subtitle: 'Main Company' }];
+      return [{ entityId: compIdStr || 'comp-1', label: 'Current Company', subtitle: '' }];
     }
-    // Fallback to resolver search or default
-    const fallback = notesHubService.searchEntities(form.entityType, '');
-    return fallback.length > 0
-      ? fallback
-      : [{ entityId: '0', label: 'General / All', subtitle: '' }];
-  }, [form.entityType, tenantsData, propertiesData, leasesData, companiesData]);
+
+    return [{ entityId: '0', label: 'General / All', subtitle: '' }];
+  }, [
+    form.entityType,
+    selectedCompanyId,
+    tenantsData,
+    propertiesData,
+    leasesData,
+    unitsData,
+    invoicesData,
+    paymentsData,
+    talCasesData,
+    companiesData,
+  ]);
 
   // Handle Note Submission
   const handleCreate = async (e) => {
@@ -391,6 +609,23 @@ export const NotesHub = () => {
     }
 
     try {
+      // Resolve companyId accurately
+      let noteCompanyId = selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined;
+      if (!noteCompanyId) {
+        if (form.entityType === 'COMPANY' && form.entityId && form.entityId !== '0') {
+          noteCompanyId = form.entityId;
+        } else if (form.entityType === 'BUILDING' && form.entityId && form.entityId !== '0') {
+          const prop = (propertiesData || []).find((p) => String(p.id) === String(form.entityId));
+          if (prop?.companyId) noteCompanyId = prop.companyId;
+        } else if (form.entityType === 'TENANT' && form.entityId && form.entityId !== '0') {
+          const ten = (tenantsData || []).find((t) => String(t.id) === String(form.entityId));
+          if (ten?.companyId || ten?.property?.companyId) noteCompanyId = ten.companyId || ten.property?.companyId;
+        } else if (form.entityType === 'APARTMENT' && form.entityId && form.entityId !== '0') {
+          const un = (unitsData || []).find((u) => String(u.id) === String(form.entityId));
+          if (un?.companyId || un?.property?.companyId) noteCompanyId = un.companyId || un.property?.companyId;
+        }
+      }
+
       const payload = {
         title: form.title,
         content: form.content,
@@ -402,7 +637,7 @@ export const NotesHub = () => {
         priority: form.priority,
         isPinned: form.isPinned,
         isPrivate: form.isPrivate,
-        companyId: selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined,
+        companyId: noteCompanyId,
         mentions: form.mentions
           ? (typeof form.mentions === 'string' ? form.mentions.split(',').map((m) => m.trim()).filter(Boolean) : form.mentions)
           : [],
