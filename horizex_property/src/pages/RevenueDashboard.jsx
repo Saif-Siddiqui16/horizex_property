@@ -51,10 +51,17 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
   const fetchStats = async (ownerId = '') => {
     try {
       setLoading(true);
-      const ownerParam = ownerId ? `?ownerId=${ownerId}` : '';
+      const compId = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      const bldId = localStorage.getItem('global_selected_building_id') || '';
+      const params = new URLSearchParams();
+      if (ownerId) params.append('ownerId', ownerId);
+      if (compId && compId !== 'all') params.append('companyId', compId);
+      if (bldId && bldId !== 'all') params.append('propertyId', bldId);
+      const queryParam = params.toString() ? `?${params.toString()}` : '';
+
       const [res, dashRes] = await Promise.all([
-        api.get(`/api/admin/analytics/revenue${ownerParam}`),
-        api.get(`/api/admin/dashboard/stats${ownerParam}`)
+        api.get(`/api/admin/analytics/revenue${queryParam}`),
+        api.get(`/api/admin/dashboard/stats${queryParam}`)
       ]);
       const rawData = res.data;
       const data = Array.isArray(rawData)

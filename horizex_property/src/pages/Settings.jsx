@@ -184,7 +184,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 />
               </label>
 
-              <label className="flex flex-col gap-1.5 text-[13px] mb-3.5 text-slate-700">
+              {/* Company Logo URL (Commented out per request) */}
+              {/* <label className="flex flex-col gap-1.5 text-[13px] mb-3.5 text-slate-700">
                 Company Logo URL
                 <input
                   value={settings.companyLogo || ''}
@@ -192,7 +193,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   placeholder="https://example.com/logo.png"
                   className="h-[38px] px-2.5 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium text-slate-900"
                 />
-              </label>
+              </label> */}
 
               <label className="flex flex-col gap-1.5 text-[13px] mb-3.5 text-slate-700">
                 Company Phone
@@ -204,7 +205,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 />
               </label>
 
-              <label className="flex flex-col gap-1.5 text-[13px] mb-3.5 text-slate-700">
+              {/* Global Email Signature (Commented out per request) */}
+              {/* <label className="flex flex-col gap-1.5 text-[13px] mb-3.5 text-slate-700">
                 Global Email Signature (HTML)
                 <textarea
                   value={settings.GLOBAL_EMAIL_SIGNATURE || ''}
@@ -212,7 +214,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                   placeholder="<p>Best regards,<br><b>Horizex Team</b></p>"
                   className="px-2.5 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono text-xs text-slate-900 min-h-[100px] bg-slate-50"
                 />
-              </label>
+              </label> */}
 
               <label className="flex flex-col gap-1.5 text-[13px] mb-3.5 text-slate-700">
                 Default Currency

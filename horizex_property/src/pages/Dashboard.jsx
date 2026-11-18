@@ -10,6 +10,7 @@ import {
   useGetLeasesQuery,
   useGetInvoicesQuery,
   useGetTalCasesQuery,
+  useGetNotesQuery,
 } from '../store';
 
 import { RecentRenewalsWidget } from '../components/renewals/RecentRenewalsWidget';
@@ -88,6 +89,7 @@ export const Dashboard = () => {
   const { data: allLeases = [], isLoading: leasesLoading, refetch: refetchLeases } = useGetLeasesQuery(queryCompanyParam ? { companyId: queryCompanyParam } : undefined);
   const { data: allInvoices = [], refetch: refetchInvoices } = useGetInvoicesQuery(queryCompanyParam ? { companyId: queryCompanyParam } : undefined);
   const { data: allTalCases = [], refetch: refetchTal } = useGetTalCasesQuery(queryCompanyParam ? { companyId: queryCompanyParam } : undefined);
+  const { data: allNotes = [], refetch: refetchNotes } = useGetNotesQuery(queryCompanyParam ? { companyId: queryCompanyParam } : undefined);
 
   useEffect(() => {
     const handleBuildingSync = () => {
@@ -99,6 +101,7 @@ export const Dashboard = () => {
       refetchLeases?.();
       refetchInvoices?.();
       refetchTal?.();
+      refetchNotes?.();
     };
     window.addEventListener('buildingChanged', handleBuildingSync);
     window.addEventListener('companyChanged', handleBuildingSync);
@@ -108,7 +111,7 @@ export const Dashboard = () => {
       window.removeEventListener('companyChanged', handleBuildingSync);
       window.removeEventListener('storage', handleBuildingSync);
     };
-  }, [refetchStats, refetchRevenue, refetchUnits, refetchLeases, refetchInvoices, refetchTal]);
+  }, [refetchStats, refetchRevenue, refetchUnits, refetchLeases, refetchInvoices, refetchTal, refetchNotes]);
 
   // Dynamic greeting and user name
   const [adminName, setAdminName] = useState('Admin');
@@ -185,7 +188,7 @@ export const Dashboard = () => {
     let list = Array.isArray(allUnits) ? allUnits : [];
     if (selectedCompanyId && selectedCompanyId !== 'all') {
       list = list.filter(u => {
-        const uCompId = u.companyId || u.property?.companyId;
+        const uCompId = u.companyId || u.property?.companyId || u.property?.company?.id;
         return String(uCompId) === String(selectedCompanyId);
       });
     }
@@ -340,15 +343,97 @@ export const Dashboard = () => {
     return list;
   }, [allTalCases, selectedCompanyId, selectedBuildingId]);
 
-  // Active TAL cases count
+  // Active TAL cases count and mapped urgent cases
   const legalSummary = useMemo(() => {
     const list = Array.isArray(filteredTalCases) ? filteredTalCases : [];
     const active = list.filter(c => (c.status || '').toUpperCase() !== 'CLOSED' && (c.status || '').toUpperCase() !== 'RESOLVED');
     return {
       activeCasesCount: active.length,
-      urgentCases: active.slice(0, 5)
+      urgentCases: active.slice(0, 5).map(c => ({
+        id: c.id,
+        caseNumber: c.docketNumber || c.caseNumber || 'N/A',
+        tenantName: typeof c.tenant === 'object'
+          ? `${c.tenant?.firstName || ''} ${c.tenant?.lastName || ''}`.trim()
+          : (c.tenant || 'Tenant'),
+        subject: c.description || c.docketNumber || `Claim: $${c.amountClaimed || 0}`,
+        status: c.status,
+        propertyName: c.property?.name || c.propertyName || 'Property'
+      }))
     };
   }, [filteredTalCases]);
+
+  // Upcoming Hearings extracted from real TAL cases
+  const upcomingHearings = useMemo(() => {
+    const list = [];
+    (filteredTalCases || []).forEach(c => {
+      const caseNumber = c.docketNumber || c.caseNumber || 'N/A';
+      const tenantName = typeof c.tenant === 'object'
+        ? `${c.tenant?.firstName || ''} ${c.tenant?.lastName || ''}`.trim()
+        : (c.tenant || 'Tenant');
+      const propertyName = c.property?.name || c.propertyName || 'Property';
+      const unitNumber = c.unit?.unitNumber || c.unitNumber || '-';
+
+      (c.events || []).forEach(e => {
+        if (e.eventType === 'HEARING' && !e.isCompleted) {
+          list.push({
+            id: e.id,
+            caseNumber,
+            tenantName,
+            date: e.eventDate,
+            nextHearingDate: e.eventDate,
+            courtRoom: 'TAL Court Room',
+            judgeName: 'Administrative Judge',
+            propertyName,
+            unitNumber
+          });
+        }
+      });
+    });
+    return list.sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [filteredTalCases]);
+
+  // Urgent Legal Tasks extracted from real TAL cases
+  const urgentLegalTasks = useMemo(() => {
+    const list = [];
+    (filteredTalCases || []).forEach(c => {
+      (c.events || []).forEach(e => {
+        if (e.eventType !== 'HEARING' && !e.isCompleted) {
+          list.push({
+            id: e.id,
+            title: e.eventType === 'DEADLINE' ? `Deadline: ${e.description}` : (e.eventType || 'Legal Task'),
+            description: e.description,
+            status: e.isCompleted ? 'COMPLETED' : 'PENDING',
+            dueDate: e.eventDate,
+            assignedTo: 'Property Manager'
+          });
+        }
+      });
+    });
+    return list.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  }, [filteredTalCases]);
+
+  // Filtered Notes respecting top-bar Company & Building selector
+  const filteredNotes = useMemo(() => {
+    let list = Array.isArray(allNotes) ? allNotes : [];
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      list = list.filter(n => {
+        const cId = n.companyId || (n.entityType === 'COMPANY' ? n.entityId : null);
+        return !cId || String(cId) === String(selectedCompanyId);
+      });
+    }
+    return list;
+  }, [allNotes, selectedCompanyId]);
+
+  // Real Notes Activity for CommunicationTimeline
+  const realNotesActivity = useMemo(() => {
+    return filteredNotes.slice(0, 8).map(n => ({
+      id: n.id,
+      eventType: n.category || 'NOTE',
+      description: `${n.title || 'Note'}${n.content ? `: ${n.content}` : ''}`,
+      actorName: n.authorName || n.createdBy || 'Staff',
+      createdAt: n.createdAt
+    }));
+  }, [filteredNotes]);
 
   // Reserved Units from Vacant / Inactive units
   const reservedUnits = useMemo(() => {
@@ -437,7 +522,7 @@ export const Dashboard = () => {
                   },
                   { title: 'This Month Collected', value: `$${(collectionMetrics.thisMonthCollection || 0).toLocaleString('en-CA')}`, subValue: 'Cash Inflow', icon: TrendingUp, color: 'bg-emerald-500', path: '/payments/received' },
                   { title: 'Active TAL Cases', value: legalSummary.activeCasesCount || 0, subValue: 'In Litigation', icon: Gavel, color: 'bg-violet-500', path: '/tal-cases' },
-                  { title: 'Notes Hub', value: notesStats.totalNotes || 0, subValue: `${notesStats.recentCount || 0} This Week`, icon: StickyNote, color: 'bg-indigo-500', path: '/notes-hub' },
+                  { title: 'Notes Hub', value: filteredNotes.length, subValue: `${filteredNotes.length} Total`, icon: StickyNote, color: 'bg-indigo-500', path: '/notes-hub' },
                   { title: 'Vacant Units', value: vacantUnitsCount, subValue: 'Available Units', icon: Home, color: 'bg-blue-500', path: '/vacancy' }
                 ];
               })().map((card, idx) => (
@@ -608,8 +693,8 @@ export const Dashboard = () => {
 
             {/* TAL LEGAL WIDGETS */}
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6 items-start">
-              <UpcomingHearingsWidget hearings={[]} />
-              <DashboardTasksWidget tasks={[]} onCompleteTask={handleCompleteTask} />
+              <UpcomingHearingsWidget hearings={upcomingHearings} />
+              <DashboardTasksWidget tasks={urgentLegalTasks} onCompleteTask={handleCompleteTask} />
               <UrgentCasesWidget cases={legalSummary.urgentCases || []} onView={(id) => navigate(`/tal-cases/${id}`)} />
             </section>
 
@@ -619,9 +704,9 @@ export const Dashboard = () => {
                 <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4">
                   Recent Notes Activity
                 </h3>
-                <CommunicationTimeline events={notesActivity} compact />
+                <CommunicationTimeline events={realNotesActivity} compact />
               </Card>
-              <RecentNotesWidget notes={recentNotes} />
+              <RecentNotesWidget notes={filteredNotes.slice(0, 5)} />
             </section>
 
             {/* TIME & PAYROLL SUMMARY INTEGRATION */}
