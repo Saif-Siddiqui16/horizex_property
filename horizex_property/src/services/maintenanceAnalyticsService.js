@@ -28,7 +28,7 @@ export const vendorAnalyticsService = {
         name: v.name,
         completedJobs: completedCount + (v.completedJobs || 0),
         rating: v.rating,
-        avgCompletionTime: '2.5 Days', // Mock Average Completion
+        avgCompletionTime: vendorWos.length > 0 ? `${(vendorWos.reduce((s, w) => s + (w.hoursWorked || 0), 0) / (vendorWos.length * 8)).toFixed(1)} Days` : '-', // Dynamic completion
         totalCost,
         performance: v.rating >= 4.5 ? 'Excellent' : 'Good'
       };
@@ -67,7 +67,7 @@ export const technicianAnalyticsService = {
         pendingCount: pending.length,
         utilization,
         payrollHours: techHours,
-        avgCompletionTime: '1.8 Days' // Mock average completion time
+        avgCompletionTime: completed.length > 0 ? `${(techHours / (completed.length * 8)).toFixed(1)} Days` : '-' // Dynamic completion
       };
     });
 
@@ -80,7 +80,7 @@ export const assetAnalyticsService = {
     const list = assetService.getAll() || [];
     const properties = JSON.parse(localStorage.getItem('mock_properties') || '[]');
 
-    const totalValue = list.length * 15000.00; // Mock average value estimation
+    const totalValue = list.reduce((sum, a) => sum + (Number(a.replacementCost || a.value || 0)), 0); // Dynamic asset value
     
     // Assets by building
     const buildingMap = {};
@@ -132,11 +132,8 @@ export const inventoryAnalyticsService = {
       currentInventoryValue: totalVal,
       lowStockCount: lowStockParts.length,
       lowStockList: lowStockParts,
-      fastMovingParts: [
-        { name: 'Copper Pipe Joint 3/4"', consumption: '18 units/mo' },
-        { name: 'HVAC Air Filter', consumption: '12 units/mo' }
-      ],
-      monthlyConsumptionCost: 350.00
+      fastMovingParts: [],
+      monthlyConsumptionCost: 0
     };
   }
 };

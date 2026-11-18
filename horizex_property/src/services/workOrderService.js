@@ -11,43 +11,8 @@ export const workOrderService = {
   getAll: (filters = {}) => {
     let list = JSON.parse(localStorage.getItem('mock_work_orders') || '[]');
     
-    if (list.length === 0) {
-      list = [
-        {
-          id: 'WO-2026-0001',
-          requestId: 'MR-2026-0001',
-          technicianId: 'tech-1',
-          vendorId: 'vendor-1',
-          estimatedCost: 150.00,
-          actualCost: 175.00,
-          laborCost: 100.00,
-          materialCost: 75.00,
-          hoursWorked: 4,
-          completionNotes: 'Replaced joint pipe, leak resolved.',
-          photos: ['sink_resolved.jpg'],
-          receipts: ['receipt_plumbing_joint.pdf'],
-          createdAt: '2026-06-25T11:00:00Z',
-          updatedAt: '2026-06-26T12:00:00Z'
-        },
-        {
-          id: 'WO-2026-0002',
-          requestId: 'MR-2026-0002',
-          technicianId: 'tech-2',
-          vendorId: 'vendor-2',
-          estimatedCost: 1200.00,
-          actualCost: 0,
-          laborCost: 0,
-          materialCost: 0,
-          hoursWorked: 0,
-          completionNotes: '',
-          photos: [],
-          receipts: [],
-          createdAt: '2026-06-29T08:30:00Z',
-          updatedAt: '2026-06-29T08:30:00Z'
-        }
-      ];
-      localStorage.setItem('mock_work_orders', JSON.stringify(list));
-    }
+    // Filter out any sample mock work orders
+    list = list.filter(w => !String(w.id || '').startsWith('WO-2026-000'));
 
     if (filters.requestId) {
       list = list.filter(w => w.requestId === filters.requestId);

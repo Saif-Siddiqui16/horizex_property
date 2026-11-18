@@ -3,8 +3,10 @@ import {
   useGetTicketsQuery,
   useCreateTicketMutation,
   useUpdateTicketStatusMutation,
+  useDeleteTicketMutation,
 } from '../store/api/maintenanceApi';
-import { useGetPropertiesQuery } from '../store/api/propertiesApi';
+import { useGetPropertiesQuery, useGetUnitsQuery } from '../store/api/propertiesApi';
+import api from '../api/client';
 
 
 // Services
@@ -54,7 +56,7 @@ import {
 } from '../components/maintenance/MaintenanceWidgets';
 
 import { hasPermission } from '../utils/permissions';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Trash2 } from 'lucide-react';
 export const Maintenance = () => {
   const [__forceUpdate, __setForceUpdate] = useState(0);
   useEffect(() => {
@@ -81,7 +83,10 @@ export const Maintenance = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
   // Filter conditions
-  const [selectedBuildingId, setSelectedBuildingId] = useState('all');
+  const [selectedBuildingId, setSelectedBuildingId] = useState(() => {
+    const bld = localStorage.getItem('global_selected_building_id');
+    return bld && bld !== '' ? bld : 'all';
+  });
   const [selectedApartmentId, setSelectedApartmentId] = useState('all');
   const [selectedPriority, setSelectedPriority] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -158,73 +163,135 @@ export const Maintenance = () => {
   const { data: backendTickets = [], isLoading: isTicketsLoading, isSuccess: isTicketsSuccess, refetch: refetchTickets } = useGetTicketsQuery(queryParams, {
     refetchOnMountOrArgChange: true,
   });
-  const { data: propertiesData = [] } = useGetPropertiesQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
+  const { data: propertiesData = [] } = useGetPropertiesQuery(
+    selectedCompanyId && selectedCompanyId !== 'all' ? { companyId: selectedCompanyId } : undefined,
+    { refetchOnMountOrArgChange: true }
+  );
+
+  const { data: unitsData = [] } = useGetUnitsQuery(
+    selectedCompanyId && selectedCompanyId !== 'all' ? { companyId: selectedCompanyId } : undefined,
+    { refetchOnMountOrArgChange: true }
+  );
+
+  const allUnits = useMemo(() => {
+    if (Array.isArray(unitsData)) return unitsData;
+    if (Array.isArray(unitsData?.data)) return unitsData.data;
+    return [];
+  }, [unitsData]);
 
   const [createTicketMutation] = useCreateTicketMutation();
   const [updateTicketStatusMutation] = useUpdateTicketStatusMutation();
+  const [deleteTicketMutation] = useDeleteTicketMutation();
+
+  // One-time purge of legacy mock data seeds in localStorage
+  useEffect(() => {
+    const keysToClean = [
+      'mock_technicians',
+      'mock_vendors',
+      'mock_inventory',
+      'mock_inventory_movements',
+      'mock_preventive',
+      'mock_work_orders',
+      'mock_maintenance_requests',
+      'mock_assets',
+      'mock_furniture',
+      'mock_maintenance_audits'
+    ];
+    keysToClean.forEach(k => {
+      const item = localStorage.getItem(k);
+      if (item && (
+        item.includes('Jean Dupuis') ||
+        item.includes('Apex Plumbing') ||
+        item.includes('INV-0001') ||
+        item.includes('LED Bulb') ||
+        item.includes('PM-0001') ||
+        item.includes('WO-2026') ||
+        item.includes('MR-2026') ||
+        item.includes('AST-0001') ||
+        item.includes('FUR-0001') ||
+        item.includes('AUD-0001')
+      )) {
+        localStorage.removeItem(k);
+      }
+    });
+  }, []);
 
   // Unified properties list
   const properties = useMemo(() => {
-    if (propertiesData && propertiesData.length > 0) {
+    const raw = Array.isArray(propertiesData) ? propertiesData : (propertiesData?.data || []);
+    if (raw && raw.length > 0) {
       if (selectedCompanyId && selectedCompanyId !== 'all') {
-        const filtered = propertiesData.filter(p => String(p.companyId) === String(selectedCompanyId));
-        return filtered.length > 0 ? filtered : propertiesData;
+        return raw.filter(p => String(p.companyId) === String(selectedCompanyId));
       }
-      return propertiesData;
+      return raw;
     }
-    return JSON.parse(localStorage.getItem('mock_properties') || '[]');
+    const stored = JSON.parse(localStorage.getItem('mock_properties') || '[]');
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      return stored.filter(p => String(p.companyId) === String(selectedCompanyId));
+    }
+    return stored;
   }, [propertiesData, selectedCompanyId]);
 
   // Selected building units for modal
   const selectedBuildingUnits = useMemo(() => {
-    const prop = properties.find(p => p.id === newRequestForm.buildingId);
-    return prop?.units || [];
-  }, [properties, newRequestForm.buildingId]);
+    if (!newRequestForm.buildingId) return [];
+    return allUnits.filter(u => String(u.propertyId || u.property?.id) === String(newRequestForm.buildingId));
+  }, [allUnits, newRequestForm.buildingId]);
 
-  // Auto-select valid building/unit on load
+  // Auto-select valid building on load
   useEffect(() => {
     if (properties.length > 0 && (!newRequestForm.buildingId || newRequestForm.buildingId === 'building-1')) {
       const firstProp = properties[0];
-      const firstUnit = firstProp.units?.[0]?.id || 'unit-101';
       setNewRequestForm(prev => ({
         ...prev,
         buildingId: firstProp.id,
-        apartmentId: firstUnit,
       }));
     }
   }, [properties]);
+
+  // Auto-select valid unit when selected building changes
+  useEffect(() => {
+    if (selectedBuildingUnits.length > 0) {
+      const exists = selectedBuildingUnits.some(u => u.id === newRequestForm.apartmentId);
+      if (!exists) {
+        setNewRequestForm(prev => ({
+          ...prev,
+          apartmentId: selectedBuildingUnits[0].id,
+        }));
+      }
+    }
+  }, [selectedBuildingUnits]);
 
   // Normalized backend tickets
   const normalizedBackendRequests = useMemo(() => {
     if (!backendTickets || !Array.isArray(backendTickets)) return null;
     return backendTickets.map(t => {
-      const rawPriority = t.priority || 'MEDIUM';
+      const rawPriority = t.rawPriority || t.priority || 'MEDIUM';
       const priority = rawPriority.charAt(0).toUpperCase() + rawPriority.slice(1).toLowerCase();
 
       let status = 'New';
-      if (t.status === 'IN_PROGRESS') status = 'In Progress';
-      else if (t.status === 'PENDING_PARTS') status = 'Waiting Parts';
-      else if (t.status === 'RESOLVED') status = 'Completed';
-      else if (t.status === 'CLOSED') status = 'Closed';
-      else if (t.status === 'SUBMITTED') status = 'New';
+      const s = String(t.rawStatus || t.status || '').toUpperCase();
+      if (s === 'IN_PROGRESS') status = 'In Progress';
+      else if (s === 'PENDING_PARTS') status = 'Waiting Parts';
+      else if (s === 'RESOLVED') status = 'Completed';
+      else if (s === 'CLOSED') status = 'Closed';
+      else if (s === 'SUBMITTED') status = 'New';
       else status = t.status || 'New';
 
-      const resolvedBuildingName = t.property?.name || (properties.find(p => p.id === t.propertyId)?.name) || t.propertyId || 'Building';
-      const resolvedUnitNumber = t.unit?.unitNumber || String(t.unitId || '').replace(/^unit-/i, '') || 'Unit';
+      const resolvedBuildingName = t.property?.name || (properties.find(p => p.id === t.propertyId)?.name) || t.building || t.propertyId || 'Building';
+      const resolvedUnitNumber = t.unit?.unitNumber || String(t.unitId || '').replace(/^unit-/i, '') || t.unit || 'Unit';
 
       return {
         id: t.id,
-        ticketNumber: `TICK-${t.id.slice(0, 8).toUpperCase()}`,
+        ticketNumber: `TICK-${String(t.id).slice(0, 8).toUpperCase()}`,
         buildingId: resolvedBuildingName,
         buildingName: resolvedBuildingName,
         apartmentId: resolvedUnitNumber,
         propertyId: t.propertyId,
         unitId: t.unitId,
-        category: t.title || 'General',
+        category: t.title || t.subject || 'General',
         priority,
-        description: t.description || '',
+        description: t.description || t.desc || '',
         status,
         assignedTechnicianId: t.assignee?.id || '',
         assignedVendorId: '',
@@ -378,24 +445,35 @@ export const Maintenance = () => {
     setParts(allParts);
 
     setPreventive(preventiveMaintenanceService.getAll());
-    setCalendarEvents(maintenanceCalendarService.getAllEvents());
+    setCalendarEvents(maintenanceCalendarService.getAllEvents(normalizedBackendRequests || requests));
     setAudits(maintenanceAuditService.getAll());
 
     // Analytics compilation
-    const baseStats = maintenanceAnalyticsService.getKPIMetrics();
-    if (isTicketsSuccess && normalizedBackendRequests && normalizedBackendRequests.length > 0) {
-      const open = normalizedBackendRequests.filter(r => r.status === 'New' || r.status === 'Draft').length;
-      const inProgress = normalizedBackendRequests.filter(r => r.status === 'In Progress').length;
-      const waitingParts = normalizedBackendRequests.filter(r => r.status === 'Waiting Parts').length;
-      const emergency = normalizedBackendRequests.filter(r => r.priority === 'Emergency' || r.priority === 'High').length;
+    if (isTicketsSuccess && normalizedBackendRequests) {
+      const scopedRequests = (selectedBuildingId && selectedBuildingId !== 'all')
+        ? normalizedBackendRequests.filter(r => {
+            const selectedProp = properties.find(p => p.id === selectedBuildingId);
+            const selectedName = selectedProp?.name || selectedBuildingId;
+            return r.propertyId === selectedBuildingId || 
+                   r.buildingId === selectedBuildingId ||
+                   r.buildingName === selectedName ||
+                   r.buildingId === selectedName;
+          })
+        : normalizedBackendRequests;
+
+      const open = scopedRequests.filter(r => r.status === 'New' || r.status === 'Draft' || r.status === 'Submitted').length;
+      const inProgress = scopedRequests.filter(r => r.status === 'In Progress' || r.status === 'Assigned').length;
+      const waitingParts = scopedRequests.filter(r => r.status === 'Waiting Parts' || r.status === 'Waiting Vendor').length;
+      const emergency = scopedRequests.filter(r => r.priority === 'Emergency' || r.priority === 'High').length;
       setStats({
-        ...baseStats,
         open,
         inProgress,
         waitingParts,
+        waitingVendor: 0,
         emergency,
       });
     } else {
+      const baseStats = maintenanceAnalyticsService.getKPIMetrics();
       setStats(baseStats);
     }
 
@@ -411,17 +489,21 @@ export const Maintenance = () => {
   useEffect(() => {
     refreshWorkspaceData();
 
-    const handleCompanyChange = () => {
-      const current = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
-      setSelectedCompanyId(current);
+    const handleSync = () => {
+      const currentComp = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+      setSelectedCompanyId(currentComp);
+      const currentBld = localStorage.getItem('global_selected_building_id');
+      setSelectedBuildingId(currentBld && currentBld !== '' ? currentBld : 'all');
       if (typeof refetchTickets === 'function') refetchTickets();
       refreshWorkspaceData();
     };
-    window.addEventListener('companyChanged', handleCompanyChange);
-    window.addEventListener('storage', handleCompanyChange);
+    window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('buildingChanged', handleSync);
+    window.addEventListener('storage', handleSync);
     return () => {
-      window.removeEventListener('companyChanged', handleCompanyChange);
-      window.removeEventListener('storage', handleCompanyChange);
+      window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('buildingChanged', handleSync);
+      window.removeEventListener('storage', handleSync);
     };
   }, [selectedBuildingId, selectedApartmentId, selectedPriority, selectedStatus, selectedCategory, searchQuery, normalizedBackendRequests, isTicketsSuccess, refetchTickets]);
 
@@ -431,11 +513,12 @@ export const Maintenance = () => {
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
     const matchedProp = properties.find(p => p.id === newRequestForm.buildingId);
+    const matchedUnit = allUnits.find(u => u.id === newRequestForm.apartmentId);
 
     const requestPayload = {
       ...newRequestForm,
       companyId: matchedProp ? (matchedProp.companyId || selectedCompanyId || 'company-1') : (selectedCompanyId || 'company-1'),
-      tenantId: 'tenant-1',
+      tenantId: matchedUnit?.tenantId || 'tenant-1',
       leaseId: 'lease-1',
       status: 'New',
       createdBy: 'Admin User'
@@ -443,25 +526,38 @@ export const Maintenance = () => {
 
     maintenanceService.create(requestPayload);
 
-    // Send to backend via RTK Query mutation
+    // Send to backend via RTK Query mutation with API fallback
     try {
-      const selectedPropId = newRequestForm.buildingId || properties[0]?.id || 'building-1';
-      const selectedUnitId = newRequestForm.apartmentId || matchedProp?.units?.[0]?.id || 'unit-101';
+      const selectedPropId = newRequestForm.buildingId || properties[0]?.id;
+      const selectedUnitId = (matchedUnit?.id) || (newRequestForm.apartmentId && newRequestForm.apartmentId !== 'unit-101' ? newRequestForm.apartmentId : undefined);
       await createTicketMutation({
         propertyId: selectedPropId,
         unitId: selectedUnitId,
         title: newRequestForm.category || 'Maintenance Request',
-        description: newRequestForm.description,
+        description: newRequestForm.description || newRequestForm.category || 'Maintenance Request',
         priority: newRequestForm.priority.toUpperCase(),
       }).unwrap();
+      if (typeof refetchTickets === 'function') refetchTickets();
     } catch (err) {
-      console.warn('Backend ticket creation notice:', err);
+      console.warn('Backend ticket creation via RTK notice, trying direct API:', err);
+      try {
+        await api.post('/api/admin/tickets', {
+          propertyId: newRequestForm.buildingId || properties[0]?.id,
+          unitId: (matchedUnit?.id) || undefined,
+          title: newRequestForm.category || 'Maintenance Request',
+          description: newRequestForm.description || newRequestForm.category || 'Maintenance Request',
+          priority: newRequestForm.priority.toUpperCase(),
+        });
+        if (typeof refetchTickets === 'function') refetchTickets();
+      } catch (fallbackErr) {
+        console.error('Direct ticket creation error:', fallbackErr);
+      }
     }
 
     setShowRequestModal(false);
     setNewRequestForm({
-      buildingId: properties[0]?.id || 'building-1',
-      apartmentId: properties[0]?.units?.[0]?.id || 'unit-101',
+      buildingId: properties[0]?.id || '',
+      apartmentId: selectedBuildingUnits[0]?.id || '',
       category: 'Plumbing',
       priority: 'Medium',
       description: '',
@@ -484,9 +580,30 @@ export const Maintenance = () => {
         status: newStatus,
         resolutionNote: newStatus === 'Completed' || newStatus === 'Closed' ? 'Resolved by operator' : undefined,
       }).unwrap();
+      if (typeof refetchTickets === 'function') refetchTickets();
     } catch (err) {
       console.warn('Backend ticket status update notice:', err);
     }
+  };
+
+  // Delete ticket (Full CRUD)
+  const handleDeleteTicket = async (id) => {
+    try {
+      await deleteTicketMutation(id).unwrap();
+    } catch (err) {
+      console.warn('Backend ticket delete notice, trying direct API:', err);
+      try {
+        await api.delete(`/api/admin/tickets/${id}`);
+      } catch (fallbackErr) {
+        console.error('Direct ticket delete error:', fallbackErr);
+      }
+    }
+    maintenanceService.delete(id);
+    if (focusedRequest?.id === id) {
+      setFocusedRequest(null);
+    }
+    if (typeof refetchTickets === 'function') refetchTickets();
+    refreshWorkspaceData();
   };
 
   // Work Orders assignment
@@ -561,7 +678,12 @@ export const Maintenance = () => {
             <span className="text-[9px] font-black uppercase text-slate-400">Property</span>
             <select
               value={selectedBuildingId}
-              onChange={(e) => setSelectedBuildingId(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedBuildingId(val);
+                localStorage.setItem('global_selected_building_id', val === 'all' ? '' : val);
+                window.dispatchEvent(new Event('buildingChanged'));
+              }}
               className="p-2 border border-slate-200 rounded-xl outline-none"
             >
               <option value="all">All Properties</option>
@@ -687,6 +809,7 @@ export const Maintenance = () => {
                   requests={requests}
                   onSelect={setFocusedRequest}
                   onStatusChange={handleStatusChange}
+                  onDelete={handleDeleteTicket}
                 />
               </div>
 
@@ -735,16 +858,30 @@ export const Maintenance = () => {
                       ))}
                     </div>
 
-                    {/* Actions links to trigger work order */}
-                    <button
-                      onClick={() => {
-                        setNewWorkOrderForm({ ...newWorkOrderForm, requestId: focusedRequest.id });
-                        setShowWorkOrderModal(true);
-                      }}
-                      className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl border-none shadow-sm cursor-pointer text-center"
-                    >
-                      Issue Work Order
-                    </button>
+                    {/* Actions links to trigger work order & delete */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setNewWorkOrderForm({ ...newWorkOrderForm, requestId: focusedRequest.id });
+                          setShowWorkOrderModal(true);
+                        }}
+                        className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl border-none shadow-sm cursor-pointer text-center"
+                      >
+                        Issue Work Order
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to delete this maintenance ticket?')) {
+                            handleDeleteTicket(focusedRequest.id);
+                          }
+                        }}
+                        className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl border border-rose-200 shadow-sm cursor-pointer text-center flex items-center justify-center gap-1"
+                        title="Delete Ticket"
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-12 text-center text-slate-400 italic bg-white border border-slate-100 rounded-3xl font-medium shadow-sm">
@@ -875,8 +1012,8 @@ export const Maintenance = () => {
                       value={newRequestForm.buildingId}
                       onChange={(e) => {
                         const bId = e.target.value;
-                        const prop = properties.find(p => p.id === bId);
-                        const firstUnit = prop?.units?.[0]?.id || 'unit-101';
+                        const propUnits = allUnits.filter(u => String(u.propertyId || u.property?.id) === String(bId));
+                        const firstUnit = propUnits[0]?.id || 'unit-101';
                         setNewRequestForm({ ...newRequestForm, buildingId: bId, apartmentId: firstUnit });
                       }}
                       className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700"

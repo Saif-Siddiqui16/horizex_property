@@ -12,84 +12,8 @@ export const maintenanceService = {
   getAll: (filters = {}) => {
     let list = JSON.parse(localStorage.getItem('mock_maintenance_requests') || '[]');
     
-    // Non-destructive seeding if empty
-    if (list.length === 0) {
-      list = [
-        {
-          id: 'MR-2026-0001',
-          companyId: 'company-1', // Apex Real Estate Partners
-          buildingId: 'building-1',
-          apartmentId: 'unit-101',
-          tenantId: 'tenant-1',
-          leaseId: 'lease-1',
-          category: 'Plumbing',
-          priority: 'High',
-          description: 'Water leak under kitchen sink.',
-          assignedTechnicianId: 'tech-1',
-          assignedVendorId: 'vendor-1',
-          photos: ['sink_leak_leakage.jpg'],
-          documents: ['lease_handover_report.pdf'],
-          receipts: [],
-          status: 'In Progress',
-          createdAt: '2026-06-25T10:00:00Z',
-          updatedAt: '2026-06-26T12:00:00Z',
-          createdBy: 'tenant-1',
-          updatedBy: 'tech-1'
-        },
-        {
-          id: 'MR-2026-0002',
-          companyId: 'company-1',
-          buildingId: 'building-2',
-          apartmentId: 'unit-202',
-          tenantId: 'tenant-2',
-          leaseId: 'lease-2',
-          category: 'HVAC',
-          priority: 'Emergency',
-          description: 'Heating is completely broken.',
-          assignedTechnicianId: 'tech-2',
-          assignedVendorId: 'vendor-2',
-          photos: ['hvac_vent.jpg'],
-          documents: [],
-          receipts: [],
-          status: 'New',
-          createdAt: '2026-06-29T08:00:00Z',
-          updatedAt: '2026-06-29T08:00:00Z',
-          createdBy: 'tenant-2',
-          updatedBy: 'tenant-2'
-        },
-        {
-          id: 'MR-2026-0003',
-          companyId: 'company-1',
-          buildingId: 'building-1',
-          apartmentId: 'unit-304',
-          tenantId: 'tenant-3',
-          leaseId: 'lease-3',
-          category: 'Electrical',
-          priority: 'Low',
-          description: 'Flickering lights in the bedroom.',
-          assignedTechnicianId: '',
-          assignedVendorId: '',
-          photos: [],
-          documents: [],
-          receipts: [],
-          status: 'Draft',
-          createdAt: '2026-06-30T15:00:00Z',
-          updatedAt: '2026-06-30T15:00:00Z',
-          createdBy: 'admin-1',
-          updatedBy: 'admin-1'
-        }
-      ];
-      localStorage.setItem('mock_maintenance_requests', JSON.stringify(list));
-      
-      // Seed initial audits
-      list.forEach(req => {
-        maintenanceAuditService.logEvent(req.id, 'Request Created', `Request ${req.id} initialized by user.`);
-        if (req.status === 'In Progress') {
-          maintenanceAuditService.logEvent(req.id, 'Assigned', `Technician assigned to ${req.id}`);
-          maintenanceAuditService.logEvent(req.id, 'Started', `Repair work started for request ${req.id}`);
-        }
-      });
-    }
+    // Filter out legacy sample mock requests
+    list = list.filter(r => !String(r.id || '').startsWith('MR-2026-000'));
 
     // Apply company selection filter
     const selectedCompany = localStorage.getItem('global_selected_company_id');
@@ -217,5 +141,12 @@ export const maintenanceService = {
 
     localStorage.setItem('mock_maintenance_requests', JSON.stringify(list));
     return list[reqIndex];
+  },
+
+  delete: (id) => {
+    let list = JSON.parse(localStorage.getItem('mock_maintenance_requests') || '[]');
+    list = list.filter(r => r.id !== id);
+    localStorage.setItem('mock_maintenance_requests', JSON.stringify(list));
+    return true;
   }
 };

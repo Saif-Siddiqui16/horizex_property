@@ -16,7 +16,9 @@ export const maintenanceApi = masterApi.injectEndpoints({
           // Normalize priority
           let normPriority = 'Low';
           const p = String(ticket.priority || '').toUpperCase();
-          if (p === 'HIGH' || p === 'EMERGENCY') {
+          if (p === 'EMERGENCY') {
+            normPriority = 'Emergency';
+          } else if (p === 'HIGH') {
             normPriority = 'High';
           } else if (p === 'MEDIUM') {
             normPriority = 'Medium';

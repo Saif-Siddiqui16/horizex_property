@@ -49,12 +49,29 @@ const EmailHistory = () => {
     const [actionLoading, setActionLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState(null);
 
+    const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+        return localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+    });
+
     useEffect(() => {
-        fetchHistory();
-        fetchMetadata();
+        const handleSync = () => {
+            const comp = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+            setSelectedCompanyId(comp);
+        };
+        window.addEventListener('companyChanged', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('storage', handleSync);
+        };
     }, []);
 
-    const fetchHistory = async (page = 1, activeFilters = filters) => {
+    useEffect(() => {
+        fetchHistory(1, filters, selectedCompanyId);
+        fetchMetadata(selectedCompanyId);
+    }, [selectedCompanyId]);
+
+    const fetchHistory = async (page = 1, activeFilters = filters, activeCompId = selectedCompanyId) => {
         setLoading(true);
         try {
             const pageNum = typeof page === 'number' ? page : 1;
@@ -80,6 +97,9 @@ const EmailHistory = () => {
             if (activeFilters.endDate) {
                 params.endDate = activeFilters.endDate;
             }
+            if (activeCompId && activeCompId !== 'all') {
+                params.companyId = activeCompId;
+            }
 
             const queryParams = new URLSearchParams(params).toString();
             const response = await api.get(`/api/admin/email/history?${queryParams}`);
@@ -93,30 +113,7 @@ const EmailHistory = () => {
                 apiLogs = response.data || [];
             }
 
-            const localMails = JSON.parse(localStorage.getItem('mock_integrations_emails') || '[]');
-            const formattedLocal = localMails
-                .map(m => ({
-                    id: m.id,
-                    subject: m.subject,
-                    body: m.body,
-                    timestamp: m.createdAt,
-                    status: m.status,
-                    recipientUser: { name: (m.recipients || '').split('@')[0] },
-                    recipient: m.recipients,
-                    emailTemplate: { name: m.templateName }
-                }))
-                .filter(m => {
-                    if (!searchVal) return true;
-                    const lower = searchVal.toLowerCase();
-                    return (
-                        (m.recipientUser?.name || '').toLowerCase().includes(lower) ||
-                        (m.recipient || '').toLowerCase().includes(lower) ||
-                        (m.subject || '').toLowerCase().includes(lower) ||
-                        (m.emailTemplate?.name || '').toLowerCase().includes(lower)
-                    );
-                });
-
-            setHistory([...formattedLocal, ...apiLogs]);
+            setHistory(apiLogs);
         } catch (error) {
             console.error('Error fetching email history:', error);
         } finally {
@@ -153,13 +150,17 @@ const EmailHistory = () => {
     };
 
 
-    const fetchMetadata = async () => {
+    const fetchMetadata = async (activeCompId = selectedCompanyId) => {
         try {
-            const bRes = await api.get('/api/admin/properties');
+            const params = {};
+            if (activeCompId && activeCompId !== 'all') {
+                params.companyId = activeCompId;
+            }
+            const bRes = await api.get('/api/admin/properties', { params });
             setBuildings(Array.isArray(bRes.data) ? bRes.data : (bRes.data?.data || []));
 
             if (hasPermission('Email Templates', 'view')) {
-                const tRes = await api.get('/api/admin/email/templates');
+                const tRes = await api.get('/api/admin/email/templates', { params });
                 setTemplates(Array.isArray(tRes.data) ? tRes.data : (tRes.data?.data || []));
             }
         } catch (error) {

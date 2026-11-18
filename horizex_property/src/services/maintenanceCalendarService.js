@@ -4,18 +4,18 @@ import { preventiveMaintenanceService } from './preventiveMaintenanceService';
 import { assetService } from './assetService';
 
 export const maintenanceCalendarService = {
-  getAllEvents: () => {
+  getAllEvents: (providedRequests = null) => {
     const base = calendarService.getAll() || [];
-    
+
     // Convert Maintenance Requests
-    const requests = maintenanceService.getAll() || [];
+    const requests = providedRequests || maintenanceService.getAll() || [];
     const requestEvts = requests.map(r => ({
       id: `mreq-${r.id}`,
-      title: `Repair ${r.id}: ${r.category}`,
-      description: r.description,
+      title: `Repair ${r.id}: ${r.category || 'Repair'}`,
+      description: r.description || '',
       category: 'Repairs',
-      start: r.createdAt.split('T')[0],
-      end: r.createdAt.split('T')[0],
+      start: (r.createdAt || new Date().toISOString()).split('T')[0],
+      end: (r.createdAt || new Date().toISOString()).split('T')[0],
       syncStatus: 'Synced'
     }));
 

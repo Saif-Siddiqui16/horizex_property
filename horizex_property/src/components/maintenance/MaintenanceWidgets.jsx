@@ -38,7 +38,7 @@ export const MaintenanceKPICards = ({ stats = {} }) => {
 };
 
 // ── 2. MAINTENANCE REQUESTS TABLE ────────────────────────────────────────
-export const MaintenanceRequestTable = ({ requests, onSelect, onStatusChange }) => {
+export const MaintenanceRequestTable = ({ requests, onSelect, onStatusChange, onDelete }) => {
   const getPriorityStyle = (p) => {
     switch (p) {
       case 'Emergency': return 'bg-rose-50 text-rose-600 border-rose-100';
@@ -119,12 +119,29 @@ export const MaintenanceRequestTable = ({ requests, onSelect, onStatusChange }) 
                     </select>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => onSelect(req)}
-                      className="px-3 py-1 bg-slate-900 text-white font-bold text-[10px] rounded-lg hover:bg-slate-800 transition-all cursor-pointer border-none"
-                    >
-                      Detail
-                    </button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => onSelect(req)}
+                        className="px-3 py-1 bg-slate-900 text-white font-bold text-[10px] rounded-lg hover:bg-slate-800 transition-all cursor-pointer border-none"
+                      >
+                        Detail
+                      </button>
+                      {onDelete && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Are you sure you want to delete this maintenance ticket?')) {
+                              onDelete(req.id);
+                            }
+                          }}
+                          className="p-1 text-slate-400 hover:text-rose-600 transition-colors border-none bg-transparent cursor-pointer flex items-center"
+                          title="Delete Ticket"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -570,33 +587,39 @@ export const PreventiveMaintenanceWidget = ({ preventive, onCompleteCycle }) => 
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50 font-semibold text-slate-600">
-            {preventive.map((pm) => (
-              <tr key={pm.id} className="hover:bg-slate-50/20">
-                <td className="px-4 py-3 font-mono font-bold text-slate-700">{pm.id}</td>
-                <td className="px-4 py-3">{pm.name}</td>
-                <td className="px-4 py-3">{pm.category}</td>
-                <td className="px-4 py-3">{pm.frequency}</td>
-                <td className="px-4 py-3 font-mono text-[10px]">{pm.lastCompletedDate}</td>
-                <td className="px-4 py-3 font-mono font-bold text-indigo-600">{pm.nextDueDate}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black border uppercase ${
-                    pm.status === 'Overdue' 
-                      ? 'bg-rose-50 text-rose-600 border-rose-100 animate-pulse'
-                      : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                  }`}>
-                    {pm.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => onCompleteCycle(pm.id)}
-                    className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[9px] rounded-lg border-none cursor-pointer"
-                  >
-                    Mark Done
-                  </button>
-                </td>
+            {(!preventive || preventive.length === 0) ? (
+              <tr>
+                <td colSpan="8" className="text-center py-6 text-slate-400 italic">No scheduled preventive maintenance runs found.</td>
               </tr>
-            ))}
+            ) : (
+              preventive.map((pm) => (
+                <tr key={pm.id} className="hover:bg-slate-50/20">
+                  <td className="px-4 py-3 font-mono font-bold text-slate-700">{pm.id}</td>
+                  <td className="px-4 py-3">{pm.name}</td>
+                  <td className="px-4 py-3">{pm.category}</td>
+                  <td className="px-4 py-3">{pm.frequency}</td>
+                  <td className="px-4 py-3 font-mono text-[10px]">{pm.lastCompletedDate}</td>
+                  <td className="px-4 py-3 font-mono font-bold text-indigo-600">{pm.nextDueDate}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black border uppercase ${
+                      pm.status === 'Overdue' 
+                        ? 'bg-rose-50 text-rose-600 border-rose-100 animate-pulse'
+                        : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                    }`}>
+                      {pm.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => onCompleteCycle(pm.id)}
+                      className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[9px] rounded-lg border-none cursor-pointer"
+                    >
+                      Mark Done
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -669,19 +692,25 @@ export const MaintenanceTimeline = ({ logs }) => {
       </div>
 
       <div className="flex flex-col gap-4 font-semibold text-xs pl-2 border-l-2 border-slate-100">
-        {logs.map((log, idx) => (
-          <div key={idx} className="relative pl-6">
-            <div className="absolute left-[-27px] top-0 w-3.5 h-3.5 bg-white border-2 border-slate-800 rounded-full flex items-center justify-center">
-              <div className="w-1.5 h-1.5 bg-slate-900 rounded-full" />
-            </div>
-            <div className="flex justify-between items-start">
-              <span className="font-black text-slate-800 text-[11px]">{log.event}</span>
-              <span className="text-[9px] text-slate-400 font-mono">{new Date(log.timestamp).toLocaleString()}</span>
-            </div>
-            <p className="text-[10px] text-slate-500 font-medium mt-1">{log.description}</p>
-            <span className="text-[8px] text-slate-400 uppercase tracking-widest block mt-0.5">Logged by: {log.createdBy}</span>
+        {(!logs || logs.length === 0) ? (
+          <div className="text-center py-4 text-slate-400 text-xs italic">
+            No system audit logs found.
           </div>
-        ))}
+        ) : (
+          logs.map((log, idx) => (
+            <div key={idx} className="relative pl-6">
+              <div className="absolute left-[-27px] top-0 w-3.5 h-3.5 bg-white border-2 border-slate-800 rounded-full flex items-center justify-center">
+                <div className="w-1.5 h-1.5 bg-slate-900 rounded-full" />
+              </div>
+              <div className="flex justify-between items-start">
+                <span className="font-black text-slate-800 text-[11px]">{log.event}</span>
+                <span className="text-[9px] text-slate-400 font-mono">{new Date(log.timestamp).toLocaleString()}</span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium mt-1">{log.description}</p>
+              <span className="text-[8px] text-slate-400 uppercase tracking-widest block mt-0.5">Logged by: {log.createdBy}</span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -718,12 +747,18 @@ export const RepairCostWidget = ({ summary, costByBuilding }) => {
 
       <div className="flex flex-col gap-2.5 text-xs font-semibold">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Actual Costs By Property</span>
-        {(costByBuilding || []).map((item, idx) => (
-          <div key={idx} className="flex justify-between items-center text-slate-600">
-            <span>{item.name}</span>
-            <span className="font-bold text-slate-800 font-mono">${Number(item.value || 0).toFixed(2)}</span>
+        {(costByBuilding || []).length === 0 ? (
+          <div className="text-center py-4 text-slate-400 italic font-medium text-[11px]">
+            No property repair costs recorded.
           </div>
-        ))}
+        ) : (
+          (costByBuilding || []).map((item, idx) => (
+            <div key={idx} className="flex justify-between items-center text-slate-600">
+              <span>{item.name}</span>
+              <span className="font-bold text-slate-800 font-mono">${Number(item.value || 0).toFixed(2)}</span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -780,6 +815,7 @@ export const EmergencyRepairsWidget = ({ stats, onTabRedirect }) => {
 };
 
 export const VendorPerformanceWidget = ({ analytics }) => {
+  const perfList = analytics?.performance || [];
   return (
     <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
       <div>
@@ -788,26 +824,33 @@ export const VendorPerformanceWidget = ({ analytics }) => {
       </div>
 
       <div className="flex flex-col gap-3 text-xs font-semibold">
-        {analytics.performance.map((item, idx) => (
-          <div key={idx} className="flex justify-between items-center border-b border-slate-50 pb-2">
-            <div>
-              <span className="font-bold text-slate-800">{item.name}</span>
-              <div className="text-[9px] text-slate-400 font-medium mt-0.5">Jobs: {item.completedJobs} • Speed: {item.avgCompletionTime}</div>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-amber-500 font-bold">★ {item.rating}</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 font-black uppercase">
-                {item.performance}
-              </span>
-            </div>
+        {perfList.length === 0 ? (
+          <div className="text-center py-6 text-slate-400 italic font-medium">
+            No vendor records available.
           </div>
-        ))}
+        ) : (
+          perfList.map((item, idx) => (
+            <div key={idx} className="flex justify-between items-center border-b border-slate-50 pb-2">
+              <div>
+                <span className="font-bold text-slate-800">{item.name}</span>
+                <div className="text-[9px] text-slate-400 font-medium mt-0.5">Jobs: {item.completedJobs} • Speed: {item.avgCompletionTime}</div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-amber-500 font-bold">★ {item.rating}</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 font-black uppercase">
+                  {item.performance}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
 };
 
 export const TechnicianUtilizationWidget = ({ analytics }) => {
+  const safeList = Array.isArray(analytics) ? analytics : [];
   return (
     <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
       <div>
@@ -816,25 +859,31 @@ export const TechnicianUtilizationWidget = ({ analytics }) => {
       </div>
 
       <div className="flex flex-col gap-4 text-xs font-semibold">
-        {analytics.map((t, idx) => (
-          <div key={idx} className="flex flex-col gap-2">
-            <div className="flex justify-between text-slate-700">
-              <div>
-                <span className="font-bold">{t.name}</span>
-                <span className="text-[9px] text-slate-400 font-medium ml-1">({t.role})</span>
-              </div>
-              <span className="font-bold font-mono">{t.utilization}% ({t.payrollHours} hrs)</span>
-            </div>
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full ${
-                  t.utilization > 80 ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}
-                style={{ width: `${t.utilization}%` }}
-              />
-            </div>
+        {safeList.length === 0 ? (
+          <div className="text-center py-6 text-slate-400 italic font-medium">
+            No active technicians assigned or clocked.
           </div>
-        ))}
+        ) : (
+          safeList.map((t, idx) => (
+            <div key={idx} className="flex flex-col gap-2">
+              <div className="flex justify-between text-slate-700">
+                <div>
+                  <span className="font-bold">{t.name}</span>
+                  <span className="text-[9px] text-slate-400 font-medium ml-1">({t.role})</span>
+                </div>
+                <span className="font-bold font-mono">{t.utilization}% ({t.payrollHours} hrs)</span>
+              </div>
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full ${
+                    t.utilization > 80 ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${t.utilization}%` }}
+                />
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -868,6 +917,7 @@ export const AssetHealthWidget = ({ summary }) => {
 };
 
 export const InventoryAlertsWidget = ({ summary, onTabRedirect }) => {
+  const lowStockList = summary?.lowStockList || [];
   return (
     <div 
       onClick={() => onTabRedirect('inventory')}
@@ -884,12 +934,18 @@ export const InventoryAlertsWidget = ({ summary, onTabRedirect }) => {
       </div>
 
       <div className="flex flex-col gap-2 text-xs font-semibold text-slate-600">
-        {(summary?.lowStockList || []).map((part, idx) => (
-          <div key={idx} className="flex justify-between text-[10px]">
-            <span>{part.name}</span>
-            <span className="font-bold text-rose-500">Stock: {part.currentStock} (Min: {part.minimumStock})</span>
+        {lowStockList.length === 0 ? (
+          <div className="text-center py-4 text-slate-400 italic font-medium text-[11px]">
+            All warehouse parts are well-stocked.
           </div>
-        ))}
+        ) : (
+          lowStockList.map((part, idx) => (
+            <div key={idx} className="flex justify-between text-[10px]">
+              <span>{part.name}</span>
+              <span className="font-bold text-rose-500">Stock: {part.currentStock} (Min: {part.minimumStock})</span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

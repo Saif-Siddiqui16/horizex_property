@@ -1,45 +1,7 @@
 export const technicianService = {
   getAll: () => {
-    let techs = JSON.parse(localStorage.getItem('mock_technicians') || '[]');
-    if (techs.length === 0) {
-      techs = [
-        {
-          id: 'tech-1',
-          name: 'Jean Dupuis',
-          email: 'j.dupuis@horizex.com',
-          role: 'Plumber',
-          status: 'Active',
-          clockedIn: true,
-          clockInTime: '2026-07-01T08:00:00Z',
-          rating: 4.8,
-          gpsLocation: { lat: 45.5017, lng: -73.5673, address: '1240 Rue Stanley, Montreal' }
-        },
-        {
-          id: 'tech-2',
-          name: 'Marc-Andre Levesque',
-          email: 'm.levesque@horizex.com',
-          role: 'HVAC Specialist',
-          status: 'Active',
-          clockedIn: false,
-          clockInTime: '',
-          rating: 4.5,
-          gpsLocation: { lat: 45.5088, lng: -73.5540, address: '500 Place d’Armes, Montreal' }
-        },
-        {
-          id: 'tech-3',
-          name: 'Sylvie Tremblay',
-          email: 's.tremblay@horizex.com',
-          role: 'Electrician',
-          status: 'Active',
-          clockedIn: false,
-          clockInTime: '',
-          rating: 4.9,
-          gpsLocation: { lat: 45.4950, lng: -73.5780, address: '1455 Boulevard de Maisonneuve O' }
-        }
-      ];
-      localStorage.setItem('mock_technicians', JSON.stringify(techs));
-    }
-    return techs;
+    const list = JSON.parse(localStorage.getItem('mock_technicians') || '[]');
+    return list.filter(t => !['tech-1', 'tech-2', 'tech-3'].includes(t.id) && !['Jean Dupuis', 'Marc-Andre Levesque', 'Sylvie Tremblay'].includes(t.name));
   },
 
   toggleClock: (id) => {

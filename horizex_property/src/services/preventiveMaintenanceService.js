@@ -3,67 +3,7 @@ import { notificationService } from './notificationService';
 export const preventiveMaintenanceService = {
   getAll: () => {
     let list = JSON.parse(localStorage.getItem('mock_preventive') || '[]');
-    if (list.length === 0) {
-      list = [
-        {
-          id: 'PM-0001',
-          name: 'Annual Fire Extinguisher Certification',
-          category: 'Fire Equipment',
-          frequency: 'Annual',
-          lastCompletedDate: '2025-06-15',
-          nextDueDate: '2026-06-15', // Overdue!
-          buildingId: 'building-1',
-          assignedVendorId: 'vendor-3',
-          status: 'Overdue'
-        },
-        {
-          id: 'PM-0002',
-          name: 'Quarterly HVAC Boiler Inspection',
-          category: 'HVAC',
-          frequency: 'Quarterly',
-          lastCompletedDate: '2026-03-10',
-          nextDueDate: '2026-06-10', // Overdue!
-          buildingId: 'building-1',
-          assignedVendorId: 'vendor-2',
-          status: 'Overdue'
-        },
-        {
-          id: 'PM-0003',
-          name: 'Monthly Elevator Pressure Valve Check',
-          category: 'Elevator',
-          frequency: 'Monthly',
-          lastCompletedDate: '2026-06-15',
-          nextDueDate: '2026-07-15',
-          buildingId: 'building-2',
-          assignedVendorId: 'vendor-1',
-          status: 'Active'
-        },
-        {
-          id: 'PM-0004',
-          name: 'Half Yearly Electrical Panel Thermography',
-          category: 'Electrical',
-          frequency: 'Half Yearly',
-          lastCompletedDate: '2026-01-20',
-          nextDueDate: '2026-07-20',
-          buildingId: 'building-1',
-          assignedVendorId: 'vendor-3',
-          status: 'Active'
-        }
-      ];
-      localStorage.setItem('mock_preventive', JSON.stringify(list));
-
-      // Trigger alerts for the seeded overdue items
-      list.filter(p => p.status === 'Overdue').forEach(p => {
-        try {
-          notificationService.create({
-            category: 'Rent',
-            title: 'Preventive Maintenance Due',
-            description: `Scheduled run "${p.name}" is overdue (Target: ${p.nextDueDate})`,
-            priority: 'High'
-          });
-        } catch(e) {}
-      });
-    }
+    list = list.filter(p => !['PM-0001', 'PM-0002', 'PM-0003', 'PM-0004'].includes(p.id));
 
     // Apply company selector filter
     const selectedCompany = localStorage.getItem('global_selected_company_id');
