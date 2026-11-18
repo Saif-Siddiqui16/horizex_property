@@ -103,7 +103,6 @@ export const ChartOfAccounts = () => {
 
   // Report Modal & Customization States
   const [reportAccount, setReportAccount] = useState(null);
-  const [accountTransactions, setAccountTransactions] = useState([]);
   const [dateFilter, setDateFilter] = useState('ALL'); // ALL, THIS_MONTH, LAST_30_DAYS, THIS_QUARTER, CUSTOM
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -122,17 +121,17 @@ export const ChartOfAccounts = () => {
       companyId: selectedCompanyId || undefined,
       buildingId: selectedBuildingId && selectedBuildingId !== 'all' ? selectedBuildingId : undefined,
     },
-    { skip: !reportAccount?.id }
+    { skip: !reportAccount?.id, refetchOnMountOrArgChange: true }
   );
 
-  useEffect(() => {
-    if (txApiResponse?.transactions) {
-      setAccountTransactions(txApiResponse.transactions);
-    } else if (Array.isArray(txApiResponse)) {
-      setAccountTransactions(txApiResponse);
-    } else {
-      setAccountTransactions([]);
+  const liveTransactions = useMemo(() => {
+    if (txApiResponse?.transactions && Array.isArray(txApiResponse.transactions)) {
+      return txApiResponse.transactions;
     }
+    if (Array.isArray(txApiResponse)) {
+      return txApiResponse;
+    }
+    return [];
   }, [txApiResponse]);
 
   const openAddModal = () => {
@@ -217,7 +216,6 @@ export const ChartOfAccounts = () => {
   // ==========================================
   const openAccountReport = (acc) => {
     setReportAccount(acc);
-    setAccountTransactions([]);
     setDateFilter('ALL');
     setTypeFilter('ALL');
     setSearchQuery('');
@@ -230,7 +228,7 @@ export const ChartOfAccounts = () => {
   // FILTER & CUSTOMIZATION LOGIC
   // ==========================================
   const filteredTransactions = useMemo(() => {
-    if (!accountTransactions.length) return [];
+    if (!liveTransactions.length) return [];
 
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -239,7 +237,7 @@ export const ChartOfAccounts = () => {
     const todayStr = now.toISOString().split('T')[0];
     const d30Str = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    return accountTransactions
+    return liveTransactions
       .filter((tx) => {
         const txDateStr = String(tx.date || '').slice(0, 10);
 
@@ -298,7 +296,7 @@ export const ChartOfAccounts = () => {
         const timeB = new Date(b.date).getTime();
         return sortOrder === 'NEWEST' ? timeB - timeA : timeA - timeB;
       });
-  }, [accountTransactions, dateFilter, customStartDate, customEndDate, typeFilter, searchQuery, sortOrder]);
+  }, [liveTransactions, dateFilter, customStartDate, customEndDate, typeFilter, searchQuery, sortOrder]);
 
   // Summary Metrics
   const { totalCredits, totalDebits, netFlow } = useMemo(() => {
@@ -492,18 +490,14 @@ export const ChartOfAccounts = () => {
 
   const { totalBankCash, accountCounts } = useMemo(() => {
     let bankCash = 0;
-    const counts = { All: 0, Bank: 0, Asset: 0, Income: 0, Expense: 0 };
+    const counts = { All: 0 };
     (accounts || []).forEach((a) => {
       if (selectedCompanyId && a.companyId && String(a.companyId) !== String(selectedCompanyId)) {
         return;
       }
       counts.All += 1;
-      const type = getAccountType(a);
-      if (counts[type] !== undefined) {
-        counts[type] += 1;
-      } else {
-        counts.Bank += 1;
-      }
+      const bank = a.bankName || 'Bank Account';
+      counts[bank] = (counts[bank] || 0) + 1;
       const bal = parseFloat(a.openingBalance ?? a.balance ?? a.currentBalance ?? 0) || 0;
       bankCash += bal;
     });
@@ -516,8 +510,8 @@ export const ChartOfAccounts = () => {
         return false;
       }
       if (filter === 'All') return true;
-      const accType = getAccountType(a);
-      return accType.toLowerCase() === filter.toLowerCase();
+      const bank = a.bankName || 'Bank Account';
+      return bank.toLowerCase() === filter.toLowerCase();
     });
   }, [accounts, filter, selectedCompanyId]);
 
@@ -536,7 +530,7 @@ export const ChartOfAccounts = () => {
               ${totalBankCash.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Showing <strong className="text-slate-800">{accountCounts.Bank} Bank Accounts</strong> • Click any card to inspect recent transactions, customize dates, or export statements.
+              Showing <strong className="text-slate-800">{accountCounts.All || 0} Bank Accounts</strong> • Click any card to inspect recent transactions, customize dates, or export statements.
             </p>
           </div>
 
@@ -551,14 +545,13 @@ export const ChartOfAccounts = () => {
           )}
         </div>
 
-        {/* FILTER TABS */}
+        {/* FILTER TABS (Clean Bank Account filters - Removed redundant Assets, Income, Expense) */}
         <div className="flex flex-wrap gap-2 mb-6">
           {[
-            { key: 'All', label: `All Accounts (${accountCounts.All})` },
-            { key: 'Bank', label: `🏦 Bank Accounts (${accountCounts.Bank})` },
-            { key: 'Asset', label: `Assets (${accountCounts.Asset})` },
-            { key: 'Income', label: `Income (${accountCounts.Income})` },
-            { key: 'Expense', label: `Expenses (${accountCounts.Expense})` },
+            { key: 'All', label: `All Accounts (${accountCounts.All || 0})` },
+            ...Object.keys(accountCounts)
+              .filter(k => k !== 'All')
+              .map(bank => ({ key: bank, label: `🏦 ${bank} (${accountCounts[bank]})` }))
           ].map((t) => (
             <button
               key={t.key}

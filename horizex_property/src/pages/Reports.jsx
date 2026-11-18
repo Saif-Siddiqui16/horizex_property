@@ -5,7 +5,7 @@ import {
   Building2, Users, Home, TrendingUp, Wallet, BadgeDollarSign, 
   ShieldAlert, FileText, Gavel, Calendar, Clock, Landmark, AlertTriangle, 
   Info, Plus, Trash2, Settings, Filter, Download, ListFilter, Check, 
-  Paperclip, Printer, Eye, BarChart as ChartIcon, Sparkles, LayoutGrid, CalendarDays
+  Paperclip, Printer, Eye, BarChart as ChartIcon, Sparkles, LayoutGrid, CalendarDays, RefreshCw
 } from 'lucide-react';
 
 // RTK Query & Redux Toolkit Integration
@@ -637,25 +637,18 @@ export const Reports = () => {
     targetProperties
   ]);
 
-  // Re-trigger builder columns on module switch
-  useEffect(() => {
-    const cols = reportBuilderService.getAvailableColumns(builderModule);
-    setBuilderColumns(cols);
-    setSelectedColumns(cols.slice(0, 4).map(c => c.key));
-    setBuilderData([]);
-  }, [builderModule]);
-
   // Execute custom builder queries directly against PostgreSQL database
-  const handleBuilderQuery = async () => {
+  const handleBuilderQuery = async (customParams = {}) => {
     try {
       const cleanCompStr = cleanComp || '';
       const result = await fetchCustomReport({
-        module: builderModule,
+        module: customParams.module || builderModule,
         companyId: cleanCompStr,
         buildingId: activeBuildingId || builderFilters.buildingId,
         search: builderFilters.search || null,
         sortColumn: builderSorting.column || null,
         sortDirection: builderSorting.direction || 'asc',
+        ...customParams,
       }).unwrap();
 
       const rows = result?.data || [];
@@ -664,7 +657,7 @@ export const Reports = () => {
       // Persist Report Generation Log in PostgreSQL database
       try {
         await logReportAudit({
-          reportType: `${builderModule} Custom Report`,
+          reportType: `${customParams.module || builderModule} Custom Report`,
           filtersUsed: { companyId: cleanCompStr, buildingId: activeBuildingId, ...builderFilters },
           exportType: 'Screen',
         }).unwrap();
@@ -672,18 +665,27 @@ export const Reports = () => {
         console.warn('Backend audit log notice:', logErr);
       }
     } catch (e) {
-      console.error(e);
-      alert(e?.data?.message || e.message || 'Error generating custom report.');
+      console.error('Custom report query error:', e);
       setBuilderData([]);
     }
   };
 
-  // Auto-refresh custom builder results when Company or Building header filters change
+  // Re-trigger builder columns on module switch & auto-fetch real data
   useEffect(() => {
-    if (activeTab === 'builder' && builderData.length > 0) {
+    const cols = reportBuilderService.getAvailableColumns(builderModule);
+    setBuilderColumns(cols);
+    setSelectedColumns(cols.map(c => c.key));
+    if (activeTab === 'builder') {
+      handleBuilderQuery({ module: builderModule });
+    }
+  }, [builderModule, activeTab]);
+
+  // Auto-refresh custom builder results when Company, Building, or Sorting filters change
+  useEffect(() => {
+    if (activeTab === 'builder') {
       handleBuilderQuery();
     }
-  }, [cleanComp, activeBuildingId]);
+  }, [cleanComp, activeBuildingId, builderSorting.column, builderSorting.direction]);
 
   // Handle widget toggle changes
   const handleToggleWidget = (id, visible) => {
@@ -1158,12 +1160,25 @@ export const Reports = () => {
                 </select>
               </div>
 
+              {/* Prominent Quick Run Button at Top */}
+              <button 
+                onClick={() => handleBuilderQuery()}
+                disabled={isGeneratingCustom}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow border-none cursor-pointer flex items-center justify-center gap-2 transition-all"
+              >
+                <RefreshCw size={13} className={isGeneratingCustom ? 'animate-spin' : ''} />
+                {isGeneratingCustom ? 'Fetching from DB...' : 'Run / Refresh Report'}
+              </button>
+
               {/* Columns Checkbox selections */}
               <div className="flex flex-col gap-2 border-t border-slate-50 pt-3">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Select Columns</label>
-                <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
+                <div className="flex justify-between items-center">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Select Columns</label>
+                  <span className="text-[10px] text-blue-600 font-bold">{selectedColumns.length}/{builderColumns.length}</span>
+                </div>
+                <div className="flex flex-col gap-1.5 max-h-44 overflow-y-auto pr-1">
                   {builderColumns.map(col => (
-                    <label key={col.key} className="flex items-center gap-2 cursor-pointer font-semibold text-xs text-slate-500 hover:text-slate-700">
+                    <label key={col.key} className="flex items-center gap-2 cursor-pointer font-semibold text-xs text-slate-600 hover:text-slate-900 select-none">
                       <input 
                         type="checkbox"
                         checked={selectedColumns.includes(col.key)}
@@ -1174,6 +1189,7 @@ export const Reports = () => {
                             setSelectedColumns(selectedColumns.filter(c => c !== col.key));
                           }
                         }}
+                        className="rounded text-blue-600 focus:ring-blue-500"
                       />
                       {col.label}
                     </label>
@@ -1212,8 +1228,10 @@ export const Reports = () => {
                   placeholder="Filter by keyword..."
                   value={builderFilters.search || ''}
                   onChange={(e) => setBuilderFilters(p => ({ ...p, search: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleBuilderQuery(); }}
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none"
-                />
+                >
+                </input>
               </div>
 
               {/* Saved Query Layout templates list */}
@@ -1245,7 +1263,7 @@ export const Reports = () => {
 
               <div className="flex flex-col gap-3 mt-2 border-t border-slate-50 pt-4">
                 <button 
-                  onClick={handleBuilderQuery}
+                  onClick={() => handleBuilderQuery()}
                   disabled={isGeneratingCustom}
                   className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg border-none cursor-pointer flex items-center justify-center gap-1.5"
                 >
@@ -1257,7 +1275,7 @@ export const Reports = () => {
             {/* Generated Custom Grid View */}
             <div className="flex flex-col gap-5 min-w-0 w-full overflow-hidden">
               <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-card text-xs flex flex-wrap justify-between items-center gap-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <input 
                     type="text" 
                     placeholder="Save active layout as template..." 
@@ -1271,6 +1289,11 @@ export const Reports = () => {
                   >
                     Save Template
                   </button>
+                  {builderData.length > 0 && (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-1.5 rounded-xl ml-2">
+                      {builderData.length} records found
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
@@ -1287,9 +1310,22 @@ export const Reports = () => {
               </div>
 
               {/* Custom Builder Data Grid */}
-              {builderData.length === 0 ? (
-                <div className="p-12 text-center text-slate-400 bg-white border border-slate-100 rounded-3xl shadow-card">
-                  Click "Generate Custom Report" to render datasets.
+              {isGeneratingCustom ? (
+                <div className="p-16 text-center bg-white border border-slate-100 rounded-3xl shadow-card flex flex-col items-center justify-center gap-3">
+                  <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="font-bold text-slate-700 text-sm">Querying Live Database...</div>
+                  <div className="text-xs text-slate-400">Fetching real-time records from PostgreSQL</div>
+                </div>
+              ) : builderData.length === 0 ? (
+                <div className="p-16 text-center bg-white border border-slate-100 rounded-3xl shadow-card flex flex-col items-center justify-center gap-2">
+                  <div className="font-bold text-slate-700 text-sm">No Database Records Found</div>
+                  <div className="text-xs text-slate-400 max-w-sm">No matching records found in PostgreSQL database for the selected module and filters.</div>
+                  <button 
+                    onClick={() => handleBuilderQuery()}
+                    className="mt-3 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl border-none cursor-pointer transition-all flex items-center gap-2"
+                  >
+                    <RefreshCw size={12} /> Reload Data
+                  </button>
                 </div>
               ) : (
                 <div className="overflow-x-auto w-full bg-white border border-slate-100 rounded-3xl shadow-card">
