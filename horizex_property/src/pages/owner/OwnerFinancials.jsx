@@ -14,7 +14,9 @@ import api from '../../api/client';
 import { useGetOwnerFinancialsQuery } from '../../store';
 
 export const OwnerFinancials = () => {
-    const { data: finData } = useGetOwnerFinancialsQuery();
+    const { data: finData } = useGetOwnerFinancialsQuery(undefined, {
+        refetchOnMountOrArgChange: true,
+    });
     const [searchTerm, setSearchTerm] = React.useState('');
     const [showAllHistory, setShowAllHistory] = React.useState(false);
     const [financialStats, setFinancialStats] = React.useState([

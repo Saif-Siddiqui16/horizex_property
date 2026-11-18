@@ -25,7 +25,9 @@ const PROPERTY_IMAGES = [
 export const OwnerProperties = () => {
 const [viewingProperty, setViewingProperty] = useState(null);
 
-    const { data: propertiesData = [] } = useGetOwnerPropertiesQuery();
+    const { data: propertiesData = [] } = useGetOwnerPropertiesQuery(undefined, {
+        refetchOnMountOrArgChange: true,
+    });
     const [ownerProperties, setOwnerProperties] = useState([]);
 
     React.useEffect(() => {
@@ -45,7 +47,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
                     nextPaymentDate: p.nextPaymentDate || 'N/A',
                     residentialCount: p.residentialCount || 0,
                     commercialCount: p.commercialCount || 0,
-                    activeTenants: p.residentCount || 0, // Dynamic
+                    activeTenants: p.activeTenants || p.residentCount || 0, // Dynamic
                     ownershipPercentage: p.ownershipPercentage || 100,
                     occupiedUnits: p.occupiedUnits || 0,
                     vacantUnits: p.vacantUnits || 0,
@@ -54,6 +56,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
                     image: p.imageUrl || PROPERTY_IMAGES[idx % PROPERTY_IMAGES.length]
                 }));
                 setOwnerProperties(mapped);
+                setViewingProperty((prev) => (prev ? mapped.find((m) => m.id === prev.id) || prev : null));
             } catch (e) {
                 console.error(e);
             }
@@ -61,7 +64,7 @@ const [viewingProperty, setViewingProperty] = useState(null);
         fetchProperties();
     }, [propertiesData]);
 
-    // ... (rendering code)
+    const activeProperty = viewingProperty ? (ownerProperties.find((p) => p.id === viewingProperty.id) || viewingProperty) : null;
 
 
     return (
