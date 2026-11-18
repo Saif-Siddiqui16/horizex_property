@@ -96,8 +96,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
     <>
       <div className="flex flex-col gap-6">
 
-        {/* STATUS CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* STATUS CARDS (Commented out per request) */}
+        {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-center animate-[fadeUp_0.6s_ease]">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">System Status</h4>
             <p className="text-sm font-black text-emerald-600">{stats.systemStatus || 'Healthy & Active'}</p>
@@ -121,10 +121,10 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 : 'Today, 2:00 AM'}
             </p>
           </div>
-        </div>
+        </div> */}
 
         {/* SETTINGS SECTIONS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* COLUMN 1 */}
           <div className="flex flex-col gap-6">
@@ -143,7 +143,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             <div className="bg-white p-5 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.06)]">
               <h3 className="mb-4 text-base font-semibold text-slate-800">Security</h3>
 
-              <div className="flex justify-between items-center mb-3.5">
+              {/* TWO-FACTOR AUTHENTICATION (Commented out per request) */}
+              {/* <div className="flex justify-between items-center mb-3.5">
                 <span className="text-[13px] font-medium text-slate-700">Two-Factor Authentication</span>
                 <button
                   className={`w-11 h-[22px] rounded-full relative cursor-pointer border-none transition-colors ${settings.twoFactor ? 'bg-zinc-900' : 'bg-gray-200'}`}
@@ -151,7 +152,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 >
                   <span className={`block w-[18px] h-[18px] bg-white rounded-full absolute top-[2px] transition-all shadow-sm ${settings.twoFactor ? 'left-[24px]' : 'left-[2px]'}`} />
                 </button>
-              </div>
+              </div> */}
 
               <button className="mt-2.5 w-full bg-red-50 text-red-700 border-none p-2.5 rounded-lg cursor-pointer hover:bg-red-100 transition-colors text-[13px] font-semibold">
                 Force Logout All Users
@@ -229,9 +230,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             </div>
           </div>
 
-          {/* COLUMN 3 */}
-          <div className="flex flex-col gap-6">
-            {/* NOTIFICATIONS */}
+          {/* COLUMN 3 (Notifications & Finance & Payments commented out per request) */}
+          {/* <div className="flex flex-col gap-6">
             <div className="bg-white p-5 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.06)]">
               <h3 className="mb-4 text-base font-semibold text-slate-800">Notifications</h3>
 
@@ -256,7 +256,6 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
               </div>
             </div>
 
-            {/* FINANCE */}
             <div className="bg-white p-5 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.06)]">
               <h3 className="mb-4 text-base font-semibold text-slate-800">Finance & Payments</h3>
               <label className="flex flex-col gap-1.5 text-[13px] mb-3.5 text-slate-700">
@@ -282,7 +281,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 />
               </label>
             </div>
-          </div>
+          </div> */}
 
         </div>
 
