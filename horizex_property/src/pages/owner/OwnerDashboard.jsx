@@ -22,9 +22,15 @@ import {
 
 export const OwnerDashboard = () => {
     const navigate = useNavigate();
-    const { data: rawData, isLoading: statsLoading } = useGetOwnerDashboardStatsQuery();
-    const { data: financials, isLoading: pulseLoading } = useGetOwnerFinancialPulseQuery();
-    const { data: profile } = useGetOwnerProfileQuery();
+    const { data: rawData, isLoading: statsLoading } = useGetOwnerDashboardStatsQuery(undefined, {
+        refetchOnMountOrArgChange: true,
+    });
+    const { data: financials, isLoading: pulseLoading } = useGetOwnerFinancialPulseQuery(undefined, {
+        refetchOnMountOrArgChange: true,
+    });
+    const { data: profile } = useGetOwnerProfileQuery(undefined, {
+        refetchOnMountOrArgChange: true,
+    });
 
     const loading = statsLoading || pulseLoading;
     const ownerName = profile?.name || 'Owner';
