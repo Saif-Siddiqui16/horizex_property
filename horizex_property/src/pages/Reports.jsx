@@ -118,7 +118,7 @@ export const Reports = () => {
   const hasAccess = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN' || reportPermissionService.canViewDashboard();
 
   // Selected Hub Tab
-  const [activeTab, setActiveTab] = useState('executive');
+  const [activeTab, setActiveTab] = useState('standard');
 
   // Executive Dashboard Layout State (Instant initialization)
   const [dashLayout, setDashLayout] = useState(() => dashboardLayoutService.getLayout());
@@ -991,98 +991,49 @@ export const Reports = () => {
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3 border-b border-slate-100 pb-3">
           <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-2xl w-full lg:w-auto">
             <button 
-              onClick={() => setActiveTab('executive')}
-              className={`flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'executive' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <LayoutGrid size={14} className="shrink-0" /> <span className="truncate">Executive Dashboard</span>
-            </button>
-            <button 
               onClick={() => setActiveTab('standard')}
-              className={`flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
                 activeTab === 'standard' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
               <FileText size={14} className="shrink-0" /> <span className="truncate">Standard Reports</span>
             </button>
             <button 
-              onClick={() => setActiveTab('analytics')}
-              className={`flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'analytics' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <ChartIcon size={14} className="shrink-0" /> <span className="truncate">Interactive Charts</span>
-            </button>
-            <button 
               onClick={() => setActiveTab('builder')}
-              className={`flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
                 activeTab === 'builder' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
-              <Sparkles size={14} className="shrink-0" /> <span className="truncate">Custom Builder</span>
+              <Sparkles size={14} className="shrink-0 text-indigo-600" /> <span className="truncate">Custom Builder</span>
             </button>
             <button 
-              onClick={() => setActiveTab('schedules')}
-              className={`flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'schedules' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+              onClick={() => setActiveTab('executive')}
+              className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === 'executive' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
-              <CalendarDays size={14} className="shrink-0" /> <span className="truncate">Schedules</span>
+              <LayoutGrid size={14} className="shrink-0" /> <span className="truncate">Executive Overview</span>
             </button>
           </div>
 
           <div className="flex gap-2 w-full lg:w-auto">
-            {activeTab === 'executive' && (
-              <button 
-                onClick={() => setLayoutModal(true)}
-                className="w-full lg:w-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <Settings size={14} /> Configure Dashboard Layout
-              </button>
-            )}
           </div>
         </div>
 
-        {/* 1. TAB: EXECUTIVE DASHBOARD */}
+        {/* 1. TAB: EXECUTIVE OVERVIEW */}
         {activeTab === 'executive' && (
-          <div className="flex flex-col gap-4">
-            {/* KPI Cards */}
+          <div className="flex flex-col gap-5">
+            {/* 4 Core Property KPI Cards */}
             <ExecutiveKPICards kpis={dashData.kpis} onDrilldown={handleKPIDrilldown} />
 
             {/* Alert Banner */}
             <ExecutiveAlertsWidget alerts={dashData.alerts} />
 
-            {/* Grid of Custom Ordered Layout Widgets */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {dashLayout.filter(w => w.visible).sort((a,b) => a.order - b.order).map((widget) => {
-                switch (widget.id) {
-                  case 'RevenueTrendWidget':
-                    return <RevenueTrendWidget key={widget.id} data={dashData.revenueTrend} />;
-                  case 'OccupancyWidget':
-                    return <OccupancyWidget key={widget.id} occupancy={dashData.occupancy} />;
-                  case 'OutstandingBalanceWidget':
-                    return <OutstandingBalanceWidget key={widget.id} collection={dashData.collection} />;
-                  case 'RenewalWidget':
-                    return <RenewalWidget key={widget.id} renewals={dashData.renewals} />;
-                  case 'LegalCasesWidget':
-                    return <LegalCasesWidget key={widget.id} tal={dashData.tal} />;
-                  case 'AttendanceWidget':
-                    return <AttendanceWidget key={widget.id} attendance={dashData.attendance} />;
-                  case 'PayrollWidget':
-                    return <PayrollWidget key={widget.id} payroll={dashData.payroll} />;
-                  case 'RentRollWidget':
-                    return <RentRollWidget key={widget.id} rentRoll={liveRentRoll} />;
-                  case 'VacancyWidget':
-                    return <VacancyWidget key={widget.id} vacantList={liveVacantList} />;
-                  case 'ListingStatusWidget':
-                    return <ListingStatusWidget key={widget.id} listingList={liveListingList} />;
-                  case 'UpcomingTasksWidget':
-                    return <UpcomingTasksWidget key={widget.id} tasks={[{ title: 'Prepare June TAL evidence', dueDate: '2026-07-05' }, { title: 'Review outstanding payroll cycle', dueDate: '2026-07-02' }, { title: 'Follow up on overdue rent', dueDate: '2026-07-08' }, { title: 'Process security deposit refund', dueDate: '2026-07-10' }]} />;
-                  default:
-                    return null;
-                }
-              })}
+            {/* 3 Core Property Visual Widgets */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <RevenueTrendWidget data={dashData.revenueTrend} />
+              <OccupancyWidget occupancy={dashData.occupancy} />
+              <OutstandingBalanceWidget collection={dashData.collection} />
             </div>
           </div>
         )}
@@ -1095,7 +1046,7 @@ export const Reports = () => {
             <div className="flex flex-col gap-4 bg-white border border-slate-100 rounded-3xl p-4 shadow-card">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Financial Reports</span>
               <div className="flex flex-col gap-1 text-xs">
-                {['Rent Roll', 'Outstanding Balance', 'Rent Collection', 'Late Payments', 'Aging Report'].map(r => (
+                {['Rent Roll', 'Outstanding Balance', 'Rent Collection'].map(r => (
                   <button 
                     key={r}
                     onClick={() => setSelectedReport(r)}
@@ -1110,37 +1061,7 @@ export const Reports = () => {
 
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2 pt-2">Property & Leases</span>
               <div className="flex flex-col gap-1 text-xs">
-                {['Vacancy Report', 'Listing Status', 'Lease Expiry', 'Renewal Status'].map(r => (
-                  <button 
-                    key={r}
-                    onClick={() => setSelectedReport(r)}
-                    className={`text-left p-2.5 rounded-xl font-bold border-none transition-all cursor-pointer ${
-                      selectedReport === r ? 'bg-blue-50 text-blue-700' : 'bg-transparent text-slate-500 hover:bg-slate-50'
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2 pt-2">Litigation & Team</span>
-              <div className="flex flex-col gap-1 text-xs">
-                {['Active TAL Cases', 'Closed TAL Cases', 'Attendance Summary', 'Leave Summary', 'Payroll Cost'].map(r => (
-                  <button 
-                    key={r}
-                    onClick={() => setSelectedReport(r)}
-                    className={`text-left p-2.5 rounded-xl font-bold border-none transition-all cursor-pointer ${
-                      selectedReport === r ? 'bg-blue-50 text-blue-700' : 'bg-transparent text-slate-500 hover:bg-slate-50'
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2 pt-2">Maintenance & Assets</span>
-              <div className="flex flex-col gap-1 text-xs">
-                {['Outstanding Repairs', 'Upcoming Repairs', 'Repair Cost', 'Furniture Status'].map(r => (
+                {['Vacancy Report', 'Lease Expiry'].map(r => (
                   <button 
                     key={r}
                     onClick={() => setSelectedReport(r)}
