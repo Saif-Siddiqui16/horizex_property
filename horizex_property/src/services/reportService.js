@@ -1,33 +1,32 @@
 import analyticsEngineService from './analyticsEngineService';
 
-const AUDIT_KEY = 'mock_generated_reports';
+const inMemoryStore = {};
 
 export const reportService = {
   getStore(key) {
-    return JSON.parse(localStorage.getItem(key) || '[]');
+    return inMemoryStore[key] || [];
   },
 
   setStore(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
+    inMemoryStore[key] = data;
   },
 
   getAuditLogs() {
-    return this.getStore(AUDIT_KEY);
+    return this.getStore('generated_reports');
   },
 
   logReportGeneration(reportType, filtersUsed, exportType = 'Screen') {
     const logs = this.getAuditLogs();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
     const newLog = {
       id: `rep-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      generatedBy: user.name || 'Admin User',
+      generatedBy: 'Admin User',
       reportType,
       filtersUsed,
-      exportType
+      exportType,
     };
     logs.push(newLog);
-    this.setStore(AUDIT_KEY, logs);
+    this.setStore('generated_reports', logs);
     return newLog;
   },
 
