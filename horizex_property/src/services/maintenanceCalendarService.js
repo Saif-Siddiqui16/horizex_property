@@ -1,12 +1,9 @@
-import { calendarService } from './calendarService';
 import { maintenanceService } from './maintenanceService';
 import { preventiveMaintenanceService } from './preventiveMaintenanceService';
 import { assetService } from './assetService';
 
 export const maintenanceCalendarService = {
   getAllEvents: (providedRequests = null) => {
-    const base = calendarService.getAll() || [];
-
     // Convert Maintenance Requests
     const requests = providedRequests || maintenanceService.getAll() || [];
     const requestEvts = requests.map(r => ({
@@ -43,6 +40,7 @@ export const maintenanceCalendarService = {
       syncStatus: 'Synced'
     }));
 
-    return [...base, ...requestEvts, ...preventiveEvts, ...assetEvts];
+    // Return only pure maintenance and repairs events
+    return [...requestEvts, ...preventiveEvts, ...assetEvts];
   }
 };

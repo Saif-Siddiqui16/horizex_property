@@ -757,7 +757,7 @@ export const Maintenance = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <OpenRepairsWidget stats={stats} onTabRedirect={setActiveTab} />
             <EmergencyRepairsWidget stats={stats} onTabRedirect={setActiveTab} />
-            <InventoryAlertsWidget summary={inventoryStats} onTabRedirect={() => setActiveTab('requests')} />
+            {/* <InventoryAlertsWidget summary={inventoryStats} onTabRedirect={() => setActiveTab('requests')} /> */}
 
             <div className="lg:col-span-2 flex flex-col gap-6">
               <TechnicianUtilizationWidget analytics={techStats} />
@@ -767,8 +767,8 @@ export const Maintenance = () => {
             <div className="flex flex-col gap-6">
               <MaintenanceQuickActions
                 onCreateRequest={() => setShowRequestModal(true)}
-                onClockTech={() => setShowRequestModal(true)}
-                onPostInventory={() => setShowRequestModal(true)}
+                // onClockTech={() => setShowRequestModal(true)}
+                // onPostInventory={() => setShowRequestModal(true)}
               />
               <AssetHealthWidget summary={assetStats} />
             </div>

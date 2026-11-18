@@ -112,7 +112,6 @@ export const MaintenanceRequestTable = ({ requests, onSelect, onStatusChange, on
                       <option value="In Progress">In Progress</option>
                       <option value="Waiting Parts">Waiting Parts</option>
                       <option value="Waiting Vendor">Waiting Vendor</option>
-                      <option value="Inspection">Inspection</option>
                       <option value="Completed">Completed</option>
                       <option value="Rejected">Rejected</option>
                       <option value="Closed">Closed</option>
@@ -1009,8 +1008,8 @@ export const AssetHistoryCard = ({ assetId, lifecycleHistory }) => {
 export const MaintenanceQuickActions = ({ onCreateRequest, onClockTech, onPostInventory }) => {
   const actions = [
     { label: 'File Repair Request', onClick: onCreateRequest, color: 'bg-blue-600 hover:bg-blue-700 text-white' },
-    { label: 'Clock In/Out Tech', onClick: onClockTech, color: 'bg-slate-900 hover:bg-slate-800 text-white' },
-    { label: 'Post Parts Movement', onClick: onPostInventory, color: 'bg-indigo-600 hover:bg-indigo-700 text-white' }
+    // { label: 'Clock In/Out Tech', onClick: onClockTech, color: 'bg-slate-900 hover:bg-slate-800 text-white' },
+    // { label: 'Post Parts Movement', onClick: onPostInventory, color: 'bg-indigo-600 hover:bg-indigo-700 text-white' }
   ];
 
   return (
