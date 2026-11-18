@@ -54,7 +54,8 @@ export const technicianAnalyticsService = {
       const completed = assigned.filter(r => r.status === 'Completed' || r.status === 'Closed');
       const pending = assigned.filter(r => r.status !== 'Completed' && r.status !== 'Closed' && r.status !== 'Rejected');
       
-      const techHours = technicianService.getPayrollHours(t.id);
+      const techHours = t.payrollHours !== undefined ? Number(t.payrollHours) : technicianService.getPayrollHours(t.id);
+      const totalHours = t.totalHours !== undefined ? Number(t.totalHours) : techHours;
       // Standard 160 hrs/month capacity. Utilization = techHours / 160
       const utilization = Math.min(100, Math.round((techHours / 160) * 100));
 
@@ -62,6 +63,9 @@ export const technicianAnalyticsService = {
         technicianId: t.id,
         name: t.name,
         role: t.role,
+        clockedIn: t.clockedIn !== undefined ? !!t.clockedIn : true,
+        clockStatus: t.clockStatus || (t.clockedIn ? 'Clocked In' : 'Clocked Out'),
+        totalHours,
         assignedCount: assigned.length,
         completedCount: completed.length,
         pendingCount: pending.length,

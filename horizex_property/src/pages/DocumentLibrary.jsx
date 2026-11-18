@@ -86,13 +86,19 @@ export const DocumentLibrary = () => {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [previewDoc]);
 
-    const fetchDocuments = async () => {
+    const fetchDocuments = async (overrideCompId) => {
         try {
             setLoading(true);
-            const res = await api.get("/api/admin/documents");
-            setDocuments(res.data);
+            const comp = overrideCompId !== undefined 
+                ? overrideCompId 
+                : (localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
+            const cleanComp = comp && comp !== 'all' ? comp : '';
+            const res = await api.get(`/api/admin/documents${cleanComp ? `?companyId=${cleanComp}` : ''}`);
+            const data = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : []);
+            setDocuments(data);
         } catch (error) {
-            console.error(error);
+            console.error("Failed to fetch documents", error);
+            setDocuments([]);
         } finally {
             setLoading(false);
         }
@@ -146,6 +152,7 @@ export const DocumentLibrary = () => {
             const sizeInMB = (uploadFile.size / (1024 * 1024)).toFixed(1);
             const fileSizeStr = `${sizeInMB} MB`;
 
+            const currentCompanyId = selectedCompanyId || localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
             const payload = {
                 fileBase64,
                 name: fileName,
@@ -153,6 +160,7 @@ export const DocumentLibrary = () => {
                 expiryDate: expiryDate || null,
                 fileSize: fileSizeStr,
                 mimeType: uploadFile.type || (uploadFile.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+                companyId: currentCompanyId && currentCompanyId !== 'all' ? currentCompanyId : undefined,
                 links: selectedLinks.map(l => ({
                     entityType: l.entityType,
                     entityId: l.entityId
@@ -347,21 +355,41 @@ export const DocumentLibrary = () => {
         return [];
     }, [linkType, dropdownData, selectedLinks, selectedCompanyId, selectedBuildingId]);
 
-    const filteredDocuments = documents.filter(doc => {
-        const matchesSearch = doc.name.toLowerCase().includes(search.toLowerCase()) ||
-            doc.user?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
-            doc.user?.lastName?.toLowerCase().includes(search.toLowerCase());
-        const matchesType = typeFilter === "All" || doc.type === typeFilter;
-        
-        const today = new Date().setHours(0,0,0,0);
-        const isExpired = doc.expiryDate && new Date(doc.expiryDate) < today;
-        let matchesExpiry = true;
-        if (expiryFilter === "Expired") matchesExpiry = isExpired;
-        else if (expiryFilter === "Active") matchesExpiry = !isExpired && doc.expiryDate;
-        else if (expiryFilter === "No Expiry") matchesExpiry = !doc.expiryDate;
+    const filteredDocuments = useMemo(() => {
+        const list = Array.isArray(documents) ? documents : [];
+        return list.filter(doc => {
+            if (!doc) return false;
+            const docName = doc.name || '';
+            const uFirst = doc.user?.firstName || '';
+            const uLast = doc.user?.lastName || '';
+            const pName = doc.propertyName || doc.property?.name || '';
 
-        return matchesSearch && matchesType && matchesExpiry;
-    });
+            const q = (search || '').toLowerCase().trim();
+            const matchesSearch = !q ||
+                docName.toLowerCase().includes(q) ||
+                uFirst.toLowerCase().includes(q) ||
+                uLast.toLowerCase().includes(q) ||
+                pName.toLowerCase().includes(q);
+
+            const matchesType = typeFilter === "All" || doc.type === typeFilter;
+            
+            const today = new Date().setHours(0,0,0,0);
+            const isExpired = doc.expiryDate && new Date(doc.expiryDate) < today;
+            let matchesExpiry = true;
+            if (expiryFilter === "Expired") matchesExpiry = isExpired;
+            else if (expiryFilter === "Active") matchesExpiry = !isExpired && doc.expiryDate;
+            else if (expiryFilter === "No Expiry") matchesExpiry = !doc.expiryDate;
+
+            let matchesBuilding = true;
+            if (selectedBuildingId && selectedBuildingId !== 'all') {
+                const docBldgId = doc.propertyId || doc.property?.id || doc.unit?.propertyId;
+                const hasBldgLink = (doc.links || []).some(l => l.entityType === 'PROPERTY' && String(l.entityId) === String(selectedBuildingId));
+                matchesBuilding = String(docBldgId) === String(selectedBuildingId) || hasBldgLink;
+            }
+
+            return matchesSearch && matchesType && matchesExpiry && matchesBuilding;
+        });
+    }, [documents, search, typeFilter, expiryFilter, selectedBuildingId]);
 
     const sortedDocuments = useMemo(() => {
         const today = new Date();

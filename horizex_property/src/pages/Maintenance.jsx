@@ -106,6 +106,14 @@ export const Maintenance = () => {
   // Modals
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
+  const [showClockModal, setShowClockModal] = useState(false);
+  const [clockForm, setClockForm] = useState({
+    name: '',
+    role: 'General Handyman',
+    clockStatus: 'Clocked In',
+    totalHours: 8,
+    payrollHours: 8,
+  });
   const [newRequestForm, setNewRequestForm] = useState({
     buildingId: 'building-1',
     apartmentId: 'unit-101',
@@ -294,7 +302,7 @@ export const Maintenance = () => {
     });
   }, [backendTickets, properties]);
 
-  const refreshWorkspaceData = () => {
+  const refreshWorkspaceData = async () => {
     const filters = {
       buildingId: selectedBuildingId,
       apartmentId: selectedApartmentId,
@@ -468,7 +476,18 @@ export const Maintenance = () => {
     setCostSummary(repairCostService.getSummary());
     setCostByBuilding(repairCostService.getCostByBuilding());
     setVendorStats(vendorAnalyticsService.getSummary());
-    setTechStats(technicianAnalyticsService.getSummary());
+    try {
+      const techRes = await api.get('/api/admin/maintenance/technicians');
+      const backendTechs = Array.isArray(techRes.data) ? techRes.data : (techRes.data?.data || []);
+      if (Array.isArray(backendTechs) && backendTechs.length > 0) {
+        setTechStats(backendTechs);
+        setTechnicians(backendTechs);
+      } else {
+        setTechStats(technicianAnalyticsService.getSummary());
+      }
+    } catch (e) {
+      setTechStats(technicianAnalyticsService.getSummary());
+    }
     setAssetStats(assetAnalyticsService.getSummary());
     setInventoryStats(inventoryAnalyticsService.getSummary());
   };
@@ -616,6 +635,41 @@ export const Maintenance = () => {
     refreshWorkspaceData();
   };
 
+  const handleClockSubmit = async (e) => {
+    e.preventDefault();
+    if (!clockForm.name.trim()) return alert('Please enter technician name');
+
+    const techPayload = {
+      name: clockForm.name.trim(),
+      role: clockForm.role,
+      clockStatus: clockForm.clockStatus,
+      totalHours: Number(clockForm.totalHours) || 0,
+      payrollHours: Number(clockForm.payrollHours) || 0,
+    };
+
+    try {
+      await api.post('/api/admin/maintenance/technicians/clock', techPayload);
+    } catch (err) {
+      console.error('Failed to save technician clock log to backend:', err);
+    }
+
+    technicianService.addOrUpdate({
+      id: `tech-${Date.now()}`,
+      ...techPayload,
+      clockedIn: clockForm.clockStatus === 'Clocked In',
+    });
+
+    await refreshWorkspaceData();
+    setShowClockModal(false);
+    setClockForm({
+      name: '',
+      role: 'General Handyman',
+      clockStatus: 'Clocked In',
+      totalHours: 8,
+      payrollHours: 8,
+    });
+  };
+
   // Lifecycle changes on assets
   const handleAssetLifecycleChange = (id, newStatus) => {
     assetService.updateLifecycle(id, newStatus, `Transitioned state to ${newStatus} on Asset registry.`);
@@ -761,27 +815,16 @@ export const Maintenance = () => {
             <div className="lg:col-span-2 flex flex-col gap-6">
               <TechnicianUtilizationWidget analytics={techStats} />
               <PreventiveMaintenanceWidget preventive={preventive.slice(0, 3)} onCompleteCycle={handleCompletePMCycle} />
+              <VendorPerformanceWidget analytics={vendorStats} />
             </div>
 
             <div className="flex flex-col gap-6">
               <MaintenanceQuickActions
                 onCreateRequest={() => setShowRequestModal(true)}
-                // onClockTech={() => setShowRequestModal(true)}
+                onClockTech={() => setShowClockModal(true)}
                 // onPostInventory={() => setShowRequestModal(true)}
               />
-              <AssetHealthWidget summary={assetStats} />
-            </div>
-
-            <div className="lg:col-span-2">
-              <VendorPerformanceWidget analytics={vendorStats} />
-            </div>
-
-            <div>
               <RepairCostWidget summary={costSummary} costByBuilding={costByBuilding} />
-            </div>
-
-            <div className="lg:col-span-3">
-              <MaintenanceTimeline logs={audits.slice(0, 6)} />
             </div>
           </div>
         )}
@@ -1188,6 +1231,110 @@ export const Maintenance = () => {
                   className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl border-none shadow-md cursor-pointer uppercase tracking-wider"
                 >
                   Issue Work Order
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ── CLOCK IN / OUT TECH MODAL ── */}
+        {showClockModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <form onSubmit={handleClockSubmit} className="bg-white rounded-[2rem] p-6 max-w-md w-full flex flex-col gap-4 shadow-float animate-zoom-in">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h3 className="font-black text-slate-800 text-sm uppercase tracking-wider">Clock In / Out Technician</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowClockModal(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold border-none bg-transparent cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3.5 text-xs font-bold text-slate-700">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Technician Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Alex Rivera"
+                    value={clockForm.name}
+                    onChange={(e) => setClockForm({ ...clockForm, name: e.target.value })}
+                    className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Role</label>
+                    <select
+                      value={clockForm.role}
+                      onChange={(e) => setClockForm({ ...clockForm, role: e.target.value })}
+                      className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700"
+                    >
+                      <option value="General Handyman">General Handyman</option>
+                      <option value="Master Electrician">Master Electrician</option>
+                      <option value="HVAC Specialist">HVAC Specialist</option>
+                      <option value="Lead Plumber">Lead Plumber</option>
+                      <option value="Appliance Tech">Appliance Tech</option>
+                      <option value="Painter & Finisher">Painter & Finisher</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Clock Status</label>
+                    <select
+                      value={clockForm.clockStatus}
+                      onChange={(e) => setClockForm({ ...clockForm, clockStatus: e.target.value })}
+                      className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700"
+                    >
+                      <option value="Clocked In">Clocked In</option>
+                      <option value="Clocked Out">Clocked Out</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Working Hours</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      required
+                      value={clockForm.totalHours}
+                      onChange={(e) => setClockForm({ ...clockForm, totalHours: e.target.value })}
+                      className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Payroll Synced Hours</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      required
+                      value={clockForm.payrollHours}
+                      onChange={(e) => setClockForm({ ...clockForm, payrollHours: e.target.value })}
+                      className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowClockModal(false)}
+                  className="px-4 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold text-slate-600 bg-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl border-none shadow-md cursor-pointer uppercase tracking-wider"
+                >
+                  Save & Clock Tech
                 </button>
               </div>
             </form>

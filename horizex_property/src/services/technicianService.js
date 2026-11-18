@@ -4,6 +4,22 @@ export const technicianService = {
     return list.filter(t => !['tech-1', 'tech-2', 'tech-3'].includes(t.id) && !['Jean Dupuis', 'Marc-Andre Levesque', 'Sylvie Tremblay'].includes(t.name));
   },
 
+  addOrUpdate: (tech) => {
+    const list = JSON.parse(localStorage.getItem('mock_technicians') || '[]');
+    const cleanList = list.filter(t => !['tech-1', 'tech-2', 'tech-3'].includes(t.id) && !['Jean Dupuis', 'Marc-Andre Levesque', 'Sylvie Tremblay'].includes(t.name));
+    const idx = cleanList.findIndex(t => (tech.id && t.id === tech.id) || (tech.name && t.name.toLowerCase() === tech.name.toLowerCase()));
+    if (idx >= 0) {
+      cleanList[idx] = { ...cleanList[idx], ...tech };
+    } else {
+      cleanList.push({
+        id: tech.id || `tech-${Date.now()}`,
+        ...tech
+      });
+    }
+    localStorage.setItem('mock_technicians', JSON.stringify(cleanList));
+    return cleanList;
+  },
+
   toggleClock: (id) => {
     const list = JSON.parse(localStorage.getItem('mock_technicians') || '[]');
     const idx = list.findIndex(t => t.id === id);

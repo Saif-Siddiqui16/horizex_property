@@ -50,9 +50,10 @@ export const ChartOfAccounts = () => {
 
   const [form, setForm] = useState({
     name: '',
-    type: 'Bank',
+    bankName: 'RBC Royal Bank',
     accountNumber: '',
     balance: '',
+    companyId: '',
   });
 
   const [selectedCompanyId, setSelectedCompanyId] = useState(
@@ -127,37 +128,47 @@ export const ChartOfAccounts = () => {
   useEffect(() => {
     if (txApiResponse?.transactions) {
       setAccountTransactions(txApiResponse.transactions);
+    } else if (Array.isArray(txApiResponse)) {
+      setAccountTransactions(txApiResponse);
+    } else {
+      setAccountTransactions([]);
     }
   }, [txApiResponse]);
 
   const openAddModal = () => {
     setEditIndex(null);
-    setForm({ name: '', type: 'Bank', balance: '', accountNumber: '' });
+    setForm({
+      name: '',
+      bankName: 'RBC Royal Bank',
+      balance: '',
+      accountNumber: '',
+      companyId: selectedCompanyId || (realCompanies[0]?.id ? String(realCompanies[0].id) : ''),
+    });
     setShowModal(true);
   };
 
   const openEditModal = (acc, index) => {
     setEditIndex(index);
-    const accType = acc.assetType || acc.routingNumber || acc.type || acc.bankName || 'Bank';
     setForm({
       id: acc.id,
       name: acc.accountName || acc.name || '',
-      type: accType,
+      bankName: acc.bankName || 'RBC Royal Bank',
       balance: acc.openingBalance ?? acc.balance ?? '',
       accountNumber: acc.accountNumber || '',
+      companyId: acc.companyId || selectedCompanyId || '',
     });
     setShowModal(true);
   };
 
   const handleSave = async () => {
     if (!form.name || form.balance === undefined || form.balance === '') {
-      alert('Please fill all fields');
+      alert('Please fill Account Name and Balance');
       return;
     }
 
     try {
-      const targetCompanyId = selectedCompanyId || (realCompanies[0]?.id ? String(realCompanies[0].id) : undefined);
-      const accType = form.type || 'Bank';
+      const targetCompanyId = form.companyId || selectedCompanyId || (realCompanies[0]?.id ? String(realCompanies[0].id) : undefined);
+      const bankTitle = form.bankName || 'RBC Royal Bank';
       const balNum = parseFloat(form.balance) || 0;
 
       if (editIndex !== null) {
@@ -166,8 +177,8 @@ export const ChartOfAccounts = () => {
         await updateAccountApi({
           id: String(accountId),
           accountName: form.name.trim(),
-          bankName: accType,
-          routingNumber: accType,
+          bankName: bankTitle,
+          routingNumber: bankTitle,
           balance: balNum,
           accountNumber: form.accountNumber || targetAcc?.accountNumber || '0001',
           companyId: targetCompanyId ? String(targetCompanyId) : undefined,
@@ -175,9 +186,9 @@ export const ChartOfAccounts = () => {
       } else {
         await createAccountApi({
           accountName: form.name.trim(),
-          bankName: accType,
-          routingNumber: accType,
-          accountNumber: form.accountNumber || `${Date.now().toString().slice(-6)}`,
+          bankName: bankTitle,
+          routingNumber: bankTitle,
+          accountNumber: form.accountNumber || `****-${Date.now().toString().slice(-4)}`,
           initialBalance: balNum,
           companyId: targetCompanyId ? String(targetCompanyId) : undefined,
         }).unwrap();
@@ -206,6 +217,7 @@ export const ChartOfAccounts = () => {
   // ==========================================
   const openAccountReport = (acc) => {
     setReportAccount(acc);
+    setAccountTransactions([]);
     setDateFilter('ALL');
     setTypeFilter('ALL');
     setSearchQuery('');
@@ -221,32 +233,45 @@ export const ChartOfAccounts = () => {
     if (!accountTransactions.length) return [];
 
     const now = new Date();
-    const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentYyyyMm = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    const todayStr = now.toISOString().split('T')[0];
+    const d30Str = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     return accountTransactions
       .filter((tx) => {
+        const txDateStr = String(tx.date || '').slice(0, 10);
+
         // Date Filtering
         if (dateFilter === 'THIS_MONTH') {
-          const txDate = new Date(tx.date);
-          if (txDate.getMonth() !== currentMonth || txDate.getFullYear() !== currentYear) {
-            return false;
+          if (!txDateStr.startsWith(currentYyyyMm)) {
+            const parts = txDateStr.split('-');
+            if (parts.length >= 2) {
+              const y = parseInt(parts[0], 10);
+              const m = parseInt(parts[1], 10);
+              if (y !== currentYear || m !== currentMonth + 1) return false;
+            } else {
+              return false;
+            }
           }
         } else if (dateFilter === 'LAST_30_DAYS') {
-          const txDate = new Date(tx.date);
-          const thirtyDaysAgo = new Date(now);
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          if (txDate < thirtyDaysAgo) return false;
+          if (txDateStr < d30Str || txDateStr > todayStr) {
+            const txTime = new Date(txDateStr + 'T12:00:00').getTime();
+            const diffDays = Math.abs((now.getTime() - txTime) / (1000 * 60 * 60 * 24));
+            if (diffDays > 30) return false;
+          }
         } else if (dateFilter === 'THIS_QUARTER') {
-          const txDate = new Date(tx.date);
           const currentQuarter = Math.floor(currentMonth / 3);
-          const txQuarter = Math.floor(txDate.getMonth() / 3);
-          if (txQuarter !== currentQuarter || txDate.getFullYear() !== currentYear) {
-            return false;
+          const parts = txDateStr.split('-');
+          if (parts.length >= 2) {
+            const txQ = Math.floor((parseInt(parts[1], 10) - 1) / 3);
+            const txY = parseInt(parts[0], 10);
+            if (txY !== currentYear || txQ !== currentQuarter) return false;
           }
         } else if (dateFilter === 'CUSTOM') {
-          if (customStartDate && tx.date < customStartDate) return false;
-          if (customEndDate && tx.date > customEndDate) return false;
+          if (customStartDate && txDateStr < customStartDate) return false;
+          if (customEndDate && txDateStr > customEndDate) return false;
         }
 
         // Type Filtering
@@ -456,14 +481,34 @@ export const ChartOfAccounts = () => {
   };
 
   const getAccountType = (acc) => {
-    let t = acc.assetType || acc.routingNumber || acc.bankName || acc.type || 'Asset';
+    let t = acc.assetType || acc.bankName || acc.routingNumber || acc.type || 'Bank';
     const lower = String(t).toLowerCase();
-    if (lower === 'bank' || lower.includes('bank') || lower.includes('checking') || lower.includes('saving')) return 'Bank';
-    if (lower === 'income' || lower === 'revenue') return 'Income';
+    if (lower === 'bank' || lower.includes('bank') || lower.includes('checking') || lower.includes('saving') || lower.includes('rbc') || lower.includes('td') || lower.includes('bmo') || lower.includes('cibc') || lower.includes('cash') || lower.includes('trust')) return 'Bank';
+    if (lower === 'income' || lower === 'revenue') return 'Bank';
     if (lower === 'expense') return 'Expense';
     if (lower === 'asset') return 'Asset';
-    return t;
+    return 'Bank';
   };
+
+  const { totalBankCash, accountCounts } = useMemo(() => {
+    let bankCash = 0;
+    const counts = { All: 0, Bank: 0, Asset: 0, Income: 0, Expense: 0 };
+    (accounts || []).forEach((a) => {
+      if (selectedCompanyId && a.companyId && String(a.companyId) !== String(selectedCompanyId)) {
+        return;
+      }
+      counts.All += 1;
+      const type = getAccountType(a);
+      if (counts[type] !== undefined) {
+        counts[type] += 1;
+      } else {
+        counts.Bank += 1;
+      }
+      const bal = parseFloat(a.openingBalance ?? a.balance ?? a.currentBalance ?? 0) || 0;
+      bankCash += bal;
+    });
+    return { totalBankCash: bankCash, accountCounts: counts };
+  }, [accounts, selectedCompanyId]);
 
   const filteredAccounts = useMemo(() => {
     return (accounts || []).filter((a) => {
@@ -480,42 +525,61 @@ export const ChartOfAccounts = () => {
     <>
       <div className="p-4 sm:p-6 animate-[fadeIn_0.4s_ease-in-out]">
 
-        {/* HEADER – filter tabs + add button */}
-        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-6">
-          {/* Filter Tabs */}
-          <div className="flex flex-wrap gap-2">
-            {['All', 'Bank', 'Asset', 'Income', 'Expense'].map((t) => (
-              <button
-                key={t}
-                className={`py-2 px-4 rounded-lg border text-sm font-medium cursor-pointer transition-all duration-200 ${
-                  filter === t
-                    ? 'bg-zinc-900 text-white border-indigo-600 shadow-sm'
-                    : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
-                }`}
-                onClick={() => setFilter(t)}
-              >
-                {t}
-              </button>
-            ))}
+        {/* TOP OVERVIEW SUMMARY BANNER */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Liquid Bank Balance</span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              ${totalBankCash.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Showing <strong className="text-slate-800">{accountCounts.Bank} Bank Accounts</strong> • Click any card to inspect recent transactions, customize dates, or export statements.
+            </p>
           </div>
 
-          {/* Add Button */}
           {hasPermission('Chart of Accounts', 'add') && (
             <button
-              className="flex items-center justify-center gap-1.5 bg-zinc-900 text-white py-2.5 px-4 rounded-lg text-sm font-semibold cursor-pointer border-none transition-all duration-200 hover:bg-zinc-800 hover:-translate-y-px w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-2.5 px-5 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-sm shrink-0"
               onClick={openAddModal}
             >
-              <FiPlus />
+              <FiPlus size={16} />
               Add New Account
             </button>
           )}
         </div>
 
+        {/* FILTER TABS */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {[
+            { key: 'All', label: `All Accounts (${accountCounts.All})` },
+            { key: 'Bank', label: `🏦 Bank Accounts (${accountCounts.Bank})` },
+            { key: 'Asset', label: `Assets (${accountCounts.Asset})` },
+            { key: 'Income', label: `Income (${accountCounts.Income})` },
+            { key: 'Expense', label: `Expenses (${accountCounts.Expense})` },
+          ].map((t) => (
+            <button
+              key={t.key}
+              className={`py-2 px-4 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                filter === t.key
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                  : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600'
+              }`}
+              onClick={() => setFilter(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         {/* ACCOUNT CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredAccounts.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-slate-400 bg-white rounded-xl border border-slate-100 shadow-sm">
-              <p className="text-sm font-medium">No accounts found. Add your first account to get started.</p>
+            <div className="col-span-full py-16 text-center text-slate-400 bg-white rounded-2xl border border-slate-200 shadow-xs">
+              <p className="text-sm font-semibold text-slate-600">No accounts found in this category.</p>
+              <p className="text-xs text-slate-400 mt-1">Click "Add New Account" above to register bank accounts or operating ledgers.</p>
             </div>
           ) : (
             filteredAccounts.map((acc, index) => {
@@ -523,30 +587,34 @@ export const ChartOfAccounts = () => {
               const numBalance = parseFloat(rawBalance) || 0;
               const accType = getAccountType(acc);
               const accName = acc.accountName || acc.name || 'Unnamed Account';
+              const isBank = accType.toLowerCase() === 'bank';
 
               return (
                 <div
                   key={index}
                   onClick={() => openAccountReport(acc)}
-                  className={`rounded-xl p-4 sm:p-5 bg-white shadow-[0_6px_20px_rgba(0,0,0,0.06)] relative transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(0,0,0,0.1)] cursor-pointer group border-l-[5px] ${
-                    accType.toLowerCase() === 'bank'
-                      ? 'border-l-emerald-600'
-                      : accType === 'Asset'
-                      ? 'border-l-blue-600'
-                      : accType === 'Income'
-                      ? 'border-l-green-600'
-                      : 'border-l-red-600'
-                  } h-fit flex flex-col justify-between`}
+                  className={`rounded-2xl p-5 bg-white border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer group flex flex-col justify-between ${
+                    isBank
+                      ? 'border-emerald-300 shadow-xs ring-1 ring-emerald-500/10'
+                      : 'border-slate-200 hover:border-slate-300 shadow-2xs'
+                  }`}
                 >
                   <div>
                     <div className="flex justify-between items-start gap-2">
-                      <h3 className="text-sm sm:text-base font-semibold text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors">
-                        {accName}
-                      </h3>
-                      <div className="flex gap-1.5 items-center shrink-0">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors">
+                          {accName}
+                        </h3>
+                        {acc.company?.name && (
+                          <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">
+                            {acc.company.name}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1 items-center shrink-0">
                         {hasPermission('Chart of Accounts', 'edit') && (
                           <button
-                            className="p-1.5 rounded-lg cursor-pointer text-slate-400 text-base transition-colors duration-200 hover:text-indigo-600 hover:bg-indigo-50"
+                            className="p-1.5 rounded-lg cursor-pointer text-slate-400 text-sm transition-colors duration-200 hover:text-indigo-600 hover:bg-indigo-50"
                             onClick={(e) => {
                               e.stopPropagation();
                               openEditModal(
@@ -567,7 +635,7 @@ export const ChartOfAccounts = () => {
                         )}
                         {hasPermission('Chart of Accounts', 'delete') && (
                           <button
-                            className="p-1.5 rounded-lg cursor-pointer text-slate-400 text-base transition-colors duration-200 hover:text-red-600 hover:bg-red-50"
+                            className="p-1.5 rounded-lg cursor-pointer text-slate-400 text-sm transition-colors duration-200 hover:text-red-600 hover:bg-red-50"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(acc.id);
@@ -580,34 +648,35 @@ export const ChartOfAccounts = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-1">
-                      <p
-                        className={`text-[12px] font-bold uppercase tracking-wider ${
-                          accType.toLowerCase() === 'bank' ? 'text-emerald-700' : 'text-slate-500'
+                    <div className="flex items-center gap-2 mt-2">
+                      <span
+                        className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                          isBank
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : accType === 'Asset'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : accType === 'Income'
+                            ? 'bg-green-50 text-green-700 border border-green-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}
                       >
-                        {accType.toLowerCase() === 'bank' ? '🏦 Bank Account' : accType}
-                      </p>
+                        {isBank ? '🏦 Bank Account' : accType}
+                      </span>
                       {acc.accountNumber && (
                         <span className="text-[11px] font-mono text-slate-400 font-medium">({acc.accountNumber})</span>
                       )}
                     </div>
 
-                    <h2 className="text-xl sm:text-[22px] font-bold my-2.5 text-slate-900">
-                      $ {numBalance.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </h2>
-
-                    {/* MINI TREND BAR */}
-                    <div className="flex gap-1 items-end h-[24px]">
-                      <span className="w-1.5 bg-gradient-to-b from-indigo-600 to-indigo-400 rounded h-[10px] animate-[grow_1.2s_ease_infinite_alternate]" />
-                      <span className="w-1.5 bg-gradient-to-b from-indigo-600 to-indigo-400 rounded h-[18px] animate-[grow_1.2s_ease_infinite_alternate_0.2s]" />
-                      <span className="w-1.5 bg-gradient-to-b from-indigo-600 to-indigo-400 rounded h-[24px] animate-[grow_1.2s_ease_infinite_alternate_0.4s]" />
-                      <span className="w-1.5 bg-gradient-to-b from-indigo-600 to-indigo-400 rounded h-[14px] animate-[grow_1.2s_ease_infinite_alternate_0.6s]" />
+                    <div className="mt-4">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Live Balance</span>
+                      <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        $ {numBalance.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </h2>
                     </div>
                   </div>
 
                   {/* CLICK INDICATOR FOOTER */}
-                  <div className="pt-2.5 mt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-indigo-600 group-hover:text-indigo-800 transition-colors">
+                  <div className="pt-3 mt-4 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-indigo-600 group-hover:text-indigo-800 transition-colors">
                     <span>View Transactions Report</span>
                     <span className="text-xs transition-transform group-hover:translate-x-1">→</span>
                   </div>
@@ -929,40 +998,73 @@ export const ChartOfAccounts = () => {
               </div>
 
               <div className="p-5 flex flex-col gap-3.5">
-                <input
-                  placeholder="Account Name (e.g. Operating Checking - TD Bank)"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                />
-
-                <select
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
-                >
-                  <option value="Bank">Bank Account</option>
-                  <option value="Asset">Asset</option>
-                  <option>Income</option>
-                  <option>Expense</option>
-                </select>
-
-                {form.type === 'Bank' && (
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Account Name *</label>
                   <input
-                    placeholder="Account / Transit Number (e.g. ****4821)"
-                    value={form.accountNumber || ''}
-                    onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
+                    placeholder="e.g. Operating Checking, Rental Revenue Account"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                     className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                   />
-                )}
+                </div>
 
-                <input
-                  type="number"
-                  placeholder="Opening Balance ($)"
-                  value={form.balance}
-                  onChange={(e) => setForm({ ...form, balance: e.target.value })}
-                  className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Bank / Institution</label>
+                    <select
+                      value={form.bankName}
+                      onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+                      className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 bg-white"
+                    >
+                      <option value="RBC Royal Bank">RBC Royal Bank</option>
+                      <option value="TD Canada Trust">TD Canada Trust</option>
+                      <option value="BMO Bank of Montreal">BMO Bank of Montreal</option>
+                      <option value="Scotiabank">Scotiabank</option>
+                      <option value="CIBC">CIBC</option>
+                      <option value="National Bank">National Bank</option>
+                      <option value="Cash / Operating Fund">Cash / Operating Fund</option>
+                      <option value="Other Bank">Other Bank</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Account / Transit #</label>
+                    <input
+                      placeholder="e.g. ****4821 or 003-10292"
+                      value={form.accountNumber || ''}
+                      onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
+                      className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Opening Balance ($) *</label>
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      value={form.balance}
+                      onChange={(e) => setForm({ ...form, balance: e.target.value })}
+                      className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Associated Company</label>
+                    <select
+                      value={form.companyId || ''}
+                      onChange={(e) => setForm({ ...form, companyId: e.target.value })}
+                      className="w-full p-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 bg-white"
+                    >
+                      {realCompanies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div className="p-4 flex justify-end gap-2.5">

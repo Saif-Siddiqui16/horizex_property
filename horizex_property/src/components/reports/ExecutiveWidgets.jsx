@@ -22,12 +22,10 @@ export const ExecutiveKPICards = ({ kpis = {}, onDrilldown }) => {
     { id: 'occupancy', title: 'Occupancy Rate', value: `${kpis.occupancyRate || 0}%`, subValue: 'Target: 95%', icon: Building2, color: 'bg-emerald-50 border-emerald-100 text-emerald-600', path: '/vacancy' },
     { id: 'revenue', title: 'Current Revenue', value: formatCurr(kpis.currentMonthRevenue), subValue: 'This Month Cash', icon: TrendingUp, color: 'bg-indigo-50 border-indigo-100 text-indigo-600', path: '/payments/collection' },
     { id: 'overdue', title: 'Outstanding Rent', value: formatCurr(kpis.outstandingRent), subValue: 'Pending Collections', icon: Clock, color: 'bg-amber-50 border-amber-100 text-amber-600', path: '/payments/collection' },
-    { id: 'tal_cases', title: 'Active Lawsuits', value: kpis.activeTALCases || 0, subValue: 'Tribunal Cases', icon: Gavel, color: 'bg-rose-50 border-rose-100 text-rose-600', path: '/tal-cases' },
-    { id: 'payroll', title: 'Payroll Cost', value: formatCurr(kpis.payrollCost), subValue: 'Staff Expenses', icon: Landmark, color: 'bg-violet-50 border-violet-100 text-violet-600', path: '/payroll/run' }
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((c) => (
         <div 
           key={c.id}
