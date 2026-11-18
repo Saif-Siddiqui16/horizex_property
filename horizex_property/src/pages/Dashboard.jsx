@@ -80,10 +80,25 @@ export const Dashboard = () => {
   const [selectedBuildingId, setSelectedBuildingId] = useState(() => localStorage.getItem('global_selected_building_id') || '');
   const [selectedCompanyId, setSelectedCompanyId] = useState(() => localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
 
+  // RTK Query Hooks with dynamic companyId param
+  const queryCompanyParam = selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined;
+  const { data: backendStats, isLoading: statsLoading, refetch: refetchStats } = useGetDashboardStatsQuery(queryCompanyParam ? { companyId: queryCompanyParam } : undefined);
+  const { data: revenueDataRaw = [], refetch: refetchRevenue } = useGetRevenueTrajectoryQuery(queryCompanyParam ? { companyId: queryCompanyParam } : undefined);
+  const { data: allUnits = [], isLoading: unitsLoading, refetch: refetchUnits } = useGetUnitsQuery({ showInactive: true, ...(queryCompanyParam ? { companyId: queryCompanyParam } : {}) });
+  const { data: allLeases = [], isLoading: leasesLoading, refetch: refetchLeases } = useGetLeasesQuery(queryCompanyParam ? { companyId: queryCompanyParam } : undefined);
+  const { data: allInvoices = [], refetch: refetchInvoices } = useGetInvoicesQuery(queryCompanyParam ? { companyId: queryCompanyParam } : undefined);
+  const { data: allTalCases = [], refetch: refetchTal } = useGetTalCasesQuery(queryCompanyParam ? { companyId: queryCompanyParam } : undefined);
+
   useEffect(() => {
     const handleBuildingSync = () => {
       setSelectedBuildingId(localStorage.getItem('global_selected_building_id') || '');
       setSelectedCompanyId(localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '');
+      refetchStats?.();
+      refetchRevenue?.();
+      refetchUnits?.();
+      refetchLeases?.();
+      refetchInvoices?.();
+      refetchTal?.();
     };
     window.addEventListener('buildingChanged', handleBuildingSync);
     window.addEventListener('companyChanged', handleBuildingSync);
@@ -93,15 +108,7 @@ export const Dashboard = () => {
       window.removeEventListener('companyChanged', handleBuildingSync);
       window.removeEventListener('storage', handleBuildingSync);
     };
-  }, []);
-
-  // RTK Query Hooks
-  const { data: backendStats, isLoading: statsLoading } = useGetDashboardStatsQuery();
-  const { data: revenueDataRaw = [] } = useGetRevenueTrajectoryQuery();
-  const { data: allUnits = [], isLoading: unitsLoading } = useGetUnitsQuery({ showInactive: true });
-  const { data: allLeases = [], isLoading: leasesLoading } = useGetLeasesQuery();
-  const { data: allInvoices = [] } = useGetInvoicesQuery();
-  const { data: allTalCases = [] } = useGetTalCasesQuery();
+  }, [refetchStats, refetchRevenue, refetchUnits, refetchLeases, refetchInvoices, refetchTal]);
 
   // Dynamic greeting and user name
   const [adminName, setAdminName] = useState('Admin');
@@ -196,10 +203,16 @@ export const Dashboard = () => {
     }).length;
   }, [filteredUnits]);
 
-  // Filtered leases respecting top-bar Building selector
+  // Filtered leases respecting top-bar Company & Building selector
   const filteredLeases = useMemo(() => {
     let list = Array.isArray(allLeases) ? allLeases : [];
-    if (selectedBuildingId) {
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      list = list.filter(l => {
+        const cId = l.companyId || l.unit?.property?.companyId || l.unitObj?.property?.companyId;
+        return String(cId) === String(selectedCompanyId);
+      });
+    }
+    if (selectedBuildingId && selectedBuildingId !== 'all') {
       list = list.filter(l => {
         const bId = l.propertyId || l.unit?.propertyId || l.unit?.property?.id || l.buildingId;
         const bName = l.buildingName || l.building || l.unit?.property?.name;
@@ -207,7 +220,7 @@ export const Dashboard = () => {
       });
     }
     return list;
-  }, [allLeases, selectedBuildingId]);
+  }, [allLeases, selectedCompanyId, selectedBuildingId]);
 
   // Upcoming renewals
   const renewals = useMemo(() => {
@@ -256,12 +269,18 @@ export const Dashboard = () => {
     );
   }, [sortedLeaseAlertList, leaseAlertPage]);
 
-  // Financial Metrics from Invoices
+  // Financial Metrics from Invoices respecting top-bar Company & Building selector
   const collectionMetrics = useMemo(() => {
     let list = Array.isArray(allInvoices) ? allInvoices : [];
-    if (selectedBuildingId) {
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
       list = list.filter(inv => {
-        const bId = inv.propertyId || inv.unit?.propertyId || inv.unit?.property?.id;
+        const cId = inv.companyId || inv.tenant?.companyId || inv.lease?.unit?.property?.companyId;
+        return String(cId) === String(selectedCompanyId);
+      });
+    }
+    if (selectedBuildingId && selectedBuildingId !== 'all') {
+      list = list.filter(inv => {
+        const bId = inv.propertyId || inv.unit?.propertyId || inv.unit?.property?.id || inv.lease?.unit?.property?.id;
         return String(bId) === String(selectedBuildingId);
       });
     }
@@ -301,17 +320,35 @@ export const Dashboard = () => {
       thisMonthCollection: collectedThisMonth,
       collectionRate: rate
     };
-  }, [allInvoices, selectedBuildingId]);
+  }, [allInvoices, selectedCompanyId, selectedBuildingId]);
+
+  // Filtered TAL cases respecting top-bar Company & Building selector
+  const filteredTalCases = useMemo(() => {
+    let list = Array.isArray(allTalCases) ? allTalCases : [];
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
+      list = list.filter(c => {
+        const cId = c.companyId || c.property?.companyId;
+        return String(cId) === String(selectedCompanyId);
+      });
+    }
+    if (selectedBuildingId && selectedBuildingId !== 'all') {
+      list = list.filter(c => {
+        const bId = c.propertyId || c.property?.id;
+        return String(bId) === String(selectedBuildingId);
+      });
+    }
+    return list;
+  }, [allTalCases, selectedCompanyId, selectedBuildingId]);
 
   // Active TAL cases count
   const legalSummary = useMemo(() => {
-    const list = Array.isArray(allTalCases) ? allTalCases : [];
+    const list = Array.isArray(filteredTalCases) ? filteredTalCases : [];
     const active = list.filter(c => (c.status || '').toUpperCase() !== 'CLOSED' && (c.status || '').toUpperCase() !== 'RESOLVED');
     return {
       activeCasesCount: active.length,
       urgentCases: active.slice(0, 5)
     };
-  }, [allTalCases]);
+  }, [filteredTalCases]);
 
   // Reserved Units from Vacant / Inactive units
   const reservedUnits = useMemo(() => {
@@ -544,10 +581,9 @@ export const Dashboard = () => {
             </section>
 
             {/* RENT COLLECTION WIDGETS */}
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
+            {/* <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
               <RecentRenewalsWidget renewals={renewals} />
 
-              {/* Quick Actions Card */}
               <div className="p-6 bg-slate-900 text-white rounded-[22px] shadow-[0_10px_30px_rgba(15,23,42,0.15)] hover:shadow-[0_15px_40px_rgba(15,23,42,0.25)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
                 <div>
                   <h3 className="text-base font-black tracking-tight mb-2">Rent Collection Quick Actions</h3>
@@ -568,7 +604,7 @@ export const Dashboard = () => {
                   </button>
                 </div>
               </div>
-            </section>
+            </section> */}
 
             {/* TAL LEGAL WIDGETS */}
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6 items-start">
@@ -589,7 +625,7 @@ export const Dashboard = () => {
             </section>
 
             {/* TIME & PAYROLL SUMMARY INTEGRATION */}
-            <section className="mt-4 border-t border-slate-100 pt-4">
+            {/* <section className="mt-4 border-t border-slate-100 pt-4">
               <div className="flex flex-col gap-0.5 mb-6">
                 <h3 className="text-base font-black text-slate-800 uppercase tracking-wider">
                   Time & Payroll Overview
@@ -597,7 +633,6 @@ export const Dashboard = () => {
                 <span className="text-xs text-slate-400">Current company stats for attendance, pending leaves, and upcoming cycles.</span>
               </div>
 
-              {/* KPI cards subset for Main Dashboard */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5 items-start">
                 <div className="saas-card p-5 flex items-center justify-between">
                   <div className="flex flex-col gap-1">
@@ -629,7 +664,6 @@ export const Dashboard = () => {
                   </div>
                 </div>
 
-                {/* Quick actions box for Main Dashboard */}
                 <div className="bg-slate-900 text-white border border-slate-950 rounded-3xl p-5 shadow-card flex flex-col justify-between gap-3">
                   <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Time & Payroll Workspaces</span>
                   <div className="flex gap-2">
@@ -643,7 +677,6 @@ export const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Multi Widgets grid for Main Dashboard */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
                 <div className="lg:col-span-2">
                   <PendingLeaveWidget
@@ -659,10 +692,10 @@ export const Dashboard = () => {
                   />
                 </div>
               </div>
-            </section>
+            </section> */}
 
             {/* RESERVED UNITS TABLE */}
-            <section className="mt-6 mb-6">
+            {/* <section className="mt-6 mb-6">
               <div className="saas-table-container p-5 md:p-8 border-t-[4px] border-t-primary">
                 <div className="flex items-center justify-between mb-5">
                   <div>
@@ -777,15 +810,14 @@ export const Dashboard = () => {
                   </div>
                 )}
               </div>
-            </section>
+            </section> */}
 
             {/* ENTERPRISE INTEGRATIONS MODULE WIDGETS */}
-            <section className="mt-6 mb-4">
+            {/* <section className="mt-6 mb-4">
               <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-black text-gray-800 tracking-tight">Enterprise Integrations Hub</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
 
-                  {/* Sync Queue Summary */}
                   <div className="saas-card p-6 flex flex-col gap-4">
                     <div className="flex justify-between items-center border-b border-slate-50 pb-2">
                       <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Sync & Connection Status</span>
@@ -807,7 +839,6 @@ export const Dashboard = () => {
                     </div>
                   </div>
 
-                  {/* Upcoming Calendar Events */}
                   <div className="saas-card p-6 flex flex-col gap-4">
                     <div className="flex justify-between items-center border-b border-slate-50 pb-2">
                       <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Upcoming Calendar Events</span>
@@ -824,7 +855,6 @@ export const Dashboard = () => {
                     </div>
                   </div>
 
-                  {/* Unread Notifications / Recent Emails */}
                   <div className="saas-card p-6 flex flex-col gap-4">
                     <div className="flex justify-between items-center border-b border-slate-50 pb-2">
                       <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Mails & Alerts</span>
@@ -848,7 +878,7 @@ export const Dashboard = () => {
 
                 </div>
               </div>
-            </section>
+            </section> */}
 
           </>
         )}
