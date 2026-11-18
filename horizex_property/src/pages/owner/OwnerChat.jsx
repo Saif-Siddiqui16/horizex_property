@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { communicationService } from '../../services/communicationService';
+import { joinConversation, leaveConversation, onNewMessage } from '../../services/socketService';
 import { Send, RefreshCw, MessageSquare } from 'lucide-react';
 
 export const OwnerChat = () => {
@@ -13,7 +14,7 @@ export const OwnerChat = () => {
     const [currentOwnerId, setCurrentOwnerId] = useState(() => {
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : {};
-        return localStorage.getItem('ownerId') || user.id || user.userId || '48dd27d0-f209-4d53-b163-86a4edde211f';
+        return localStorage.getItem('ownerId') || user.id || user.userId || 'e4b7a55f-596e-4f54-8fb5-d992e51c9a21';
     });
     const [sending, setSending] = useState(false);
     const messagesEndRef = useRef(null);
@@ -23,10 +24,45 @@ export const OwnerChat = () => {
     useEffect(() => {
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : {};
-        const id = localStorage.getItem('ownerId') || user.id || user.userId || '48dd27d0-f209-4d53-b163-86a4edde211f';
-        if (id) setCurrentOwnerId(String(id));
+        const id = localStorage.getItem('ownerId') || user.id || user.userId || 'e4b7a55f-596e-4f54-8fb5-d992e51c9a21';
+        if (id) {
+            setCurrentOwnerId(String(id));
+            joinConversation(String(id));
+        }
+
+        const unsubscribe = onNewMessage((incoming) => {
+            if (!incoming) return;
+            setMessages((prev) => {
+                if (prev.some((m) => m.id === incoming.id)) return prev;
+                const isFromMe = String(incoming.senderId) === String(id) || incoming.isMe;
+                const tempIndex = prev.findIndex((m) => m.id?.startsWith('temp-') && m.content === incoming.content);
+                if (tempIndex !== -1) {
+                    const next = [...prev];
+                    next[tempIndex] = {
+                        ...incoming,
+                        isMe: true,
+                        direction: 'OUTBOUND',
+                    };
+                    return next;
+                }
+                return [
+                    ...prev,
+                    {
+                        ...incoming,
+                        isMe: isFromMe,
+                        direction: isFromMe ? 'OUTBOUND' : 'INBOUND',
+                    },
+                ];
+            });
+        });
+
         fetchAdmins();
-        return () => clearInterval(intervalRef.current);
+
+        return () => {
+            clearInterval(intervalRef.current);
+            if (id) leaveConversation(String(id));
+            unsubscribe();
+        };
     }, []);
 
     const fetchAdmins = async () => {
@@ -41,7 +77,7 @@ export const OwnerChat = () => {
         }
     };
 
-    // Poll for messages
+    // Poll for messages every 3 seconds as fallback
     useEffect(() => {
         if (adminUser?.id) {
             fetchHistory(false);
@@ -76,16 +112,32 @@ export const OwnerChat = () => {
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !adminUser?.id) return;
-
         const text = newMessage.trim();
+        if (!text || !adminUser?.id || sending) return;
+
+        const tempId = `temp-${Date.now()}`;
+        const tempMsg = {
+            id: tempId,
+            content: text,
+            message: text,
+            senderId: currentOwnerId,
+            createdAt: new Date().toISOString(),
+            sentAt: new Date().toISOString(),
+            direction: 'OUTBOUND',
+            isMe: true,
+        };
+        setMessages((prev) => [...prev, tempMsg]);
+        setNewMessage('');
         setSending(true);
+
         try {
-            await communicationService.sendMessage(adminUser.id, text);
-            setNewMessage('');
-            await fetchHistory(false);
+            const res = await communicationService.sendMessage(adminUser.id, text);
+            if (res?.id) {
+                setMessages((prev) => prev.map((m) => (m.id === tempId ? { ...res, isMe: true, direction: 'OUTBOUND' } : m)));
+            }
         } catch (error) {
             console.error('Failed to send message:', error);
+            setMessages((prev) => prev.filter((m) => m.id !== tempId));
         } finally {
             setSending(false);
         }
@@ -119,7 +171,9 @@ export const OwnerChat = () => {
                 )}
 
                 {messages.map((msg, index) => {
-                    const isMe = String(msg.senderId) === String(currentOwnerId) || msg.direction === 'OUTBOUND';
+                    const isMe = msg.isMe !== undefined 
+                        ? msg.isMe 
+                        : (String(msg.senderId) === String(currentOwnerId) || msg.direction === 'OUTBOUND');
                     return (
                         <div key={msg.id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] md:max-w-[80%] px-4 py-2.5 md:px-5 md:py-3 rounded-2xl text-sm font-medium shadow-sm ${
