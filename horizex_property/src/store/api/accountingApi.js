@@ -67,6 +67,14 @@ export const accountingApi = masterApi.injectEndpoints({
       }),
       invalidatesTags: ['BankAccounts'],
     }),
+    getAccountTransactions: builder.query({
+      query: ({ accountId, ...params }) => ({
+        url: `/admin/accounts/${accountId}/transactions`,
+        params,
+      }),
+      transformResponse: (response) => response?.data || response || {},
+      providesTags: ['BankAccounts', 'Payments'],
+    }),
   }),
 });
 
@@ -79,5 +87,6 @@ export const {
   useCreateBankAccountMutation,
   useUpdateBankAccountMutation,
   useDeleteBankAccountMutation,
+  useGetAccountTransactionsQuery,
 } = accountingApi;
 

@@ -18,8 +18,10 @@ import {
   useCreateBankAccountMutation,
   useUpdateBankAccountMutation,
   useDeleteBankAccountMutation,
+  useGetAccountTransactionsQuery,
 } from '../store/api/accountingApi';
 import { useGetCompaniesQuery } from '../store/api/companiesApi';
+import { useGetPropertiesQuery } from '../store/api/propertiesApi';
 import { hasPermission } from '../utils/permissions';
 import { AccessControl } from '../components/AccessControl';
 
@@ -56,22 +58,41 @@ export const ChartOfAccounts = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState(
     () => localStorage.getItem('global_selected_company_id') || ''
   );
+  const [selectedBuildingId, setSelectedBuildingId] = useState(
+    () => localStorage.getItem('global_selected_building_id') || ''
+  );
 
   useEffect(() => {
     const handleSync = () => {
       setSelectedCompanyId(localStorage.getItem('global_selected_company_id') || '');
+      setSelectedBuildingId(localStorage.getItem('global_selected_building_id') || '');
     };
     window.addEventListener('companyChanged', handleSync);
+    window.addEventListener('buildingChanged', handleSync);
     window.addEventListener('storage', handleSync);
     return () => {
       window.removeEventListener('companyChanged', handleSync);
+      window.removeEventListener('buildingChanged', handleSync);
       window.removeEventListener('storage', handleSync);
     };
   }, []);
 
   const { data: realCompanies = [] } = useGetCompaniesQuery();
-  const { data: accounts = [], isLoading: isLoadingAccounts, refetch: fetchAccounts } = useGetBankAccountsQuery(
+  const { data: realProperties = [] } = useGetPropertiesQuery(
     selectedCompanyId ? { companyId: selectedCompanyId } : {},
+    { skip: !selectedCompanyId }
+  );
+
+  const selectedBuildingObj = useMemo(() => {
+    if (!selectedBuildingId || selectedBuildingId === 'all') return null;
+    return realProperties.find(p => String(p.id) === String(selectedBuildingId)) || null;
+  }, [realProperties, selectedBuildingId]);
+
+  const { data: accounts = [], isLoading: isLoadingAccounts, refetch: fetchAccounts } = useGetBankAccountsQuery(
+    {
+      ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}),
+      ...(selectedBuildingId && selectedBuildingId !== 'all' ? { buildingId: selectedBuildingId } : {}),
+    },
     { refetchOnMountOrArgChange: true }
   );
 
@@ -88,6 +109,26 @@ export const ChartOfAccounts = () => {
   const [typeFilter, setTypeFilter] = useState('ALL'); // ALL, CREDIT, DEBIT
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('NEWEST'); // NEWEST, OLDEST
+
+  // Live Backend Account Transactions Query
+  const {
+    data: txApiResponse,
+    isLoading: isLoadingTxs,
+    refetch: refetchTxs,
+  } = useGetAccountTransactionsQuery(
+    {
+      accountId: reportAccount?.id,
+      companyId: selectedCompanyId || undefined,
+      buildingId: selectedBuildingId && selectedBuildingId !== 'all' ? selectedBuildingId : undefined,
+    },
+    { skip: !reportAccount?.id }
+  );
+
+  useEffect(() => {
+    if (txApiResponse?.transactions) {
+      setAccountTransactions(txApiResponse.transactions);
+    }
+  }, [txApiResponse]);
 
   const openAddModal = () => {
     setEditIndex(null);
@@ -163,63 +204,6 @@ export const ChartOfAccounts = () => {
   // ==========================================
   // TRANSACTION REPORT GENERATOR & STORAGE
   // ==========================================
-  const generateMockTransactionsForAccount = (acc) => {
-    const rawBal = parseFloat(acc.openingBalance ?? acc.balance ?? acc.currentBalance ?? 50000) || 50000;
-    const accType = (acc.assetType || acc.type || 'Asset').toLowerCase();
-
-    const today = new Date();
-    const getDateStr = (daysAgo) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() - daysAgo);
-      return d.toISOString().split('T')[0];
-    };
-
-    if (accType === 'bank') {
-      return [
-        { id: 'TX-1001', date: getDateStr(1), description: 'Tenant Rent E-Transfer - Apt 304 (Alexandre Tremblay)', reference: 'E-TRF-98214', category: 'Rent Collection', type: 'CREDIT', amount: 1650.00, balance: rawBal },
-        { id: 'TX-1002', date: getDateStr(3), description: 'Hydro Quebec - Monthly Electric Utility Bill', reference: 'UTIL-49102', category: 'Utilities', type: 'DEBIT', amount: 485.60, balance: rawBal - 1650.00 },
-        { id: 'TX-1003', date: getDateStr(5), description: 'Tenant Rent Payment - Apt 102 (Sophia Patel)', reference: 'PAY-88201', category: 'Rent Collection', type: 'CREDIT', amount: 1450.00, balance: rawBal - 1650.00 + 485.60 },
-        { id: 'TX-1004', date: getDateStr(8), description: 'City Heating & Cooling - HVAC Emergency Repair', reference: 'BILL-55192', category: 'Repairs & Maintenance', type: 'DEBIT', amount: 720.00, balance: rawBal - 1650.00 + 485.60 - 1450.00 },
-        { id: 'TX-1005', date: getDateStr(12), description: 'Security Deposit Escrow Fund Allocation', reference: 'DEP-33910', category: 'Escrow Transfer', type: 'CREDIT', amount: 1500.00, balance: rawBal - 1650.00 + 485.60 - 1450.00 + 720.00 },
-        { id: 'TX-1006', date: getDateStr(16), description: 'Apex Elevator Services - Routine Maintenance', reference: 'INV-11829', category: 'Maintenance', type: 'DEBIT', amount: 620.00, balance: rawBal - 1650.00 + 485.60 - 1450.00 + 720.00 - 1500.00 },
-        { id: 'TX-1007', date: getDateStr(22), description: 'Commercial Unit Rent - Downtown Suites 502', reference: 'CHK-44120', category: 'Commercial Rent', type: 'CREDIT', amount: 3200.00, balance: rawBal - 1650.00 + 485.60 - 1450.00 + 720.00 - 1500.00 + 620.00 },
-        { id: 'TX-1008', date: getDateStr(28), description: 'Property Management Operational Fee Disbursal', reference: 'FEE-90123', category: 'Management Fees', type: 'DEBIT', amount: 1250.00, balance: rawBal - 1650.00 + 485.60 - 1450.00 + 720.00 - 1500.00 + 620.00 - 3200.00 },
-        { id: 'TX-1009', date: getDateStr(35), description: 'Tenant Rent Payment - Apt 205 (Sarah Connor)', reference: 'PAY-77192', category: 'Rent Collection', type: 'CREDIT', amount: 1800.00, balance: rawBal - 1650.00 + 485.60 - 1450.00 + 720.00 - 1500.00 + 620.00 - 3200.00 + 1250.00 },
-        { id: 'TX-1010', date: getDateStr(45), description: 'Waste Management & Recycling Services', reference: 'BILL-66012', category: 'Utilities', type: 'DEBIT', amount: 340.00, balance: rawBal - 1650.00 + 485.60 - 1450.00 + 720.00 - 1500.00 + 620.00 - 3200.00 + 1250.00 - 1800.00 }
-      ];
-    } else if (accType === 'income' || accType === 'revenue') {
-      return [
-        { id: 'TX-2001', date: getDateStr(2), description: 'Monthly Residential Rent - Parkview Heights #304', reference: 'INV-2026-0081', category: 'Rent Income', type: 'CREDIT', amount: 1650.00, balance: rawBal },
-        { id: 'TX-2002', date: getDateStr(4), description: 'Monthly Residential Rent - Sunset Towers #201', reference: 'INV-2026-0082', category: 'Rent Income', type: 'CREDIT', amount: 1450.00, balance: rawBal - 1650.00 },
-        { id: 'TX-2003', date: getDateStr(7), description: 'Late Payment Penalty Assessment', reference: 'FEE-2026-0012', category: 'Late Fees', type: 'CREDIT', amount: 75.00, balance: rawBal - 1650.00 - 1450.00 },
-        { id: 'TX-2004', date: getDateStr(11), description: 'Assigned Parking Stall #P-14 Monthly Fee', reference: 'PRK-2026-0044', category: 'Parking Income', type: 'CREDIT', amount: 150.00, balance: rawBal - 1650.00 - 1450.00 - 75.00 },
-        { id: 'TX-2005', date: getDateStr(15), description: 'Commercial Lease Rent - Unit 502', reference: 'INV-2026-0075', category: 'Commercial Rent', type: 'CREDIT', amount: 3200.00, balance: rawBal - 1650.00 - 1450.00 - 75.00 - 150.00 },
-        { id: 'TX-2006', date: getDateStr(21), description: 'Storage Locker Rental #S-08', reference: 'STR-2026-0019', category: 'Ancillary Income', type: 'CREDIT', amount: 90.00, balance: rawBal - 1650.00 - 1450.00 - 75.00 - 150.00 - 3200.00 },
-        { id: 'TX-2007', date: getDateStr(32), description: 'Residential Rent Invoiced - Apt 104', reference: 'INV-2026-0060', category: 'Rent Income', type: 'CREDIT', amount: 1300.00, balance: rawBal - 1650.00 - 1450.00 - 75.00 - 150.00 - 3200.00 - 90.00 },
-        { id: 'TX-2008', date: getDateStr(42), description: 'Tenant Move-In Cleaning Fee', reference: 'CLN-2026-0023', category: 'Fee Income', type: 'CREDIT', amount: 200.00, balance: rawBal - 1650.00 - 1450.00 - 75.00 - 150.00 - 3200.00 - 90.00 - 1300.00 }
-      ];
-    } else if (accType === 'expense') {
-      return [
-        { id: 'TX-3001', date: getDateStr(2), description: 'Plumbing Service Call - Leaking Pipe Apt 204', reference: 'EXP-4401', category: 'Plumbing', type: 'DEBIT', amount: 380.00, balance: rawBal },
-        { id: 'TX-3002', date: getDateStr(6), description: 'Common Area Cleaning & Janitorial Supplies', reference: 'EXP-4402', category: 'Janitorial', type: 'DEBIT', amount: 520.00, balance: rawBal - 380.00 },
-        { id: 'TX-3003', date: getDateStr(10), description: 'Electrical Panel Maintenance & Light Repairs', reference: 'EXP-4403', category: 'Electrical', type: 'DEBIT', amount: 290.00, balance: rawBal - 380.00 - 520.00 },
-        { id: 'TX-3004', date: getDateStr(18), description: 'Lawn Care & Landscaping Seasonal Contract', reference: 'EXP-4404', category: 'Landscaping', type: 'DEBIT', amount: 650.00, balance: rawBal - 380.00 - 520.00 - 290.00 },
-        { id: 'TX-3005', date: getDateStr(24), description: 'Fire Alarm System Annual Inspection', reference: 'EXP-4405', category: 'Safety & Compliance', type: 'DEBIT', amount: 850.00, balance: rawBal - 380.00 - 520.00 - 290.00 - 650.00 },
-        { id: 'TX-3006', date: getDateStr(36), description: 'Locksmith Service - Master Key Rekeying', reference: 'EXP-4406', category: 'Security', type: 'DEBIT', amount: 195.00, balance: rawBal - 380.00 - 520.00 - 290.00 - 650.00 - 850.00 },
-        { id: 'TX-3007', date: getDateStr(48), description: 'Trash Removal & Bin Sterilization Service', reference: 'EXP-4407', category: 'Waste Management', type: 'DEBIT', amount: 410.00, balance: rawBal - 380.00 - 520.00 - 290.00 - 650.00 - 850.00 - 195.00 }
-      ];
-    } else {
-      return [
-        { id: 'TX-4001', date: getDateStr(1), description: 'Tenant Monthly Rent Due - Apt 304', reference: 'AR-2026-101', category: 'Receivable', type: 'CREDIT', amount: 1650.00, balance: rawBal },
-        { id: 'TX-4002', date: getDateStr(5), description: 'Payment Settlement Received - Apt 304', reference: 'REC-2026-088', category: 'Settlement', type: 'DEBIT', amount: 1650.00, balance: rawBal - 1650.00 },
-        { id: 'TX-4003', date: getDateStr(9), description: 'Tenant Monthly Rent Due - Apt 102', reference: 'AR-2026-102', category: 'Receivable', type: 'CREDIT', amount: 1450.00, balance: rawBal },
-        { id: 'TX-4004', date: getDateStr(14), description: 'Payment Settlement Received - Apt 102', reference: 'REC-2026-092', category: 'Settlement', type: 'DEBIT', amount: 1450.00, balance: rawBal - 1450.00 },
-        { id: 'TX-4005', date: getDateStr(20), description: 'Late Payment Fee Assessed', reference: 'AR-2026-103', category: 'Fees', type: 'CREDIT', amount: 75.00, balance: rawBal + 75.00 },
-        { id: 'TX-4006', date: getDateStr(30), description: 'Prepaid Rent Allocation for Next Month', reference: 'PRE-2026-004', category: 'Prepaid', type: 'DEBIT', amount: 1200.00, balance: rawBal - 1125.00 }
-      ];
-    }
-  };
-
   const openAccountReport = (acc) => {
     setReportAccount(acc);
     setDateFilter('ALL');
@@ -228,23 +212,6 @@ export const ChartOfAccounts = () => {
     setSortOrder('NEWEST');
     setCustomStartDate('');
     setCustomEndDate('');
-
-    // Fetch or generate transactions
-    const storageKey = `horizex_account_txs_${acc.id || acc.accountName}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setAccountTransactions(parsed);
-          return;
-        }
-      } catch (e) {}
-    }
-
-    const generated = generateMockTransactionsForAccount(acc);
-    localStorage.setItem(storageKey, JSON.stringify(generated));
-    setAccountTransactions(generated);
   };
 
   // ==========================================
@@ -331,6 +298,8 @@ export const ChartOfAccounts = () => {
 
     const accName = reportAccount.accountName || reportAccount.name || 'Account';
     const accNum = reportAccount.accountNumber ? `(${reportAccount.accountNumber})` : '';
+    const compName = realCompanies.find(c => String(c.id) === String(selectedCompanyId))?.name || 'All Companies';
+    const bldName = selectedBuildingObj ? selectedBuildingObj.name : 'All Buildings';
     const now = new Date().toISOString().split('T')[0];
 
     const headers = ['Date', 'Description', 'Reference #', 'Category', 'Type', 'Debit ($)', 'Credit ($)', 'Balance ($)'];
@@ -348,6 +317,8 @@ export const ChartOfAccounts = () => {
     const csvContent = [
       `"ACCOUNT STATEMENT & TRANSACTION REPORT"`,
       `"Account Name: ${accName} ${accNum}"`,
+      `"Company Context: ${compName}"`,
+      `"Building Filter: ${bldName}"`,
       `"Generated On: ${now}"`,
       `"Date Filter: ${dateFilter}"`,
       `"Total Credits: $${totalCredits.toFixed(2)}"`,
@@ -374,6 +345,8 @@ export const ChartOfAccounts = () => {
     const accName = reportAccount.accountName || reportAccount.name || 'Account';
     const accNum = reportAccount.accountNumber ? `(${reportAccount.accountNumber})` : '';
     const accType = reportAccount.assetType || reportAccount.type || 'Asset';
+    const compName = realCompanies.find(c => String(c.id) === String(selectedCompanyId))?.name || 'All Companies';
+    const bldName = selectedBuildingObj ? selectedBuildingObj.name : 'All Buildings';
     const now = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const printWindow = window.open('', '_blank', 'width=950,height=750');
@@ -428,6 +401,7 @@ export const ChartOfAccounts = () => {
             <div style="text-align: right;">
               <h2 class="title">ACCOUNT STATEMENT</h2>
               <div class="meta">Account: <strong>${accName} ${accNum}</strong></div>
+              <div class="meta">Company: <strong>${compName}</strong> | Building: <strong>${bldName}</strong></div>
               <div class="meta">Category: ${accType} | Generated: ${now}</div>
             </div>
           </div>
@@ -455,7 +429,7 @@ export const ChartOfAccounts = () => {
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Description / Particulars</th>
+                <th>Description</th>
                 <th>Reference #</th>
                 <th style="text-align: center;">Type</th>
                 <th style="text-align: right;">Debit ($)</th>
@@ -464,22 +438,21 @@ export const ChartOfAccounts = () => {
               </tr>
             </thead>
             <tbody>
-              ${tableRows}
+              ${tableRows || '<tr><td colspan="7" style="text-align: center; padding: 20px;">No transactions recorded.</td></tr>'}
             </tbody>
           </table>
 
           <div class="footer">
-            Horizex Real Estate • Confidential Account Statement • Printed on ${now}
+            Generated via Horizex Property Pro · Official Bank Ledger Audit Statement
           </div>
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          </script>
         </body>
       </html>
     `);
     printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
   };
 
   const getAccountType = (acc) => {
@@ -665,8 +638,10 @@ export const ChartOfAccounts = () => {
                   <h2 className="text-lg sm:text-xl font-bold tracking-tight">
                     {reportAccount.accountName || reportAccount.name || 'Account Statement'}
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Recent transaction history, customizable statement & audit report
+                  <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                    <span>Company: <strong className="text-slate-200">{realCompanies.find(c => String(c.id) === String(selectedCompanyId))?.name || 'All Companies'}</strong></span>
+                    <span>•</span>
+                    <span>Building: <strong className="text-slate-200">{selectedBuildingObj ? selectedBuildingObj.name : 'All Buildings'}</strong></span>
                   </p>
                 </div>
 
@@ -842,7 +817,13 @@ export const ChartOfAccounts = () => {
 
               {/* TRANSACTIONS TABLE */}
               <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {filteredTransactions.length === 0 ? (
+                {isLoadingTxs ? (
+                  <div className="py-20 text-center text-slate-400">
+                    <FiRefreshCw className="animate-spin mx-auto text-indigo-500 mb-2" size={24} />
+                    <p className="text-sm font-semibold text-slate-600">Loading live transactions from database...</p>
+                    <span className="text-xs text-slate-400">Filtering by selected company & building</span>
+                  </div>
+                ) : filteredTransactions.length === 0 ? (
                   <div className="py-16 text-center text-slate-400">
                     <p className="text-sm font-semibold">No transactions match your current filters.</p>
                     <button
