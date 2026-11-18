@@ -21,6 +21,15 @@ import {
   setCompanyContext,
 } from '../store';
 
+import {
+  useFetchCustomReportMutation,
+  useGetReportTemplatesQuery,
+  useSaveReportTemplateMutation,
+  useDeleteReportTemplateMutation,
+  useGetReportAuditLogsQuery,
+  useLogReportAuditMutation,
+} from '../store/api/reportsApi';
+
 // Legacy Services (Graceful Fallback & Business Logic)
 import reportService from '../services/reportService';
 import analyticsEngineService from '../services/analyticsEngineService';
@@ -146,7 +155,6 @@ export const Reports = () => {
   const [builderSorting, setBuilderSorting] = useState({ column: 'dueDate', direction: 'asc' });
   const [builderGrouping, setBuilderGrouping] = useState('');
   const [builderData, setBuilderData] = useState([]);
-  const [builderTemplates, setBuilderTemplates] = useState(() => reportBuilderService.getTemplatesByModule('Financials'));
   const [newTemplateName, setNewTemplateName] = useState('');
 
   // Scheduled Reports State
@@ -159,8 +167,21 @@ export const Reports = () => {
     format: 'PDF'
   });
 
-  // Audit Logs State
-  const [auditLogs, setAuditLogs] = useState(() => reportService.getAuditLogs());
+  // Custom Reports Backend RTK Query Hooks
+  const [fetchCustomReport, { isLoading: isGeneratingCustom }] = useFetchCustomReportMutation();
+  const { data: backendTemplates = [] } = useGetReportTemplatesQuery(builderModule);
+  const [saveReportTemplate] = useSaveReportTemplateMutation();
+  const [deleteReportTemplate] = useDeleteReportTemplateMutation();
+  const { data: backendAuditLogs = [] } = useGetReportAuditLogsQuery();
+  const [logReportAudit] = useLogReportAuditMutation();
+
+  const builderTemplates = useMemo(() => {
+    return Array.isArray(backendTemplates) ? backendTemplates : [];
+  }, [backendTemplates]);
+
+  const auditLogs = useMemo(() => {
+    return Array.isArray(backendAuditLogs) ? backendAuditLogs : [];
+  }, [backendAuditLogs]);
 
   // ==========================================
   // RTK QUERY HOOKS FOR LIVE DATABASE INTEGRATION
@@ -721,60 +742,53 @@ export const Reports = () => {
     targetProperties
   ]);
 
-  // Re-trigger builder columns & templates on module switch
+  // Re-trigger builder columns on module switch
   useEffect(() => {
     const cols = reportBuilderService.getAvailableColumns(builderModule);
     setBuilderColumns(cols);
     setSelectedColumns(cols.slice(0, 4).map(c => c.key));
-    setBuilderTemplates(reportBuilderService.getTemplatesByModule(builderModule));
     setBuilderData([]);
   }, [builderModule]);
 
-  // Execute custom builder queries
-  const handleBuilderQuery = () => {
+  // Execute custom builder queries directly against PostgreSQL database
+  const handleBuilderQuery = async () => {
     try {
       const cleanCompStr = cleanComp || '';
-      let reportName = 'Outstanding Balance';
-      if (builderModule === 'Properties') reportName = 'Vacancy Report';
-      else if (builderModule === 'Leases') reportName = 'Lease Expiry';
-      else if (builderModule === 'TAL Cases') reportName = 'Active TAL Cases';
-      else if (builderModule === 'Payroll') reportName = 'Payroll Cost';
-
-      let results = reportService.generate(reportName, {
-        ...builderFilters,
+      const result = await fetchCustomReport({
+        module: builderModule,
         companyId: cleanCompStr,
         buildingId: activeBuildingId || builderFilters.buildingId,
-      });
+        search: builderFilters.search || null,
+        sortColumn: builderSorting.column || null,
+        sortDirection: builderSorting.direction || 'asc',
+      }).unwrap();
 
-      // Apply Search filter
-      if (builderFilters.search) {
-        const q = builderFilters.search.toLowerCase();
-        results = results.filter(row => 
-          Object.values(row).some(v => String(v).toLowerCase().includes(q))
-        );
+      const rows = result?.data || [];
+      setBuilderData(rows);
+
+      // Persist Report Generation Log in PostgreSQL database
+      try {
+        await logReportAudit({
+          reportType: `${builderModule} Custom Report`,
+          filtersUsed: { companyId: cleanCompStr, buildingId: activeBuildingId, ...builderFilters },
+          exportType: 'Screen',
+        }).unwrap();
+      } catch (logErr) {
+        console.warn('Backend audit log notice:', logErr);
       }
-
-      // Apply Sorting
-      if (builderSorting.column) {
-        results.sort((a, b) => {
-          const valA = a[builderSorting.column];
-          const valB = b[builderSorting.column];
-          if (typeof valA === 'number') {
-            return builderSorting.direction === 'asc' ? valA - valB : valB - valA;
-          }
-          return builderSorting.direction === 'asc' 
-            ? String(valA).localeCompare(String(valB)) 
-            : String(valB).localeCompare(String(valA));
-        });
-      }
-
-      setBuilderData(results);
-      setAuditLogs(reportService.getAuditLogs());
     } catch (e) {
-      alert(e.message);
+      console.error(e);
+      alert(e?.data?.message || e.message || 'Error generating custom report.');
       setBuilderData([]);
     }
   };
+
+  // Auto-refresh custom builder results when Company or Building header filters change
+  useEffect(() => {
+    if (activeTab === 'builder' && builderData.length > 0) {
+      handleBuilderQuery();
+    }
+  }, [cleanComp, activeBuildingId]);
 
   // Handle widget toggle changes
   const handleToggleWidget = (id, visible) => {
@@ -824,23 +838,22 @@ export const Reports = () => {
     alert(`Loaded filter profile: ${item.name}`);
   };
 
-  // Save report builder query as custom layout template
-  const handleSaveBuilderTemplate = () => {
+  // Save report builder query as custom layout template into PostgreSQL
+  const handleSaveBuilderTemplate = async () => {
     if (!newTemplateName.trim()) return alert('Please enter a template name.');
     try {
-      reportBuilderService.saveTemplate({
-        templateName: newTemplateName,
+      await saveReportTemplate({
+        templateName: newTemplateName.trim(),
         module: builderModule,
         selectedColumns,
         filters: { ...builderFilters, buildingId: activeBuildingId || builderFilters.buildingId },
         grouping: builderGrouping,
         sorting: builderSorting
-      });
+      }).unwrap();
       setNewTemplateName('');
-      setBuilderTemplates(reportBuilderService.getTemplatesByModule(builderModule));
-      alert('Custom Report Template saved successfully.');
+      alert('Custom Report Template saved successfully in PostgreSQL database.');
     } catch (e) {
-      alert(e.message);
+      alert(e?.data?.message || e.message || 'Error saving template.');
     }
   };
 
@@ -850,25 +863,60 @@ export const Reports = () => {
     setBuilderFilters(temp.filters || {});
     setBuilderGrouping(temp.grouping || '');
     setBuilderSorting(temp.sorting || { column: 'dueDate', direction: 'asc' });
-    alert(`Loaded Template: ${temp.templateName}`);
   };
 
-  // Delete builder template
-  const handleDeleteTemplate = (id) => {
+  // Delete builder template from PostgreSQL
+  const handleDeleteTemplate = async (id) => {
     if (confirm('Are you sure you want to delete this template?')) {
-      reportBuilderService.deleteTemplate(id);
-      setBuilderTemplates(reportBuilderService.getTemplatesByModule(builderModule));
+      try {
+        await deleteReportTemplate(id).unwrap();
+      } catch (e) {
+        alert(e?.data?.message || e.message || 'Error deleting template.');
+      }
     }
   };
 
   // Trigger file download exports
-  const handleExport = (exportType, isBuilder = false) => {
+  const handleExport = async (exportType, isBuilder = false) => {
     const title = isBuilder ? `${builderModule} Custom Report` : selectedReport;
-    const data = isBuilder ? builderData : reportData;
-    const filters = isBuilder ? builderFilters : reportFilters;
-    
+    let data = isBuilder ? builderData : reportData;
+    const activeCompName = cleanComp ? (buildings.find(b => String(b.companyId) === String(cleanComp))?.companyName || 'Active Company') : 'All Companies';
+    const activeBldName = activeBuildingObj?.name || 'All Buildings';
+    const filters = isBuilder ? { ...builderFilters, company: activeCompName, building: activeBldName } : { ...reportFilters, company: activeCompName, building: activeBldName };
+
+    if (!data || data.length === 0) {
+      alert('No data available to export. Please generate a report first.');
+      return;
+    }
+
+    if (isBuilder && selectedColumns.length > 0) {
+      // Map rows to include ONLY selected columns with friendly column labels
+      data = data.map(row => {
+        const filteredRow = {};
+        selectedColumns.forEach(colKey => {
+          const colDef = builderColumns.find(c => c.key === colKey);
+          const colLabel = colDef ? colDef.label : colKey;
+          const val = row[colKey];
+          if (typeof val === 'number' && (colKey.toLowerCase().includes('amount') || colKey.toLowerCase().includes('balance') || colKey.toLowerCase().includes('rent') || colKey.toLowerCase().includes('pay') || colKey.toLowerCase().includes('salary'))) {
+            filteredRow[colLabel] = `$${val.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+          } else {
+            filteredRow[colLabel] = val !== undefined && val !== null ? val : '—';
+          }
+        });
+        return filteredRow;
+      });
+    }
+
     exportService.exportData(title, data, exportType, filters);
-    setAuditLogs(reportService.getAuditLogs());
+    try {
+      await logReportAudit({
+        reportType: title,
+        filtersUsed: filters,
+        exportType,
+      }).unwrap();
+    } catch (e) {
+      console.warn('Audit log notice:', e);
+    }
   };
 
   // Create scheduled distribution reports
@@ -1340,6 +1388,18 @@ export const Reports = () => {
                 </div>
               </div>
 
+              {/* Filter / Search within Builder */}
+              <div className="flex flex-col gap-1.5 border-t border-slate-50 pt-3">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Filter / Search</label>
+                <input 
+                  type="text"
+                  placeholder="Filter by keyword..."
+                  value={builderFilters.search || ''}
+                  onChange={(e) => setBuilderFilters(p => ({ ...p, search: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none"
+                />
+              </div>
+
               {/* Saved Query Layout templates list */}
               <div className="flex flex-col gap-2 border-t border-slate-50 pt-3">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Load Templates</label>
@@ -1370,9 +1430,10 @@ export const Reports = () => {
               <div className="flex flex-col gap-3 mt-2 border-t border-slate-50 pt-4">
                 <button 
                   onClick={handleBuilderQuery}
-                  className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl shadow-lg border-none cursor-pointer flex items-center justify-center gap-1.5"
+                  disabled={isGeneratingCustom}
+                  className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg border-none cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Plus size={14} /> Generate Custom Report
+                  <Plus size={14} /> {isGeneratingCustom ? 'Querying Database...' : 'Generate Custom Report'}
                 </button>
               </div>
             </div>
@@ -1432,9 +1493,9 @@ export const Reports = () => {
                         <tr key={idx} className="hover:bg-slate-50/20 transition-colors">
                           {selectedColumns.map(colKey => (
                             <td key={colKey} className="px-6 py-3.5 font-sans">
-                              {typeof row[colKey] === 'number' && (colKey.toLowerCase().includes('amount') || colKey.toLowerCase().includes('balance') || colKey.toLowerCase().includes('pay') || colKey.toLowerCase().includes('salary'))
+                              {typeof row[colKey] === 'number' && (colKey.toLowerCase().includes('amount') || colKey.toLowerCase().includes('balance') || colKey.toLowerCase().includes('rent') || colKey.toLowerCase().includes('pay') || colKey.toLowerCase().includes('salary') || colKey.toLowerCase().includes('deduction'))
                                 ? `$${row[colKey].toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-                                : String(row[colKey] || '—')}
+                                : String(row[colKey] !== undefined && row[colKey] !== null ? row[colKey] : '—')}
                             </td>
                           ))}
                         </tr>

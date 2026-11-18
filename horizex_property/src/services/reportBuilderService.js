@@ -1,62 +1,60 @@
-const TEMPLATES_KEY = 'mock_saved_report_templates';
+export const DEFAULT_TEMPLATES = [
+  {
+    id: 'temp-fin-1',
+    templateName: 'Unpaid Rent Collections',
+    module: 'Financials',
+    selectedColumns: ['invoiceNo', 'tenantName', 'buildingName', 'unitNumber', 'dueDate', 'amount', 'balance', 'status'],
+    filters: {},
+    grouping: 'buildingName',
+    sorting: { column: 'dueDate', direction: 'asc' },
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'temp-prop-1',
+    templateName: 'Vacant Units Overview',
+    module: 'Properties',
+    selectedColumns: ['buildingName', 'unitNumber', 'unitType', 'monthlyRent', 'status'],
+    filters: {},
+    grouping: 'buildingName',
+    sorting: { column: 'buildingName', direction: 'asc' },
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'temp-lease-1',
+    templateName: 'Upcoming Lease Renewals',
+    module: 'Leases',
+    selectedColumns: ['tenantName', 'buildingName', 'unitNumber', 'endDate', 'daysRemaining', 'status'],
+    filters: {},
+    grouping: 'buildingName',
+    sorting: { column: 'endDate', direction: 'asc' },
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'temp-tal-1',
+    templateName: 'Active Court Litigations',
+    module: 'TAL Cases',
+    selectedColumns: ['caseNo', 'tenantName', 'buildingName', 'unitNumber', 'category', 'status', 'hearDate'],
+    filters: {},
+    grouping: 'buildingName',
+    sorting: { column: 'caseNo', direction: 'asc' },
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'temp-pay-1',
+    templateName: 'Monthly Payroll Payouts',
+    module: 'Payroll',
+    selectedColumns: ['employeeName', 'department', 'grossAmount', 'deductions', 'netAmount', 'payrollMonth'],
+    filters: {},
+    grouping: 'department',
+    sorting: { column: 'grossAmount', direction: 'desc' },
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+];
 
 export const reportBuilderService = {
-  getStore() {
-    const list = localStorage.getItem(TEMPLATES_KEY);
-    if (!list) {
-      const defaults = [
-        {
-          id: 'temp-1',
-          templateName: 'Soros Unpaid Leases',
-          module: 'Financials',
-          selectedColumns: ['tenantName', 'unitNumber', 'balance', 'status'],
-          filters: { companyId: '2', status: 'Unpaid' },
-          grouping: 'buildingName',
-          sorting: { column: 'dueDate', direction: 'asc' },
-          createdAt: new Date().toISOString()
-        }
-      ];
-      localStorage.setItem(TEMPLATES_KEY, JSON.stringify(defaults));
-      return defaults;
-    }
-    return JSON.parse(list);
-  },
-
-  setStore(data) {
-    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(data));
-  },
-
-  getTemplatesByModule(module) {
-    return this.getStore().filter(t => t.module === module);
-  },
-
-  saveTemplate(template) {
-    if (!template.templateName || !template.module) {
-      throw new Error('Template Name and Module are required.');
-    }
-    const list = this.getStore();
-    const newTemplate = {
-      id: template.id || `temp-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      ...template
-    };
-
-    const idx = list.findIndex(t => t.id === newTemplate.id);
-    if (idx !== -1) {
-      list[idx] = newTemplate;
-    } else {
-      list.push(newTemplate);
-    }
-
-    this.setStore(list);
-    return newTemplate;
-  },
-
-  deleteTemplate(id) {
-    let list = this.getStore();
-    list = list.filter(t => t.id !== id);
-    this.setStore(list);
-    return true;
+  getDefaultTemplates(module) {
+    if (!module) return DEFAULT_TEMPLATES;
+    return DEFAULT_TEMPLATES.filter((t) => t.module === module);
   },
 
   getAvailableColumns(module) {
@@ -70,7 +68,7 @@ export const reportBuilderService = {
           { key: 'dueDate', label: 'Due Date' },
           { key: 'amount', label: 'Total Amount' },
           { key: 'balance', label: 'Outstanding Balance' },
-          { key: 'status', label: 'Invoice Status' }
+          { key: 'status', label: 'Invoice Status' },
         ];
       case 'Properties':
         return [
@@ -78,7 +76,7 @@ export const reportBuilderService = {
           { key: 'unitNumber', label: 'Unit Number' },
           { key: 'unitType', label: 'Apartment Type' },
           { key: 'monthlyRent', label: 'Monthly Rent' },
-          { key: 'status', label: 'Lease Status' }
+          { key: 'status', label: 'Lease Status' },
         ];
       case 'Leases':
         return [
@@ -87,7 +85,7 @@ export const reportBuilderService = {
           { key: 'unitNumber', label: 'Unit / Apartment' },
           { key: 'endDate', label: 'Expiration Date' },
           { key: 'daysRemaining', label: 'Days Remaining' },
-          { key: 'status', label: 'Status' }
+          { key: 'status', label: 'Status' },
         ];
       case 'TAL Cases':
         return [
@@ -97,22 +95,21 @@ export const reportBuilderService = {
           { key: 'unitNumber', label: 'Unit / Apartment' },
           { key: 'category', label: 'Dispute Category' },
           { key: 'status', label: 'Tribunal Status' },
-          { key: 'hearDate', label: 'Hearing Date' }
+          { key: 'hearDate', label: 'Hearing Date' },
         ];
       case 'Payroll':
         return [
-          { key: 'payrollNo', label: 'Payroll Number' },
           { key: 'employeeName', label: 'Employee Name' },
-          { key: 'employeeNo', label: 'Employee ID' },
-          { key: 'department', label: 'Department' },
-          { key: 'netSalary', label: 'Net Payout' },
-          { key: 'overtimePay', label: 'Overtime Pay' },
-          { key: 'status', label: 'Payout Status' }
+          { key: 'department', label: 'Role / Department' },
+          { key: 'grossAmount', label: 'Gross Earnings' },
+          { key: 'deductions', label: 'Deductions' },
+          { key: 'netAmount', label: 'Net Payout' },
+          { key: 'payrollMonth', label: 'Payroll Month' },
         ];
       default:
         return [];
     }
-  }
+  },
 };
 
 export default reportBuilderService;
