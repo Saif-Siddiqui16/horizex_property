@@ -4,7 +4,10 @@ import { Link } from 'react-router-dom';
 import { useGetTenantDashboardQuery } from '../../store';
 
 export const TenantDashboard = () => {
-    const { data, isLoading } = useGetTenantDashboardQuery();
+    const { data, isLoading, isFetching, refetch } = useGetTenantDashboardQuery(undefined, {
+        refetchOnMountOrArgChange: true,
+        pollingInterval: 15000,
+    });
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -143,11 +146,19 @@ export const TenantDashboard = () => {
                             {recentTickets.length > 0 ? (
                                 recentTickets.map((t, idx) => (
                                     <Link key={idx} to="/tenant/tickets" className="block p-4 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 cursor-pointer">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.id}</p>
-                                        <h4 className="font-bold text-slate-700 truncate">{t.title || t.subject || 'Ticket'}</h4>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.id || t.displayId}</p>
+                                            {t.date && <span className="text-[10px] font-semibold text-slate-400">{t.date}</span>}
+                                        </div>
+                                        <h4 className="font-bold text-slate-700 truncate mt-0.5">{t.title || t.subject || 'Ticket'}</h4>
                                         <div className="mt-2 flex items-center gap-1.5">
-                                            <div className={`w-1.5 h-1.5 rounded-full ${t.status === 'Resolved' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-                                            <span className={`text-[11px] font-bold uppercase tracking-tight ${t.status === 'Resolved' ? 'text-emerald-600' : 'text-amber-600'}`}>{t.status}</span>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${t.status === 'Resolved' ? 'bg-emerald-500' : t.status === 'In Progress' ? 'bg-blue-500' : 'bg-amber-500'}`}></div>
+                                            <span className={`text-[11px] font-bold uppercase tracking-tight ${t.status === 'Resolved' ? 'text-emerald-600' : t.status === 'In Progress' ? 'text-blue-600' : 'text-amber-600'}`}>{t.status}</span>
+                                            {t.priority && (
+                                                <span className="text-[10px] text-slate-400 font-medium ml-auto">
+                                                    {t.priority}
+                                                </span>
+                                            )}
                                         </div>
                                     </Link>
                                 ))

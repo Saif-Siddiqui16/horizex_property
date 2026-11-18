@@ -100,7 +100,7 @@ export const TeamManagement = () => {
   const { t } = useTranslation();
 
   const {
-    data: serverCoworkers = [],
+    data: serverCoworkers,
     isLoading: coworkersLoading,
     refetch: refetchCoworkers,
   } = useGetCoworkersQuery();

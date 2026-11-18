@@ -33,6 +33,22 @@ const TENANT_NAV_ITEMS = [
 
 export const TenantSidebar = ({ isOpen, onClose }) => {
     const dispatch = useDispatch();
+    const [logoUrl, setLogoUrl] = React.useState(() => {
+        return localStorage.getItem('companyLogoUrl') || JSON.parse(localStorage.getItem('user') || '{}').profilePictureUrl || '/assets/logo.png';
+    });
+
+    React.useEffect(() => {
+        const handleLogoUpdate = (e) => {
+            const newLogo = e.detail?.logoUrl || localStorage.getItem('companyLogoUrl') || JSON.parse(localStorage.getItem('user') || '{}').profilePictureUrl;
+            if (newLogo) setLogoUrl(newLogo);
+        };
+        window.addEventListener('logoUpdated', handleLogoUpdate);
+        window.addEventListener('storage', handleLogoUpdate);
+        return () => {
+            window.removeEventListener('logoUpdated', handleLogoUpdate);
+            window.removeEventListener('storage', handleLogoUpdate);
+        };
+    }, []);
 
     const handleLogout = () => {
         dispatch(loggedOut());
@@ -61,7 +77,7 @@ export const TenantSidebar = ({ isOpen, onClose }) => {
                 <div className="h-16 flex items-center px-5 justify-between border-b border-slate-800 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="bg-white rounded-full p-0.5 shadow-md shrink-0 w-14 h-14 flex items-center justify-center overflow-hidden">
-                            <img src="/assets/logo.png" alt="Horizex Logo" className="h-13 w-13 object-contain" />
+                            <img src={logoUrl} alt="Horizex Logo" className="h-13 w-13 object-contain" onError={(e) => { e.currentTarget.src = '/assets/logo.png'; }} />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-sm font-black text-white uppercase tracking-wider leading-none">Horizex</span>

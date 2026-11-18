@@ -80,13 +80,26 @@ export const Vehicles = () => {
 
   const vehicles = useMemo(() => {
     const list = Array.isArray(rawVehicles) ? rawVehicles : [];
+    const normalized = list.map(v => {
+      // Lease expiry calculation (past date or explicit expiry)
+      const isDateExpired = v.leaseExpiry && v.leaseExpiry !== 'Expired' && v.leaseExpiry !== 'No Lease'
+        ? new Date(v.leaseExpiry).getTime() < Date.now()
+        : false;
+      const isAuthorized = v.isAuthorized !== false && !isDateExpired && v.leaseExpiry !== 'Expired' && v.leaseExpiry !== 'No Lease' && !v.isLeaseExpired;
+      return {
+        ...v,
+        isAuthorized,
+        status: isAuthorized ? 'AUTHORIZED' : 'UNAUTHORIZED',
+      };
+    });
+
     if (statusFilter === 'true') {
-      return list.filter((v) => !v.isAuthorized);
+      return normalized.filter((v) => !v.isAuthorized);
     }
     if (statusFilter === 'false') {
-      return list.filter((v) => v.isAuthorized);
+      return normalized.filter((v) => v.isAuthorized);
     }
-    return list;
+    return normalized;
   }, [rawVehicles, statusFilter]);
 
   const handleDelete = async (id) => {
@@ -240,7 +253,7 @@ export const Vehicles = () => {
                           ) : (
                             <>
                               <AlertCircle size={10} />
-                              Not Authorized
+                              Unauthorized
                             </>
                           )}
                         </span>
@@ -325,9 +338,24 @@ export const Vehicles = () => {
                   <span className="text-xs font-semibold text-slate-500">{t('vehicle.location')}</span>
                   <span className="text-xs font-bold text-slate-800">{viewingVehicle.buildingName} - Unit {viewingVehicle.unitNumber}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center border-b border-slate-200/50 pb-2">
                   <span className="text-xs font-semibold text-slate-500">{t('vehicle.parking')}</span>
                   <span className="text-xs font-bold text-slate-800">{viewingVehicle.parkingSpace || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-slate-200/50 pb-2">
+                  <span className="text-xs font-semibold text-slate-500">Status</span>
+                  <span className={clsx(
+                    "text-[10px] font-black uppercase px-2.5 py-1 rounded-full border",
+                    viewingVehicle.isAuthorized ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"
+                  )}>
+                    {viewingVehicle.isAuthorized ? 'Authorized' : 'Unauthorized'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-semibold text-slate-500">Lease Expiry</span>
+                  <span className={clsx("text-xs font-bold", !viewingVehicle.isAuthorized ? "text-red-600" : "text-slate-800")}>
+                    {viewingVehicle.leaseExpiry || 'No Lease'}
+                  </span>
                 </div>
               </div>
             </div>

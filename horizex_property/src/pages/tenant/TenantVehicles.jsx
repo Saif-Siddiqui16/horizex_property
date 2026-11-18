@@ -173,7 +173,7 @@ export const TenantVehicles = () => {
                   )}>
                     <div className="flex items-center gap-1.5">
                       {v.isAuthorized ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
-                      <span>{v.isAuthorized ? 'Authorized' : 'Not Authorized'}</span>
+                      <span>{v.isAuthorized ? 'Authorized' : 'Unauthorized'}</span>
                     </div>
 
                     <button

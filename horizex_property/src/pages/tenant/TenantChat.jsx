@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { communicationService } from '../../services/communicationService';
+import { joinConversation, leaveConversation, onNewMessage } from '../../services/socketService';
 import { Send, RefreshCw, MessageSquare, Headphones, ShieldCheck, CheckCheck } from 'lucide-react';
 
 export const TenantChat = () => {
@@ -15,13 +16,54 @@ export const TenantChat = () => {
     const intervalRef = useRef(null);
 
     const currentUserId = authUser?.id || authUser?.userId || localStorage.getItem('userId');
+    const tenantId = authUser?.tenantId || currentUserId;
 
     useEffect(() => {
         initChat();
+
+        // Join socket room for real-time messages
+        if (tenantId) {
+            joinConversation(tenantId);
+        }
+
+        const unsubscribe = onNewMessage((incoming) => {
+            if (!incoming) return;
+            setMessages((prev) => {
+                // If message already exists by ID, ignore
+                if (prev.some((m) => m.id === incoming.id)) {
+                    return prev;
+                }
+                // Check if incoming is confirming a temp message from this user
+                const isFromMe = incoming.senderId === currentUserId || incoming.isMe;
+                const tempIndex = prev.findIndex((m) => m.id?.startsWith('temp-') && m.content === incoming.content);
+                if (tempIndex !== -1) {
+                    const next = [...prev];
+                    next[tempIndex] = {
+                        ...incoming,
+                        isMe: true,
+                        direction: 'OUTBOUND',
+                    };
+                    return next;
+                }
+
+                // New message (e.g. from Admin / Support)
+                return [
+                    ...prev,
+                    {
+                        ...incoming,
+                        isMe: isFromMe,
+                        direction: isFromMe ? 'OUTBOUND' : 'INBOUND',
+                    },
+                ];
+            });
+        });
+
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
+            if (tenantId) leaveConversation(tenantId);
+            unsubscribe();
         };
-    }, []);
+    }, [tenantId, currentUserId]);
 
     const initChat = async () => {
         try {

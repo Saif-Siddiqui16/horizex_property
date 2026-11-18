@@ -199,6 +199,12 @@ export const Profile = () => {
             const mergedUser = { ...storedUser, ...(updatedUser || payload) };
             localStorage.setItem('user', JSON.stringify(mergedUser));
 
+            const newPhotoUrl = updatedUser?.profilePictureUrl || payload.profilePictureUrl;
+            if (newPhotoUrl) {
+                localStorage.setItem('companyLogoUrl', newPhotoUrl);
+                window.dispatchEvent(new CustomEvent('logoUpdated', { detail: { logoUrl: newPhotoUrl } }));
+            }
+
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
             setPasswordData({ newPassword: '', confirmPassword: '' });
 
@@ -268,7 +274,29 @@ export const Profile = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <form onSubmit={handleSubmit} className="space-y-6">
+
+                    {/* Top Action Header */}
+                    <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl border border-slate-200 shadow-sm">
+                        <div>
+                            <h2 className="text-xl font-black text-slate-800 tracking-tight">User Profile</h2>
+                            <p className="text-xs text-slate-500 font-medium">Manage your personal credentials, contact info, and logo</p>
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={isSaveInProgress}
+                            className="h-11 px-6 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-black text-xs uppercase tracking-wider shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+                        >
+                            {isSaveInProgress ? (
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <Save size={16} />
+                            )}
+                            {isSaveInProgress ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
                     {/* Avatar Section */}
                     <div className="md:col-span-1 space-y-6">
@@ -309,6 +337,19 @@ export const Profile = () => {
                                     </div>
                                 )}
                             </div>
+
+                            <button
+                                type="submit"
+                                disabled={isSaveInProgress}
+                                className="w-full mt-6 h-12 bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg shadow-zinc-200 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+                            >
+                                {isSaveInProgress ? (
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <Save size={18} />
+                                )}
+                                {isSaveInProgress ? 'Saving...' : 'Save Changes'}
+                            </button>
                         </div>
                     </div>
 
@@ -439,40 +480,6 @@ export const Profile = () => {
                                     />
                                 </div>
                             </div>
-
-                            <div className="flex items-center gap-2 mt-8 mb-4">
-                                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                                    <div className="font-black text-xs italic">C</div>
-                                </div>
-                                <h4 className="text-lg font-bold text-slate-800 tracking-tight">Company Information</h4>
-                            </div>
-
-                            <div className="space-y-5">
-                                <div className="space-y-1.5">
-                                    <label className="text-[13px] font-bold text-slate-500 ml-1">Company Name</label>
-                                    <input
-                                        type="text"
-                                        name="companyName"
-                                        value={profile.companyName || ''}
-                                        onChange={handleProfileChange}
-                                        disabled={!isCompanyEditable}
-                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900 ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
-                                        placeholder="e.g. Horizex Properties"
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[13px] font-bold text-slate-500 ml-1">Company Details</label>
-                                    <textarea
-                                        name="companyDetails"
-                                        value={profile.companyDetails || ''}
-                                        onChange={handleProfileChange}
-                                        disabled={!isCompanyEditable}
-                                        rows={3}
-                                        className={`w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-hidden focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5 transition-all font-medium text-slate-900 min-h-[100px] ${!isCompanyEditable ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
-                                        placeholder="Mention your company address, registration number, tax details, or mission statement..."
-                                    />
-                                </div>
-                            </div>
                         </div>
 
                         {/* Password Change */}
@@ -525,7 +532,7 @@ export const Profile = () => {
                             <button
                                 type="submit"
                                 disabled={isSaveInProgress}
-                                className="h-12 px-8 bg-primary-600 text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg shadow-primary-200 hover:bg-primary-700 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                                className="h-12 px-8 bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg shadow-zinc-200 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
                             >
                                 {isSaveInProgress ? (
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -536,6 +543,7 @@ export const Profile = () => {
                             </button>
                         </div>
 
+                    </div>
                     </div>
                 </form>
             </div>
