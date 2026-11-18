@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
+import { joinConversation, leaveConversation, onNewMessage, onConversationUpdated } from '../services/socketService';
 import { Search, Send, User, MessageSquare, Clock, Filter, CheckCheck, RefreshCw, ChevronLeft, LayoutPanelLeft } from 'lucide-react';
 
 import { hasPermission } from '../utils/permissions';
@@ -55,14 +56,76 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         fetchConversations();
         fetchTemplates();
         const interval = setInterval(fetchConversations, 10000); // Poll for new threads
-        return () => clearInterval(interval);
+
+        const unsubConv = onConversationUpdated((update) => {
+            if (!update) return;
+            setConversations(prev => {
+                const updated = prev.map(c => {
+                    if (c.id === update.id) {
+                        return {
+                            ...c,
+                            lastMessage: update.lastMessage || c.lastMessage,
+                            unreadCount: update.unreadCountDelta ? (c.unreadCount || 0) + update.unreadCountDelta : c.unreadCount,
+                        };
+                    }
+                    return c;
+                });
+                return updated.sort((a, b) => {
+                    const dateA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt) : new Date(0);
+                    const dateB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt) : new Date(0);
+                    return dateB - dateA;
+                });
+            });
+            fetchConversations();
+        });
+
+        return () => {
+            clearInterval(interval);
+            unsubConv();
+        };
     }, [selectedCompanyId, selectedBuildingId]);
 
     useEffect(() => {
         if (selectedUser) {
+            joinConversation(selectedUser.id);
             fetchMessages(selectedUser.id);
-            const interval = setInterval(() => fetchMessages(selectedUser.id, true), 5000); // Poll for new messages
-            return () => clearInterval(interval);
+
+            const unsubMsg = onNewMessage((msg) => {
+                if (!msg) return;
+                const matchesRecipient = msg.recipientId === selectedUser.id || msg.receiverId === selectedUser.id;
+                const matchesSender = msg.senderId === selectedUser.id;
+                if (matchesRecipient || matchesSender) {
+                    setMessages(prev => {
+                        if (prev.some(m => m.id === msg.id)) return prev;
+                        // Replace temp message if content matches
+                        const tempIdx = prev.findIndex(m => m.id?.startsWith('temp-') && m.content === msg.content);
+                        if (tempIdx !== -1) {
+                            const next = [...prev];
+                            next[tempIdx] = { ...msg, direction: 'OUTBOUND', isMe: true };
+                            return next;
+                        }
+                        const isOutbound = msg.senderId === currentUser?.id || (!matchesSender && msg.direction === 'OUTBOUND');
+                        return [...prev, {
+                            ...msg,
+                            direction: isOutbound ? 'OUTBOUND' : 'INBOUND',
+                            isMe: isOutbound,
+                        }];
+                    });
+
+                    // Mark as read immediately if inbound
+                    if (matchesSender) {
+                        const cleanId = typeof selectedUser.id === 'string' ? selectedUser.id.replace('resident_', '') : selectedUser.id;
+                        api.post('/api/communication/mark-read', { senderId: cleanId });
+                    }
+                }
+            });
+
+            const interval = setInterval(() => fetchMessages(selectedUser.id, true), 8000);
+            return () => {
+                clearInterval(interval);
+                leaveConversation(selectedUser.id);
+                unsubMsg();
+            };
         }
     }, [selectedUser]);
 
@@ -118,19 +181,34 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !selectedUser) return;
+        const text = newMessage.trim();
+        if (!text || !selectedUser || sending) return;
 
         setSending(true);
+        const tempMsg = {
+            id: `temp-${Date.now()}`,
+            content: text,
+            message: text,
+            createdAt: new Date().toISOString(),
+            direction: 'OUTBOUND',
+            isMe: true,
+            smsStatus: 'delivered',
+        };
+        setMessages(prev => [...prev, tempMsg]);
+        setNewMessage('');
+
         try {
-            await api.post('/api/communication/send', {
+            const res = await api.post('/api/communication/send', {
                 receiverId: selectedUser.id,
-                content: newMessage
+                content: text
             });
-            setNewMessage('');
-            fetchMessages(selectedUser.id, true);
+            if (res.data?.id) {
+                setMessages(prev => prev.map(m => m.id === tempMsg.id ? { ...res.data, direction: 'OUTBOUND', isMe: true } : m));
+            }
             fetchConversations();
         } catch (error) {
             console.error('Error sending message:', error);
+            setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
         } finally {
             setSending(false);
         }

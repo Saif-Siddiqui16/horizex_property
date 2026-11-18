@@ -188,7 +188,7 @@ function App() {
             <Route path="/payments/new" element={<PaymentForm />} />
 
             {/* ACCOUNTING */}
-            <Route path="/accounting/bank-accounts" element={<BankAccounts />} />
+            <Route path="/accounting/bank-accounts" element={<Navigate to="/accounting/chart-of-accounts" replace />} />
             <Route path="/accounting" element={<Accounting />} />
             <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
             <Route path="/accounting/tax-settings" element={<TaxSettings />} />

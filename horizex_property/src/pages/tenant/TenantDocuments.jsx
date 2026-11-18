@@ -41,37 +41,48 @@ export const TenantDocuments = () => {
                 name: form.docName.value || selectedFile.name,
                 type: form.docType.value || 'General Document',
                 fileName: selectedFile.name,
+                fileSize: `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`,
                 fileUrl
             }).unwrap();
 
             setShowUpload(false);
             setSelectedFile(null);
             form.reset();
-            alert('Document uploaded successfully!');
         } catch (e) {
             console.error(e);
             alert('Upload failed: ' + (e?.data?.message || e?.message || 'Please try again'));
         }
     };
 
-    const handleView = (url) => {
-        let fileUrl = url;
-        if (!fileUrl.startsWith('http')) {
+    const handleView = (docId, url) => {
+        const token = localStorage.getItem('accessToken');
+        let finalUrl = url;
+        if (url && url.startsWith('http') && !url.includes('/api/')) {
+            finalUrl = url;
+        } else {
             const base = (api.defaults?.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
-            const path = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
-            const normalizedPath = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
-            fileUrl = `${base}${normalizedPath}`;
+            const cleanPath = (url || `/api/tenant/documents/${docId}/download`).startsWith('/')
+                ? (url || `/api/tenant/documents/${docId}/download`)
+                : `/${url || `/api/tenant/documents/${docId}/download`}`;
+            const normalizedPath = cleanPath.startsWith('/api/') ? cleanPath.replace(/^\/api/, '') : cleanPath;
+            finalUrl = `${base}${normalizedPath}?disposition=inline&token=${token}`;
         }
-        window.open(fileUrl, '_blank');
+        window.open(finalUrl, '_blank');
     };
 
     const handleDownload = (docId, url) => {
         const token = localStorage.getItem('accessToken');
-        const base = (api.defaults?.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
-        const baseUrl = url.includes('?') ? url.split('?')[0] : url;
-        const cleanPath = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
-        const normalizedPath = cleanPath.startsWith('/api/') ? cleanPath.replace(/^\/api/, '') : cleanPath;
-        const finalUrl = `${base}${normalizedPath}?disposition=attachment&token=${token}`;
+        let finalUrl = url;
+        if (url && url.startsWith('http') && !url.includes('/api/')) {
+            finalUrl = url;
+        } else {
+            const base = (api.defaults?.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+            const cleanPath = (url || `/api/tenant/documents/${docId}/download`).startsWith('/')
+                ? (url || `/api/tenant/documents/${docId}/download`)
+                : `/${url || `/api/tenant/documents/${docId}/download`}`;
+            const normalizedPath = cleanPath.startsWith('/api/') ? cleanPath.replace(/^\/api/, '') : cleanPath;
+            finalUrl = `${base}${normalizedPath}?disposition=attachment&token=${token}`;
+        }
         window.open(finalUrl, '_blank');
     };
 
@@ -139,7 +150,7 @@ export const TenantDocuments = () => {
                                                     {doc.fileUrl && (
                                                         <>
                                                             <button
-                                                                onClick={() => handleView(doc.fileUrl)}
+                                                                onClick={() => handleView(doc.id, doc.fileUrl)}
                                                                 className="p-2.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all"
                                                                 title="View Document"
                                                             >

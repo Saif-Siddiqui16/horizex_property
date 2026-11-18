@@ -11,7 +11,14 @@ const baseQuery = fetchBaseQuery({
   baseUrl: apiBaseUrl,
   credentials: 'include', // Automatically passes HttpOnly cookies
   prepareHeaders: (headers, { getState }) => {
-    const token = getState()?.auth?.accessToken || localStorage.getItem('accessToken');
+    const isOwnerPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/owner');
+    const isTenantPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/tenant');
+
+    let token = getState()?.auth?.accessToken;
+    if (isOwnerPortal || isTenantPortal || !token) {
+      token = localStorage.getItem('accessToken') || token;
+    }
+
     if (token) {
       headers.set('authorization', 'Bearer ' + token);
     }
@@ -19,6 +26,11 @@ const baseQuery = fetchBaseQuery({
     const effectiveCompanyId = getState()?.auth?.effectiveCompanyId || localStorage.getItem('companyContext') || localStorage.getItem('global_selected_company_id');
     if (effectiveCompanyId) {
       headers.set('x-company-context', effectiveCompanyId);
+    }
+
+    const ownerId = localStorage.getItem('ownerId');
+    if (ownerId) {
+      headers.set('x-owner-id', ownerId);
     }
 
     return headers;

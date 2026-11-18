@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -15,6 +16,22 @@ import clsx from 'clsx';
 
 export const OwnerSidebar = ({ isOpen, setIsOpen }) => {
     const navigate = useNavigate();
+    const [logoUrl, setLogoUrl] = useState(() => {
+        return localStorage.getItem('companyLogoUrl') || JSON.parse(localStorage.getItem('user') || '{}').profilePictureUrl || '/assets/logo.png';
+    });
+
+    useEffect(() => {
+        const handleLogoUpdate = (e) => {
+            const newLogo = e.detail?.logoUrl || localStorage.getItem('companyLogoUrl') || JSON.parse(localStorage.getItem('user') || '{}').profilePictureUrl;
+            if (newLogo) setLogoUrl(newLogo);
+        };
+        window.addEventListener('logoUpdated', handleLogoUpdate);
+        window.addEventListener('storage', handleLogoUpdate);
+        return () => {
+            window.removeEventListener('logoUpdated', handleLogoUpdate);
+            window.removeEventListener('storage', handleLogoUpdate);
+        };
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('isOwnerLoggedIn');
@@ -50,7 +67,7 @@ export const OwnerSidebar = ({ isOpen, setIsOpen }) => {
                 <div className="h-16 flex items-center px-5 justify-between border-b border-slate-800 shrink-0">
                     <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/owner/dashboard')}>
                         <div className="bg-white rounded-full p-0.5 shadow-md shrink-0 w-14 h-14 flex items-center justify-center overflow-hidden">
-                            <img src="/assets/logo.png" alt="Horizex Logo" className="h-13 w-13 object-contain" />
+                            <img src={logoUrl} alt="Horizex Logo" className="h-13 w-13 object-contain" onError={(e) => { e.currentTarget.src = '/assets/logo.png'; }} />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-sm font-black text-white uppercase tracking-wider leading-none">Horizex</span>

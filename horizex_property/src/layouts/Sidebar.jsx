@@ -120,9 +120,8 @@ const NAV_ITEMS = [
     icon: Calculator,
     label: "Accounting",
     tKey: "sidebar.accounting",
-    path: "/accounting/bank-accounts",
+    path: "/accounting/chart-of-accounts",
     children: [
-      { label: "Bank Accounts", path: "/accounting/bank-accounts" },
       { label: "Chart of Accounts", tKey: "sidebar.chart_of_accounts", path: "/accounting/chart-of-accounts" },
       { label: "QuickBooks Sync", tKey: "sidebar.quickbooks", path: "/settings/quickbooks" }
     ]
@@ -245,7 +244,7 @@ const NavItem = ({ item, depth = 0, onClose }) => {
     <>
       <NavLink
         to={item.path}
-        end={item.path === '/companies' || item.path === '/leases' || item.path === '/tenants' || item.path === '/dashboard' || item.path === '/properties/buildings' || item.path === '/accounting' || item.path === '/accounting/bank-accounts' || item.path === '/tal-cases' || item.path === '/notes-hub' || item.path === '/payments/collection' || item.path === '/payroll/dashboard'}
+        end={item.path === '/companies' || item.path === '/leases' || item.path === '/tenants' || item.path === '/dashboard' || item.path === '/properties/buildings' || item.path === '/accounting' || item.path === '/accounting/chart-of-accounts' || item.path === '/tal-cases' || item.path === '/notes-hub' || item.path === '/payments/collection' || item.path === '/payroll/dashboard'}
         onClick={handleClick}
         className={({ isActive }) =>
           clsx(
@@ -287,6 +286,23 @@ const NavItem = ({ item, depth = 0, onClose }) => {
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const [logoUrl, setLogoUrl] = useState(() => {
+    return localStorage.getItem('companyLogoUrl') || JSON.parse(localStorage.getItem('user') || '{}').profilePictureUrl || '/assets/logo.png';
+  });
+
+  useEffect(() => {
+    const handleLogoUpdate = (e) => {
+      const newLogo = e.detail?.logoUrl || localStorage.getItem('companyLogoUrl') || JSON.parse(localStorage.getItem('user') || '{}').profilePictureUrl;
+      if (newLogo) setLogoUrl(newLogo);
+    };
+    window.addEventListener('logoUpdated', handleLogoUpdate);
+    window.addEventListener('storage', handleLogoUpdate);
+    return () => {
+      window.removeEventListener('logoUpdated', handleLogoUpdate);
+      window.removeEventListener('storage', handleLogoUpdate);
+    };
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     clearWorkspaceTabs();
@@ -340,7 +356,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         <div className="h-14 sm:h-16 flex items-center px-4 lg:px-6 justify-between shrink-0 border-b border-zinc-800/50">
           <Link to="/dashboard" className="flex items-center gap-3">
             <div className="bg-white rounded-full p-0.5 shadow-md shrink-0 w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center overflow-hidden">
-              <img src="/assets/logo.png" alt="Horizex Logo" className="h-10 w-10 sm:h-11 sm:w-11 object-contain" />
+              <img src={logoUrl} alt="Horizex Logo" className="h-10 w-10 sm:h-11 sm:w-11 object-contain" onError={(e) => { e.currentTarget.src = '/assets/logo.png'; }} />
             </div>
             <div className="flex flex-col">
               <span className="text-base font-black text-white uppercase tracking-wider leading-none">Horizex</span>

@@ -65,20 +65,6 @@ export const Maintenance = () => {
     return () => window.removeEventListener('permissionsUpdated', handleUpdate);
   }, []);
 
-  // RBAC Permission Guard
-  if (!hasPermission('Maintenance', 'view')) {
-    return (
-      <>
-        <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
-          <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
-          <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
-            You do not have permission to view this section. Please contact your administrator.
-          </p>
-        </div>
-      </>
-    );
-  }
-
   // Active workspace tab
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -168,15 +154,15 @@ export const Maintenance = () => {
     return Object.keys(p).length > 0 ? p : undefined;
   }, [selectedCompanyId, selectedBuildingId, selectedPriority, selectedStatus]);
 
-  const { data: backendTickets = [], isLoading: isTicketsLoading, isSuccess: isTicketsSuccess, refetch: refetchTickets } = useGetTicketsQuery(queryParams, {
+  const { data: backendTickets, isLoading: isTicketsLoading, isSuccess: isTicketsSuccess, refetch: refetchTickets } = useGetTicketsQuery(queryParams, {
     refetchOnMountOrArgChange: true,
   });
-  const { data: propertiesData = [] } = useGetPropertiesQuery(
+  const { data: propertiesData } = useGetPropertiesQuery(
     selectedCompanyId && selectedCompanyId !== 'all' ? { companyId: selectedCompanyId } : undefined,
     { refetchOnMountOrArgChange: true }
   );
 
-  const { data: unitsData = [] } = useGetUnitsQuery(
+  const { data: unitsData } = useGetUnitsQuery(
     selectedCompanyId && selectedCompanyId !== 'all' ? { companyId: selectedCompanyId } : undefined,
     { refetchOnMountOrArgChange: true }
   );
@@ -233,11 +219,7 @@ export const Maintenance = () => {
       }
       return raw;
     }
-    const stored = JSON.parse(localStorage.getItem('mock_properties') || '[]');
-    if (selectedCompanyId && selectedCompanyId !== 'all') {
-      return stored.filter(p => String(p.companyId) === String(selectedCompanyId));
-    }
-    return stored;
+    return [];
   }, [propertiesData, selectedCompanyId]);
 
   // Selected building units for modal
@@ -250,10 +232,13 @@ export const Maintenance = () => {
   useEffect(() => {
     if (properties.length > 0 && (!newRequestForm.buildingId || newRequestForm.buildingId === 'building-1')) {
       const firstProp = properties[0];
-      setNewRequestForm(prev => ({
-        ...prev,
-        buildingId: firstProp.id,
-      }));
+      setNewRequestForm(prev => {
+        if (prev.buildingId === firstProp.id) return prev;
+        return {
+          ...prev,
+          buildingId: firstProp.id,
+        };
+      });
     }
   }, [properties]);
 
@@ -262,10 +247,13 @@ export const Maintenance = () => {
     if (selectedBuildingUnits.length > 0) {
       const exists = selectedBuildingUnits.some(u => u.id === newRequestForm.apartmentId);
       if (!exists) {
-        setNewRequestForm(prev => ({
-          ...prev,
-          apartmentId: selectedBuildingUnits[0].id,
-        }));
+        setNewRequestForm(prev => {
+          if (prev.apartmentId === selectedBuildingUnits[0].id) return prev;
+          return {
+            ...prev,
+            apartmentId: selectedBuildingUnits[0].id,
+          };
+        });
       }
     }
   }, [selectedBuildingUnits]);
@@ -524,7 +512,7 @@ export const Maintenance = () => {
       window.removeEventListener('buildingChanged', handleSync);
       window.removeEventListener('storage', handleSync);
     };
-  }, [selectedBuildingId, selectedApartmentId, selectedPriority, selectedStatus, selectedCategory, searchQuery, normalizedBackendRequests, isTicketsSuccess, refetchTickets]);
+  }, [selectedBuildingId, selectedApartmentId, selectedPriority, selectedStatus, selectedCategory, searchQuery, normalizedBackendRequests, isTicketsSuccess]);
 
   // ── OPERATIONS HANDLERS ───────────────────────────────────────────────
 
@@ -718,6 +706,17 @@ export const Maintenance = () => {
     // { id: 'inventory', label: 'Warehouse Stock' },
     { id: 'calendar', label: 'Repairs Calendar' }
   ];
+
+  if (!hasPermission('Maintenance', 'view')) {
+    return (
+      <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
+        <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
+        <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
+          You do not have permission to view this section. Please contact your administrator.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>

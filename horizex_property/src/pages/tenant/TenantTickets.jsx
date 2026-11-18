@@ -12,15 +12,79 @@ export const TenantTickets = () => {
 
     const tickets = Array.isArray(rawTickets) ? rawTickets : [];
 
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'Resolved':
+                return {
+                    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    icon: CheckCircle2,
+                    label: 'Resolved'
+                };
+            case 'In Progress':
+                return {
+                    bg: 'bg-blue-50 text-blue-700 border-blue-200',
+                    icon: Clock,
+                    label: 'In Progress'
+                };
+            default:
+                return {
+                    bg: 'bg-amber-50 text-amber-700 border-amber-200',
+                    icon: AlertCircle,
+                    label: status || 'Pending'
+                };
+        }
+    };
+
+    const getPriorityBadge = (priority) => {
+        switch (priority) {
+            case 'High':
+            case 'Emergency':
+                return 'bg-rose-50 text-rose-700 border-rose-200';
+            case 'Medium':
+                return 'bg-amber-50 text-amber-700 border-amber-200';
+            default:
+                return 'bg-slate-50 text-slate-600 border-slate-200';
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         const form = e.target;
 
         try {
+            const imageFiles = form.images?.files ? Array.from(form.images.files) : [];
+            const videoFile = form.video?.files?.[0] || null;
+
+            const readAsDataUrl = (file) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            const photoUrls = [];
+            for (const file of imageFiles) {
+                try {
+                    const dataUrl = await readAsDataUrl(file);
+                    photoUrls.push(dataUrl);
+                } catch (err) {
+                    console.error('Failed reading image:', err);
+                }
+            }
+            if (videoFile) {
+                try {
+                    const dataUrl = await readAsDataUrl(videoFile);
+                    photoUrls.push(dataUrl);
+                } catch (err) {
+                    console.error('Failed reading video:', err);
+                }
+            }
+
             await createTicket({
                 subject: form.subject.value,
                 description: form.description.value,
-                priority: form.priority.value
+                priority: form.priority.value,
+                photoUrls
             }).unwrap();
             setShowNew(false);
             form.reset();
@@ -56,35 +120,52 @@ export const TenantTickets = () => {
                             <p className="text-slate-400 font-bold">No tickets found.</p>
                         </div>
                     ) : (
-                        tickets.map((ticket) => (
-                            <div key={ticket.id} onClick={() => setSelectedTicket(ticket)} className="bg-white rounded-3xl border border-slate-100 p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:shadow-md transition-all group cursor-pointer">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${ticket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-600' : 'bg-primary-50 text-primary-600'
+                        tickets.map((ticket) => {
+                            const statusConfig = getStatusBadge(ticket.status);
+                            const StatusIcon = statusConfig.icon;
+                            const priorityClass = getPriorityBadge(ticket.priority);
+
+                            return (
+                                <div key={ticket.id || ticket.dbId} onClick={() => setSelectedTicket(ticket)} className="bg-white rounded-3xl border border-slate-100 p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:shadow-md transition-all group cursor-pointer">
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
+                                        ticket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-600' :
+                                        ticket.status === 'In Progress' ? 'bg-blue-50 text-blue-600' :
+                                        'bg-indigo-50 text-indigo-600'
                                     }`}>
-                                    <Wrench size={24} />
-                                </div>
-
-                                <div className="flex-1 space-y-1">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{ticket.id}</span>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight border ${ticket.priority === 'High' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-500 border-slate-100'
-                                            }`}>
-                                            {ticket.priority} Priority
-                                        </span>
+                                        <Wrench size={24} />
                                     </div>
-                                    <h4 className="text-lg font-bold text-slate-800 group-hover:text-primary-600 transition-colors">{ticket.subject}</h4>
-                                    <p className="text-sm text-slate-500 font-medium line-clamp-1">{ticket.desc}</p>
-                                </div>
 
-                                <div className="flex flex-row md:flex-col items-center md:items-end gap-4 md:gap-1 shrink-0 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-50">
-                                    <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-tight border ${ticket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                                        }`}>
-                                        {ticket.status === 'Resolved' ? <CheckCircle2 size={14} /> : <Clock size={14} />}
-                                        {ticket.status}
+                                    <div className="flex-1 space-y-1">
+                                        <div className="flex items-center gap-3 flex-wrap">
+                                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{ticket.displayId || ticket.id}</span>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight border ${priorityClass}`}>
+                                                {ticket.priority} Priority
+                                            </span>
+                                            {ticket.unitNumber && (
+                                                <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+                                                    Unit {ticket.unitNumber}
+                                                </span>
+                                            )}
+                                            {ticket.attachments && ticket.attachments.length > 0 && (
+                                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                                                    {ticket.attachments.length} attachment{ticket.attachments.length > 1 ? 's' : ''}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h4 className="text-lg font-bold text-slate-800 group-hover:text-primary-600 transition-colors">{ticket.subject}</h4>
+                                        <p className="text-sm text-slate-500 font-medium line-clamp-1">{ticket.desc}</p>
                                     </div>
-                                    <span className="text-xs font-bold text-slate-400">{ticket.date}</span>
+
+                                    <div className="flex flex-row md:flex-col items-center md:items-end gap-4 md:gap-1 shrink-0 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-50">
+                                        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-tight border ${statusConfig.bg}`}>
+                                            <StatusIcon size={14} />
+                                            {statusConfig.label}
+                                        </div>
+                                        <span className="text-xs font-bold text-slate-400">{ticket.date}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>
@@ -155,20 +236,64 @@ export const TenantTickets = () => {
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 anim-fade-in">
                     <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl anim-zoom-in overflow-y-auto max-h-[90vh]">
                         <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-                            <h3 className="text-xl font-black text-slate-800">{selectedTicket.id} Detail</h3>
+                            <h3 className="text-xl font-black text-slate-800">{selectedTicket.displayId || selectedTicket.id} Detail</h3>
                             <button onClick={() => setSelectedTicket(null)} className="p-2 text-slate-400 hover:bg-slate-50 rounded-xl transition-all">
                                 <X size={24} />
                             </button>
                         </div>
                         <div className="p-8 space-y-6">
+                            <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-50">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Status</label>
+                                    <div className="mt-1">
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-tight border ${getStatusBadge(selectedTicket.status).bg}`}>
+                                            {selectedTicket.status === 'Resolved' ? <CheckCircle2 size={13} /> : selectedTicket.status === 'In Progress' ? <Clock size={13} /> : <AlertCircle size={13} />}
+                                            {selectedTicket.status}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Priority</label>
+                                    <div className="mt-1">
+                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-tight border ${getPriorityBadge(selectedTicket.priority)}`}>
+                                            {selectedTicket.priority} Priority
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {selectedTicket.unitNumber && (
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Unit / Location</label>
+                                    <p className="text-slate-700 font-bold mt-1">Unit {selectedTicket.unitNumber} {selectedTicket.propertyName ? `• ${selectedTicket.propertyName}` : ''}</p>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Subject</label>
                                 <p className="text-lg font-bold text-slate-800 mt-1">{selectedTicket.subject}</p>
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Description</label>
-                                <p className="text-slate-600 font-medium mt-1">{selectedTicket.desc}</p>
+                                <p className="text-slate-600 font-medium mt-1 whitespace-pre-wrap">{selectedTicket.desc}</p>
                             </div>
+
+                            {selectedTicket.assignee && (
+                                <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+                                    <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Assigned Technician</label>
+                                    <p className="text-slate-800 font-bold mt-0.5">{selectedTicket.assignee}</p>
+                                </div>
+                            )}
+
+                            {selectedTicket.resolutionNote && (
+                                <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                                    <label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Resolution Notes</label>
+                                    <p className="text-slate-800 font-medium mt-0.5 whitespace-pre-wrap">{selectedTicket.resolutionNote}</p>
+                                    {selectedTicket.resolvedAt && (
+                                        <p className="text-xs text-emerald-600 font-semibold mt-1">Resolved on {selectedTicket.resolvedAt}</p>
+                                    )}
+                                </div>
+                            )}
 
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Attachments</label>
                             {selectedTicket.attachments && selectedTicket.attachments.length > 0 ? (
@@ -185,11 +310,6 @@ export const TenantTickets = () => {
                                     {selectedTicket.attachments.find(a => a.type === 'video') && (
                                         <div className="rounded-2xl overflow-hidden border border-slate-100 bg-slate-900 aspect-video relative group">
                                             <video src={selectedTicket.attachments.find(a => a.type === 'video').url} className="w-full h-full object-cover" controls />
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors pointer-events-none group-data-[playing=true]:hidden">
-                                                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white ring-4 ring-white/10">
-                                                    <Clock size={24} />
-                                                </div>
-                                            </div>
                                         </div>
                                     )}
                                 </div>

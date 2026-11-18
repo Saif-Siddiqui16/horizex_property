@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
 import { CreditCard, Wallet, Banknote, CheckCircle, ArrowRight, ShieldCheck, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '../../components/Button';
-import { useGetTenantInvoicesQuery, usePayTenantInvoiceMutation } from '../../store';
+import { useGetTenantInvoicesQuery, usePayTenantInvoiceMutation, useGetTenantLeaseQuery } from '../../store';
 
 export const TenantPayments = () => {
-    const { data: rawInvoices = [], isLoading } = useGetTenantInvoicesQuery();
+    const { data: rawInvoices = [], isLoading: isInvoicesLoading } = useGetTenantInvoicesQuery();
+    const { data: lease, isLoading: isLeaseLoading } = useGetTenantLeaseQuery();
     const [payInvoice, { isLoading: isProcessing }] = usePayTenantInvoiceMutation();
 
     const [selectedMethod, setSelectedMethod] = useState('card');
     const [showSuccess, setShowSuccess] = useState(false);
+    const [paymentResult, setPaymentResult] = useState(null);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
+
+    const hasLease = Boolean(lease && lease.hasLease !== false && lease.id && lease.id !== 'DEMO-LEASE');
 
     const unpaidInvoices = (Array.isArray(rawInvoices) ? rawInvoices : []).filter(inv =>
         inv.status === 'Due' ||
@@ -28,12 +33,13 @@ export const TenantPayments = () => {
         if (!selectedInvoice) return;
 
         try {
-            await payInvoice({
+            const res = await payInvoice({
                 invoiceId: selectedInvoice.dbId,
                 amount: selectedInvoice.balanceDue || selectedInvoice.amount,
                 paymentMethod: selectedMethod
             }).unwrap();
 
+            setPaymentResult(res?.data || res);
             setShowSuccess(true);
         } catch (error) {
             console.error(error);
@@ -41,19 +47,63 @@ export const TenantPayments = () => {
         }
     };
 
-    if (isLoading) return <div className="p-10 text-center font-medium text-slate-500">Loading payment details...</div>;
+    if (isInvoicesLoading || isLeaseLoading) {
+        return <div className="p-10 text-center font-medium text-slate-500">Loading payment details...</div>;
+    }
 
     if (unpaidInvoices.length === 0 && !showSuccess) {
         return (
-            <>
-                <div className="p-10 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
-                    <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle size={40} />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-800">No Pending Dues</h3>
-                    <p className="text-slate-500 mt-2">You are all caught up! No rent is due at this time.</p>
-                </div>
-            </>
+            <div className="max-w-2xl mx-auto p-12 text-center bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4 anim-slide-up">
+                {hasLease ? (
+                    <>
+                        <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <CheckCircle size={44} />
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-800">No Pending Dues</h3>
+                        <p className="text-slate-500 font-medium max-w-md mx-auto">
+                            You are all caught up! Your rent for <span className="font-bold text-slate-700">{lease.property || 'Property'} {lease.unit ? `(Unit ${lease.unit})` : ''}</span> is fully settled.
+                        </p>
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 max-w-md mx-auto flex items-center justify-between text-left">
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Monthly Rent</p>
+                                <p className="text-lg font-black text-slate-800">${Number(lease.monthlyRent || lease.rent || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status</p>
+                                <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-600 bg-emerald-100/60 px-2.5 py-1 rounded-full uppercase">
+                                    <CheckCircle size={12} /> Paid
+                                </span>
+                            </div>
+                        </div>
+                        <div className="pt-4 flex items-center justify-center gap-4">
+                            <Link to="/tenant/invoices" className="px-6 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors">
+                                View Invoices
+                            </Link>
+                            <Link to="/tenant/lease" className="px-6 py-3 rounded-xl bg-zinc-900 text-white font-bold hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-200">
+                                Lease Details
+                            </Link>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="w-20 h-20 bg-slate-50 border border-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <CreditCard size={36} />
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-800">No Pending Dues</h3>
+                        <p className="text-slate-500 font-medium max-w-md mx-auto">
+                            You currently do not have an active lease or pending rent dues associated with your profile.
+                        </p>
+                        <div className="pt-4 flex items-center justify-center gap-4">
+                            <Link to="/tenant/dashboard" className="px-6 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors">
+                                Dashboard
+                            </Link>
+                            <Link to="/tenant/communication" className="px-6 py-3 rounded-xl bg-zinc-900 text-white font-bold hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-200">
+                                Contact Management
+                            </Link>
+                        </div>
+                    </>
+                )}
+            </div>
         );
     }
 
@@ -108,23 +158,23 @@ export const TenantPayments = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {[
-                                    { id: 'card', label: 'Card', icon: CreditCard },
-                                    { id: 'bank', label: 'Bank', icon: Banknote },
-                                    { id: 'wallet', label: 'Wallet', icon: Wallet },
+                                    { id: 'card', label: 'Credit / Debit Card', icon: CreditCard },
+                                    { id: 'bank', label: 'Bank Transfer', icon: Banknote },
+                                    { id: 'wallet', label: 'Interac / E-Transfer', icon: Wallet },
                                 ].map((method) => (
                                     <button
                                         key={method.id}
                                         onClick={() => setSelectedMethod(method.id)}
                                         className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${selectedMethod === method.id
-                                            ? 'border-primary-600 bg-primary-50/30'
-                                            : 'border-slate-100 hover:border-primary-200'
+                                            ? 'border-indigo-600 bg-indigo-50/30'
+                                            : 'border-slate-100 hover:border-slate-200'
                                             }`}
                                     >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${selectedMethod === method.id ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-400'
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${selectedMethod === method.id ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-400'
                                             }`}>
                                             <method.icon size={20} />
                                         </div>
-                                        <h4 className={`font-bold text-sm ${selectedMethod === method.id ? 'text-primary-700' : 'text-slate-700'}`}>
+                                        <h4 className={`font-bold text-sm ${selectedMethod === method.id ? 'text-indigo-700' : 'text-slate-700'}`}>
                                             {method.label}
                                         </h4>
                                     </button>
@@ -133,7 +183,7 @@ export const TenantPayments = () => {
 
                             <div className="pt-2">
                                 <Button
-                                    className="w-full h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary-100 flex items-center justify-center gap-2"
+                                    className="w-full h-14 rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 flex items-center justify-center gap-2"
                                     onClick={handlePayment}
                                     disabled={isProcessing || !selectedInvoice}
                                 >
@@ -177,7 +227,7 @@ export const TenantPayments = () => {
                                 <p className="text-xs text-slate-500 font-black uppercase tracking-widest">{selectedInvoice?.status === 'Partial' ? 'Balance to Pay' : 'Total to Pay'}</p>
                                 <div className="flex justify-between items-end">
                                     <span className="text-4xl font-black tracking-tighter">${Number(selectedInvoice?.balanceDue || selectedInvoice?.amount || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
-                                    <span className="text-xs font-bold text-slate-500 mb-2 underline decoration-slate-700 underline-offset-4">USD</span>
+                                    <span className="text-xs font-bold text-slate-500 mb-2">CAD</span>
                                 </div>
                             </div>
 
@@ -208,11 +258,15 @@ export const TenantPayments = () => {
                         <div className="bg-slate-50 rounded-2xl p-4 text-left border border-slate-100">
                             <div className="flex justify-between text-xs font-bold py-1">
                                 <span className="text-slate-400 uppercase">Receipt #</span>
-                                <span className="text-slate-700">RCP-{Math.floor(Math.random() * 100000)}</span>
+                                <span className="text-slate-700">{paymentResult?.referenceId || `RCP-${String(paymentResult?.paymentId || Date.now()).slice(-6)}`}</span>
                             </div>
                             <div className="flex justify-between text-xs font-bold py-1">
                                 <span className="text-slate-400 uppercase">Method</span>
                                 <span className="text-slate-700 uppercase">{selectedMethod}</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-bold py-1">
+                                <span className="text-slate-400 uppercase">Amount Paid</span>
+                                <span className="text-emerald-600 font-bold">${Number(paymentResult?.amount || selectedInvoice?.balanceDue || selectedInvoice?.amount || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
                             </div>
                         </div>
                         <Button variant="primary" className="w-full rounded-2xl h-12 h-auto font-bold mt-2" onClick={() => setShowSuccess(false)}>

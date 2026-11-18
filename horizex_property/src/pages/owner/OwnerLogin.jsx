@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { Mail, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import api from '../../api/client';
+import { setCredentials } from '../../store/authSlice';
 
 export const OwnerLogin = () => {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
     const [email, setEmail] = useState('owner@example.com');
     const [password, setPassword] = useState('123456');
     const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +29,9 @@ export const OwnerLogin = () => {
             }
 
             const { accessToken, user } = res.data;
+            dispatch(setCredentials({ user, accessToken }));
             localStorage.setItem('accessToken', accessToken);
+            localStorage.setItem('user', JSON.stringify(user));
             localStorage.setItem('isOwnerLoggedIn', 'true');
             localStorage.setItem('ownerId', user.id);
 

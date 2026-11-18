@@ -94,7 +94,7 @@ export const tenantsApi = masterApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: [{ type: 'Vehicles', id: 'LIST' }, 'Tenants'],
+      invalidatesTags: [{ type: 'Vehicles', id: 'LIST' }, { type: 'TenantVehicles', id: 'LIST' }, { type: 'TenantDashboard', id: 'ME' }, 'Tenants'],
     }),
     updateVehicle: builder.mutation({
       query: ({ id, ...body }) => ({
@@ -105,6 +105,8 @@ export const tenantsApi = masterApi.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [
         { type: 'Vehicles', id },
         { type: 'Vehicles', id: 'LIST' },
+        { type: 'TenantVehicles', id: 'LIST' },
+        { type: 'TenantDashboard', id: 'ME' },
         'Tenants',
       ],
     }),
@@ -113,7 +115,7 @@ export const tenantsApi = masterApi.injectEndpoints({
         url: `/admin/vehicles/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: [{ type: 'Vehicles', id: 'LIST' }, 'Tenants'],
+      invalidatesTags: [{ type: 'Vehicles', id: 'LIST' }, { type: 'TenantVehicles', id: 'LIST' }, { type: 'TenantDashboard', id: 'ME' }, 'Tenants'],
     }),
   }),
 });

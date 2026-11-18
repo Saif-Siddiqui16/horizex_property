@@ -4,7 +4,10 @@ import { Link } from 'react-router-dom';
 import { useGetTenantDashboardQuery } from '../../store';
 
 export const TenantDashboard = () => {
-    const { data, isLoading } = useGetTenantDashboardQuery();
+    const { data, isLoading, isFetching, refetch } = useGetTenantDashboardQuery(undefined, {
+        refetchOnMountOrArgChange: true,
+        pollingInterval: 15000,
+    });
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -17,21 +20,25 @@ export const TenantDashboard = () => {
     if (stats.nextDueDate) {
         const d = new Date(stats.nextDueDate);
         nextDue = `Your next rent payment is due on ${d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}.`;
+    } else if (!stats.leaseStatus || stats.leaseStatus === 'None') {
+        nextDue = 'Welcome to your portal. No active lease is currently assigned.';
     }
+
+    const hasLease = stats.leaseStatus && stats.leaseStatus !== 'None' && stats.leaseStatus !== 'INACTIVE';
 
     const dashboardCards = [
         {
             title: 'Current Rent',
-            value: stats.currentRent > 0 ? `$${Number(stats.currentRent).toLocaleString('en-CA')}` : (isLoading ? 'Loading...' : '$0.00'),
-            subValue: stats.rentDueStatus || '-',
+            value: stats.currentRent > 0 ? `$${Number(stats.currentRent).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : (isLoading ? 'Loading...' : '$0.00'),
+            subValue: stats.rentDueStatus || (hasLease ? 'Paid' : 'No Balance'),
             icon: CreditCard,
             color: 'bg-blue-500',
             path: '/tenant/invoices'
         },
         {
             title: 'Lease Status',
-            value: stats.leaseStatus || (isLoading ? 'Loading...' : 'Active'),
-            subValue: stats.leaseExpiry ? `Ends ${new Date(stats.leaseExpiry).toLocaleDateString()}` : 'N/A',
+            value: stats.leaseStatus || (isLoading ? 'Loading...' : 'None'),
+            subValue: stats.leaseExpiry ? `Ends ${new Date(stats.leaseExpiry).toLocaleDateString()}` : (hasLease ? 'Ongoing' : 'No active lease'),
             icon: FileText,
             color: 'bg-emerald-500',
             path: '/tenant/lease'
@@ -76,7 +83,7 @@ export const TenantDashboard = () => {
                 </section>
 
                 {/* STAT CARDS */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {dashboardCards.map((card, idx) => (
                         <Link
                             key={idx}
@@ -139,11 +146,19 @@ export const TenantDashboard = () => {
                             {recentTickets.length > 0 ? (
                                 recentTickets.map((t, idx) => (
                                     <Link key={idx} to="/tenant/tickets" className="block p-4 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 cursor-pointer">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.id}</p>
-                                        <h4 className="font-bold text-slate-700 truncate">{t.title}</h4>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.id || t.displayId}</p>
+                                            {t.date && <span className="text-[10px] font-semibold text-slate-400">{t.date}</span>}
+                                        </div>
+                                        <h4 className="font-bold text-slate-700 truncate mt-0.5">{t.title || t.subject || 'Ticket'}</h4>
                                         <div className="mt-2 flex items-center gap-1.5">
-                                            <div className={`w-1.5 h-1.5 rounded-full ${t.status === 'Resolved' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-                                            <span className={`text-[11px] font-bold uppercase tracking-tight ${t.status === 'Resolved' ? 'text-emerald-600' : 'text-amber-600'}`}>{t.status}</span>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${t.status === 'Resolved' ? 'bg-emerald-500' : t.status === 'In Progress' ? 'bg-blue-500' : 'bg-amber-500'}`}></div>
+                                            <span className={`text-[11px] font-bold uppercase tracking-tight ${t.status === 'Resolved' ? 'text-emerald-600' : t.status === 'In Progress' ? 'text-blue-600' : 'text-amber-600'}`}>{t.status}</span>
+                                            {t.priority && (
+                                                <span className="text-[10px] text-slate-400 font-medium ml-auto">
+                                                    {t.priority}
+                                                </span>
+                                            )}
                                         </div>
                                     </Link>
                                 ))
