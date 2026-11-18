@@ -68,6 +68,8 @@ export const tenantPortalApi = masterApi.injectEndpoints({
       invalidatesTags: [
         { type: 'TenantTickets', id: 'LIST' },
         { type: 'TenantDashboard', id: 'ME' },
+        { type: 'Tickets', id: 'LIST' },
+        { type: 'Tickets', id: 'STATS' },
       ],
     }),
 
@@ -93,6 +95,7 @@ export const tenantPortalApi = masterApi.injectEndpoints({
       invalidatesTags: [
         { type: 'TenantVehicles', id: 'LIST' },
         { type: 'TenantDashboard', id: 'ME' },
+        { type: 'Vehicles', id: 'LIST' },
       ],
     }),
 
@@ -105,6 +108,7 @@ export const tenantPortalApi = masterApi.injectEndpoints({
       invalidatesTags: [
         { type: 'TenantVehicles', id: 'LIST' },
         { type: 'TenantDashboard', id: 'ME' },
+        { type: 'Vehicles', id: 'LIST' },
       ],
     }),
 
@@ -143,7 +147,11 @@ export const tenantPortalApi = masterApi.injectEndpoints({
         body,
       }),
       transformResponse: (res) => (res?.data !== undefined ? res.data : res),
-      invalidatesTags: [{ type: 'TenantInsurance', id: 'ME' }],
+      invalidatesTags: [
+        { type: 'TenantInsurance', id: 'ME' },
+        { type: 'TenantDocuments', id: 'LIST' },
+        { type: 'TenantDashboard', id: 'ME' }
+      ],
     }),
 
     getTenantReports: builder.query({

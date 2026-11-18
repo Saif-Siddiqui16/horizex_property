@@ -75,18 +75,54 @@ export const TenantInsurance = () => {
         }
     };
 
+    const handleViewCertificate = () => {
+        if (!insurance?.documentUrl && !insurance?.id) return;
+        const token = localStorage.getItem('accessToken') || '';
+        const url = insurance.documentUrl;
+        let finalUrl = url;
+        if (url && url.startsWith('http') && !url.includes('/api/')) {
+            finalUrl = url;
+        } else {
+            const base = (api.defaults?.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+            const cleanPath = (url || `/api/tenant/documents/${insurance.id}/download`).startsWith('/')
+                ? (url || `/api/tenant/documents/${insurance.id}/download`)
+                : `/${url || `/api/tenant/documents/${insurance.id}/download`}`;
+            const normalizedPath = cleanPath.startsWith('/api/') ? cleanPath.replace(/^\/api/, '') : cleanPath;
+            finalUrl = `${base}${normalizedPath}?disposition=inline&token=${token}`;
+        }
+        window.open(finalUrl, '_blank');
+    };
+
+    const handleDownloadCertificate = () => {
+        if (!insurance?.documentUrl && !insurance?.id) return;
+        const token = localStorage.getItem('accessToken') || '';
+        const url = insurance.documentUrl;
+        let finalUrl = url;
+        if (url && url.startsWith('http') && !url.includes('/api/')) {
+            finalUrl = url;
+        } else {
+            const base = (api.defaults?.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+            const cleanPath = (url || `/api/tenant/documents/${insurance.id}/download`).startsWith('/')
+                ? (url || `/api/tenant/documents/${insurance.id}/download`)
+                : `/${url || `/api/tenant/documents/${insurance.id}/download`}`;
+            const normalizedPath = cleanPath.startsWith('/api/') ? cleanPath.replace(/^\/api/, '') : cleanPath;
+            finalUrl = `${base}${normalizedPath}?disposition=attachment&token=${token}`;
+        }
+        window.open(finalUrl, '_blank');
+    };
+
     if (isLoading) return <div className="p-10 text-center font-medium text-slate-500">Loading insurance details...</div>;
 
     // Status Styling Logic
     const getStatusConfig = (status) => {
-        switch (status) {
-            case 'Active':
-            case 'ACTIVE': return { bg: 'emerald-50', text: 'emerald-600', border: 'emerald-100', icon: ShieldCheck, label: 'Approved & Active' };
-            case 'PENDING_APPROVAL': return { bg: 'amber-50', text: 'amber-600', border: 'amber-100', icon: Info, label: 'Pending Admin Review' };
-            case 'REJECTED': return { bg: 'red-50', text: 'red-600', border: 'red-100', icon: X, label: 'Policy Rejected' };
-            case 'EXPIRED': return { bg: 'red-50', text: 'red-600', border: 'red-100', icon: AlertTriangle, label: 'Policy Expired' };
-            case 'EXPIRING_SOON': return { bg: 'amber-50', text: 'amber-600', border: 'amber-100', icon: Clock, label: 'Expiring Soon' };
-            default: return { bg: 'slate-50', text: 'slate-600', border: 'slate-100', icon: Info, label: status || 'Active' };
+        const s = (status || '').toUpperCase();
+        switch (s) {
+            case 'ACTIVE': return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', iconBg: 'bg-emerald-500', icon: ShieldCheck, label: 'Approved & Active' };
+            case 'PENDING_APPROVAL': return { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', iconBg: 'bg-amber-500', icon: Info, label: 'Pending Admin Review' };
+            case 'REJECTED': return { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', iconBg: 'bg-rose-500', icon: X, label: 'Policy Rejected' };
+            case 'EXPIRED': return { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', iconBg: 'bg-rose-500', icon: AlertTriangle, label: 'Policy Expired' };
+            case 'EXPIRING_SOON': return { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', iconBg: 'bg-amber-500', icon: Clock, label: 'Expiring Soon' };
+            default: return { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', iconBg: 'bg-slate-500', icon: Info, label: status || 'Active' };
         }
     };
 
@@ -98,18 +134,18 @@ export const TenantInsurance = () => {
             <div className="max-w-4xl space-y-8 anim-slide-up">
                 {/* STATUS BAR */}
                 {insurance && (
-                    <div className={`p-6 rounded-3xl border bg-${statusConfig.text.split('-')[0]}-50/30 border-${statusConfig.text.split('-')[0]}-100 flex items-center justify-between`}>
+                    <div className={`p-6 rounded-3xl border ${statusConfig.bg} ${statusConfig.border} flex items-center justify-between`}>
                         <div className="flex items-center gap-4">
                             {(() => {
                                 const StatusIcon = statusConfig.icon;
                                 return (
-                                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-emerald-500">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${statusConfig.iconBg}`}>
                                         <StatusIcon size={24} />
                                     </div>
                                 );
                             })()}
                             <div>
-                                <h3 className="font-black tracking-tight text-slate-800">{statusConfig.label}</h3>
+                                <h3 className={`font-black tracking-tight ${statusConfig.text}`}>{statusConfig.label}</h3>
                                 <p className="text-sm font-medium text-slate-500">
                                     {insurance.status === 'REJECTED' ? `Reason: ${insurance.rejectionReason || 'Document unreadable'}` :
                                         insurance.status === 'PENDING_APPROVAL' ? "We'll notify you once admin reviews your document." :
@@ -350,8 +386,8 @@ export const TenantInsurance = () => {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-black uppercase tracking-widest text-slate-400">Compliance Status</span>
-                                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                                        <CheckCircle size={14} /> Approved & Active
+                                    <span className={`inline-flex items-center gap-1.5 text-xs font-black ${statusConfig.text} ${statusConfig.bg} px-3 py-1 rounded-full border ${statusConfig.border}`}>
+                                        <statusConfig.icon size={14} /> {statusConfig.label}
                                     </span>
                                 </div>
                             </div>
@@ -359,18 +395,18 @@ export const TenantInsurance = () => {
                             {/* Document Actions */}
                             {insurance.documentUrl ? (
                                 <div className="space-y-3">
-                                    <a
-                                        href={insurance.documentUrl}
-                                        download={insurance.documentName || "Insurance_Certificate.pdf"}
+                                    <button
+                                        type="button"
+                                        onClick={handleDownloadCertificate}
                                         className="flex items-center justify-center w-full h-14 rounded-2xl bg-indigo-600 text-white font-bold text-base hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 gap-2 cursor-pointer"
                                     >
                                         <Download size={18} />
                                         Download Certificate PDF
-                                    </a>
+                                    </button>
                                     <button
                                         type="button"
-                                        onClick={() => window.open(insurance.documentUrl, '_blank')}
-                                        className="flex items-center justify-center w-full h-12 rounded-2xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition gap-2"
+                                        onClick={handleViewCertificate}
+                                        className="flex items-center justify-center w-full h-12 rounded-2xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition gap-2 cursor-pointer"
                                     >
                                         <ExternalLink size={16} />
                                         Open in New Browser Tab

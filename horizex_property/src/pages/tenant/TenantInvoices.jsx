@@ -146,11 +146,11 @@ export const TenantInvoices = () => {
                                 <div className="space-y-1">
                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Billed To</p>
                                     <h4 className="font-bold text-slate-800 text-lg">{viewingInvoice.tenantName || 'Tenant'}</h4>
-                                    <p className="text-sm text-slate-500 font-medium">{viewingInvoice.property || 'Property'} — Unit {viewingInvoice.unit || '101'}</p>
+                                    <p className="text-sm text-slate-500 font-medium">{viewingInvoice.property || 'Property'}{viewingInvoice.unit ? ` — Unit ${viewingInvoice.unit}` : ''}</p>
                                 </div>
                                 <div className="space-y-1 text-right">
                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Issued By</p>
-                                    <h4 className="font-bold text-slate-800 text-lg">Property Management</h4>
+                                    <h4 className="font-bold text-slate-800 text-lg">{viewingInvoice.companyName || 'Property Management'}</h4>
                                     <p className="text-sm text-slate-500 font-medium">Administration</p>
                                 </div>
                             </div>
@@ -165,13 +165,17 @@ export const TenantInvoices = () => {
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         <tr>
-                                            <td className="px-6 py-4 font-bold text-slate-700">Monthly Rent - {viewingInvoice.month}</td>
+                                            <td className="px-6 py-4 font-bold text-slate-700">
+                                                {viewingInvoice.category === 'RENT' ? `Monthly Rent - ${viewingInvoice.month}` : (viewingInvoice.category || `Charge - ${viewingInvoice.month}`)}
+                                            </td>
                                             <td className="px-6 py-4 font-black text-slate-800 text-right">{viewingInvoice.amount}</td>
                                         </tr>
-                                        <tr>
-                                            <td className="px-6 py-4 font-bold text-slate-700">Service Charges</td>
-                                            <td className="px-6 py-4 font-black text-slate-800 text-right">${Number(viewingInvoice.serviceFees || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</td>
-                                        </tr>
+                                        {Number(viewingInvoice.serviceFees || 0) > 0 && (
+                                            <tr>
+                                                <td className="px-6 py-4 font-bold text-slate-700">Service Charges</td>
+                                                <td className="px-6 py-4 font-black text-slate-800 text-right">${Number(viewingInvoice.serviceFees || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                     <tfoot className="bg-slate-50/50">
                                         <tr>

@@ -23,5 +23,21 @@ export const communicationService = {
     markAsRead: async (senderId) => {
         const response = await api.post('/api/communication/mark-read', { senderId });
         return response.data;
+    },
+
+    // Tenant Portal Dedicated Support Chat Methods
+    getTenantMessages: async () => {
+        const response = await api.get('/api/tenant/messages');
+        return response.data;
+    },
+
+    sendTenantMessage: async (content) => {
+        const response = await api.post('/api/tenant/messages', { content });
+        return response.data;
+    },
+
+    markTenantMessagesRead: async () => {
+        const response = await api.post('/api/tenant/messages/read');
+        return response.data;
     }
 };
