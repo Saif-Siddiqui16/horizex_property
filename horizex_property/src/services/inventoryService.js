@@ -9,59 +9,7 @@ export const generateInventoryNumber = () => {
 export const inventoryService = {
   getAllParts: () => {
     let parts = JSON.parse(localStorage.getItem('mock_inventory') || '[]');
-    if (parts.length === 0) {
-      parts = [
-        {
-          id: 'INV-0001',
-          partNo: 'INV-0001',
-          name: 'Copper Pipe Joint 3/4"',
-          category: 'Plumbing',
-          supplier: 'Apex Plumbing Solutions',
-          unitCost: 12.50,
-          minimumStock: 10
-        },
-        {
-          id: 'INV-0002',
-          partNo: 'INV-0002',
-          name: 'HVAC Air Filter 16x25x1',
-          category: 'HVAC',
-          supplier: 'Nordic HVAC Systems',
-          unitCost: 18.00,
-          minimumStock: 15
-        },
-        {
-          id: 'INV-0003',
-          partNo: 'INV-0003',
-          name: 'LED Bulb 9W (10-pack)',
-          category: 'Electrical',
-          supplier: 'ElectroCorp Montreal',
-          unitCost: 22.00,
-          minimumStock: 8
-        },
-        {
-          id: 'INV-0004',
-          partNo: 'INV-0004',
-          name: 'Elevator Lift Cable Joint',
-          category: 'Elevator',
-          supplier: 'Otis Canada',
-          unitCost: 450.00,
-          minimumStock: 2
-        }
-      ];
-      localStorage.setItem('mock_inventory', JSON.stringify(parts));
-
-      // Seed initial movements (Initial Purchase)
-      const initialMovements = [
-        { id: 'MVT-0001', partId: 'INV-0001', type: 'Purchase', quantity: 25, note: 'Initial stock load', createdAt: '2026-06-01T08:00:00Z' },
-        { id: 'MVT-0002', partId: 'INV-0002', type: 'Purchase', quantity: 30, note: 'Initial stock load', createdAt: '2026-06-01T08:00:00Z' },
-        { id: 'MVT-0003', partId: 'INV-0003', type: 'Purchase', quantity: 5, note: 'Initial low load', createdAt: '2026-06-01T08:00:00Z' }, // Below min stock (8)
-        { id: 'MVT-0004', partId: 'INV-0004', type: 'Purchase', quantity: 4, note: 'Initial stock load', createdAt: '2026-06-01T08:00:00Z' },
-        
-        // Log consumption
-        { id: 'MVT-0005', partId: 'INV-0001', type: 'Consumption', quantity: 5, note: 'Used on request MR-2026-0001', createdAt: '2026-06-25T11:00:00Z' }
-      ];
-      localStorage.setItem('mock_inventory_movements', JSON.stringify(initialMovements));
-    }
+    parts = parts.filter(p => !['INV-0001', 'INV-0002', 'INV-0003', 'INV-0004'].includes(p.id) && !['INV-0001', 'INV-0002', 'INV-0003', 'INV-0004'].includes(p.partNo));
 
     // Map current stock and alerts dynamically
     return parts.map(part => {

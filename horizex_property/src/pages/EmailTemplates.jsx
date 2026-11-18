@@ -74,29 +74,38 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         }, 0);
     };
 
+    const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+        return localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+    });
+
     useEffect(() => {
-        fetchTemplates();
-        fetchDocuments();
+        const handleSync = () => {
+            const comp = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+            setSelectedCompanyId(comp);
+        };
+        window.addEventListener('companyChanged', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('storage', handleSync);
+        };
     }, []);
 
-    const fetchTemplates = async () => {
+    useEffect(() => {
+        fetchTemplates(selectedCompanyId);
+        fetchDocuments(selectedCompanyId);
+    }, [selectedCompanyId]);
+
+    const fetchTemplates = async (activeCompId = selectedCompanyId) => {
         setLoading(true);
         try {
-            const response = await api.get('/api/admin/email/templates');
-            const apiTemplates = response.data || [];
-            
-            const localTemplates = JSON.parse(localStorage.getItem('mock_email_templates') || '[]');
-            const formattedLocal = localTemplates.map(t => ({
-                id: t.id,
-                name: t.templateName,
-                subject: t.subject,
-                body: t.body,
-                language: 'en',
-                type: 'System Mapped',
-                documents: []
-            }));
-
-            setTemplates([...formattedLocal, ...apiTemplates]);
+            const params = {};
+            if (activeCompId && activeCompId !== 'all') {
+                params.companyId = activeCompId;
+            }
+            const response = await api.get('/api/admin/email/templates', { params });
+            const apiTemplates = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            setTemplates(apiTemplates);
         } catch (error) {
             console.error('Error fetching templates:', error);
         } finally {
@@ -120,7 +129,10 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             if (currentTemplate.id) {
                 await api.put(`/api/admin/email/templates/${currentTemplate.id}`, currentTemplate);
             } else {
-                await api.post('/api/admin/email/templates', currentTemplate);
+                await api.post('/api/admin/email/templates', {
+                    ...currentTemplate,
+                    companyId: (selectedCompanyId && selectedCompanyId !== 'all') ? selectedCompanyId : null
+                });
             }
             setIsModalOpen(false);
             fetchTemplates();

@@ -165,8 +165,8 @@ const NAV_ITEMS = [
     path: "/admin/sms/inbox",
     children: [
       { label: "Inbox", tKey: "sidebar.inbox", path: "/admin/sms/inbox" },
-      { label: "Campaign Manager", tKey: "sidebar.campaigns", path: "/admin/sms/campaigns" },
-      { label: "Templates", tKey: "sidebar.templates", path: "/admin/sms/templates" }
+      // { label: "Campaign Manager", tKey: "sidebar.campaigns", path: "/admin/sms/campaigns" },
+      // { label: "Templates", tKey: "sidebar.templates", path: "/admin/sms/templates" }
     ]
   },
   {

@@ -73,12 +73,31 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         manualAttachments: []
     });
     const [signature, setSignature] = useState('');
+    const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
+        return localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+    });
 
     useEffect(() => {
-        fetchInitialData();
+        const handleSync = () => {
+            const comp = localStorage.getItem('global_selected_company_id') || localStorage.getItem('companyContext') || '';
+            setSelectedCompanyId(comp);
+        };
+        window.addEventListener('companyChanged', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+            window.removeEventListener('companyChanged', handleSync);
+            window.removeEventListener('storage', handleSync);
+        };
     }, []);
 
-    const fetchInitialData = async () => {
+    useEffect(() => {
+        setSelection({ buildingIds: [], tenantIds: [], coworkerIds: [], excludedTenantIds: [], filterType: 'all' });
+        fetchInitialData(selectedCompanyId);
+    }, [selectedCompanyId]);
+
+    const fetchInitialData = async (activeCompId = selectedCompanyId) => {
+        const compQuery = activeCompId && activeCompId !== 'all' ? `?companyId=${activeCompId}` : '';
+        const compParam = activeCompId && activeCompId !== 'all' ? `&companyId=${activeCompId}` : '';
         try {
             setLoading(true);
             const tryFetch = async (url, fallback = []) => {
@@ -92,18 +111,30 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
             };
 
             const [buildingsData, tenantsData, coworkersData, templatesData, documentsData, signatureData] = await Promise.all([
-                tryFetch('/api/admin/properties'),
-                tryFetch('/api/admin/tenants?limit=1000&status=Active'), 
-                tryFetch('/api/admin/coworkers'), // Fetch team members
-                tryFetch('/api/admin/email/templates'),
-                tryFetch('/api/admin/documents?limit=1000'),
+                tryFetch(`/api/admin/properties${compQuery}`),
+                tryFetch(`/api/admin/tenants?limit=1000&status=Active${compParam}`), 
+                tryFetch(`/api/admin/coworkers${compQuery}`), // Fetch team members
+                tryFetch(`/api/admin/email/templates${compQuery}`),
+                tryFetch(`/api/admin/documents?limit=1000${compParam}`),
                 tryFetch('/api/admin/email/signature', { signature: '' })
             ]);
+
+            const scopedTenants = (activeCompId && activeCompId !== 'all')
+                ? tenantsData.filter(t => !t.companyId || t.companyId === activeCompId)
+                : tenantsData;
+
+            const scopedCoworkers = (activeCompId && activeCompId !== 'all')
+                ? coworkersData.filter(c => !c.companyId || c.companyId === activeCompId)
+                : coworkersData;
+
+            const scopedTemplates = (activeCompId && activeCompId !== 'all')
+                ? templatesData.filter(t => !t.companyId || t.companyId === activeCompId)
+                : templatesData;
             
             setBuildings(buildingsData);
-            setTenants(tenantsData);
-            setCoworkers(coworkersData);
-            setTemplates(templatesData);
+            setTenants(scopedTenants);
+            setCoworkers(scopedCoworkers);
+            setTemplates(scopedTemplates);
             setDocuments(documentsData);
             setSignature(signatureData?.signature || '');
 
@@ -286,6 +317,9 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
         try {
             const recipients = getFilteredRecipients().map(r => ({
                 id: r.id,
+                email: r.email,
+                name: r.name,
+                type: r.role === 'COWORKER' ? 'TEAM' : (r.type || 'TENANT'),
                 propertyId: r.targetPropertyId
             }));
             const payload = {
@@ -293,7 +327,8 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                 templateId: selectedTemplate?.id,
                 customSubject: emailDraft.subject,
                 customBody: emailDraft.body,
-                manualAttachmentIds: manualAttachments.map(d => d.id)
+                manualAttachmentIds: manualAttachments.map(d => d.id),
+                companyId: selectedCompanyId || null
             };
 
             const response = await api.post('/api/admin/email/send-bulk', payload);
@@ -411,6 +446,11 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         </div>
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {coworkers.length === 0 && (
+                                            <div className="col-span-full text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400 text-sm">
+                                                No team members found for this company.
+                                            </div>
+                                        )}
                                         {(filteredCoworkersList.length > 0 ? filteredCoworkersList : coworkers).map(c => (
                                             <button
                                                 key={c.id}
@@ -428,6 +468,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                     </div>
                                 </div>
 
+                                {/* TARGET BUILDINGS (COMMENTED OUT)
                                 <div className="space-y-4 pb-6 border-b border-gray-100 mb-6">
                                     <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center">
                                         <div className="flex items-center gap-2">
@@ -504,6 +545,7 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         })()}
                                     </div>
                                 </div>
+                                */}
 
                                 <div className="space-y-4 pb-6 border-b border-gray-100 mb-6">
                                     <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center">
@@ -526,14 +568,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         </div>
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {tenants.filter(t => t.type !== 'RESIDENT').length === 0 && (
+                                        {tenants.filter(t => String(t.type || '').toUpperCase() !== 'RESIDENT').length === 0 && (
                                             <div className="col-span-full text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400 text-sm">
                                                 No tenants were found in the database.
                                             </div>
                                         )}
                                         {(() => {
                                             const filtered = tenants
-                                                .filter(t => t.type !== 'RESIDENT')
+                                                .filter(t => String(t.type || '').toUpperCase() !== 'RESIDENT')
                                                 .filter(t => 
                                                     t.name.toLowerCase().includes(tenantSearchTerm.toLowerCase()) || 
                                                     t.email.toLowerCase().includes(tenantSearchTerm.toLowerCase())
@@ -608,14 +650,14 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                         </div>
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {tenants.filter(t => t.type === 'RESIDENT').length === 0 && (
+                                        {tenants.filter(t => String(t.type || '').toUpperCase() === 'RESIDENT').length === 0 && (
                                             <div className="col-span-full text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400 text-sm">
                                                 No residents were found in the database.
                                             </div>
                                         )}
                                         {(() => {
                                             const filtered = tenants
-                                                .filter(t => t.type === 'RESIDENT')
+                                                .filter(t => String(t.type || '').toUpperCase() === 'RESIDENT')
                                                 .filter(t => 
                                                     t.name.toLowerCase().includes(residentSearchTerm.toLowerCase()) || 
                                                     t.email.toLowerCase().includes(residentSearchTerm.toLowerCase())
@@ -811,15 +853,6 @@ const [__forceUpdate, __setForceUpdate] = useState(0);
                                             </button>
                                         ))}
                                     </div>
-                                </div>
-                                <div className="bg-white p-4 rounded-xl border border-gray-150">
-                                    <h4 className="text-xs font-bold text-gray-900 mb-3 flex items-center gap-2 underline decoration-indigo-200">
-                                        Corporate Signature
-                                    </h4>
-                                    <div 
-                                        className="p-3 border border-dashed border-gray-200 rounded-xl bg-gray-50/50 text-[10px] text-gray-500 overflow-hidden" 
-                                        dangerouslySetInnerHTML={{ __html: signature || '<p class="italic text-gray-400">No signature configured</p>' }}
-                                    />
                                 </div>
                             </div>
                         </div>

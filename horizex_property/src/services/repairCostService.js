@@ -19,7 +19,7 @@ export const repairCostService = {
       totalEstimated += w.estimatedCost || 0;
     });
 
-    const budget = 5000.00; // Mock standard monthly portfolio maintenance budget
+    const budget = wos.length > 0 ? (totalEstimated || totalActual) : 0;
     const variance = budget - totalActual;
 
     return {

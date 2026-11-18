@@ -6,49 +6,8 @@ export const generateVendorNumber = () => {
 
 export const vendorService = {
   getAll: () => {
-    let list = JSON.parse(localStorage.getItem('mock_vendors') || '[]');
-    if (list.length === 0) {
-      list = [
-        {
-          id: 'vendor-1',
-          vendorNo: 'VEN-0001',
-          name: 'Apex Plumbing Solutions',
-          services: ['Plumbing', 'Drain Cleaning', 'Emergency Leaks'],
-          contact: 'Jean-Luc Picard (514-555-0199)',
-          rating: 4.7,
-          contracts: ['Master Services Agreement 2026', 'Emergency Service SLA'],
-          outstandingBills: 450.00,
-          completedJobs: 14,
-          status: 'Active'
-        },
-        {
-          id: 'vendor-2',
-          vendorNo: 'VEN-0002',
-          name: 'Nordic HVAC Systems',
-          services: ['Heating', 'Air Conditioning', 'Ventilation Repair'],
-          contact: 'Karen Miller (514-555-0144)',
-          rating: 4.2,
-          contracts: ['Quarterly HVAC Maintenance Plan'],
-          outstandingBills: 1200.00,
-          completedJobs: 8,
-          status: 'Active'
-        },
-        {
-          id: 'vendor-3',
-          vendorNo: 'VEN-0003',
-          name: 'ElectroCorp Montreal',
-          services: ['High Voltage Panels', 'Wiring', 'Fuse Repair'],
-          contact: 'Robert Chen (514-555-0188)',
-          rating: 4.9,
-          contracts: ['General Electrical Maintenance contract'],
-          outstandingBills: 0.00,
-          completedJobs: 23,
-          status: 'Active'
-        }
-      ];
-      localStorage.setItem('mock_vendors', JSON.stringify(list));
-    }
-    return list;
+    const list = JSON.parse(localStorage.getItem('mock_vendors') || '[]');
+    return list.filter(v => !['vendor-1', 'vendor-2', 'vendor-3'].includes(v.id) && !['Apex Plumbing Solutions', 'Nordic HVAC Systems', 'ElectroCorp'].includes(v.name));
   },
 
   create: (data) => {

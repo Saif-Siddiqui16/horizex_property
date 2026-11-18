@@ -7,69 +7,9 @@ export const generateAssetNumber = () => {
 export const assetService = {
   getAll: (filters = {}) => {
     let list = JSON.parse(localStorage.getItem('mock_assets') || '[]');
-    if (list.length === 0) {
-      list = [
-        {
-          id: 'AST-0001',
-          assetNo: 'AST-0001',
-          name: 'Carrier HVAC Boiler System',
-          type: 'HVAC',
-          serialNumber: 'CARR-88390-H',
-          purchaseDate: '2022-04-10',
-          warrantyDate: '2027-04-10',
-          condition: 'Good',
-          buildingId: 'building-1',
-          apartmentId: 'unit-101',
-          tenantId: 'tenant-1',
-          status: 'Active',
-          lifecycleHistory: [
-            { status: 'Purchased', date: '2022-04-10', note: 'Initial asset procurement.' },
-            { status: 'Installed', date: '2022-04-12', note: 'Installed in main basement furnace room.' },
-            { status: 'Active', date: '2022-04-12', note: 'Operational ignition.' }
-          ]
-        },
-        {
-          id: 'AST-0002',
-          assetNo: 'AST-0002',
-          name: 'Otis Smart Elevator Engine',
-          type: 'Elevator',
-          serialNumber: 'OTIS-992-M',
-          purchaseDate: '2023-01-15',
-          warrantyDate: '2028-01-15',
-          condition: 'Excellent',
-          buildingId: 'building-2',
-          apartmentId: '',
-          tenantId: '',
-          status: 'Active',
-          lifecycleHistory: [
-            { status: 'Purchased', date: '2023-01-15', note: 'Procured with warranty extension.' },
-            { status: 'Installed', date: '2023-01-20', note: 'Tension rails certified.' },
-            { status: 'Active', date: '2023-01-20', note: 'Elevator operational.' }
-          ]
-        },
-        {
-          id: 'AST-0003',
-          assetNo: 'AST-0003',
-          name: 'Water Filtration Unit',
-          type: 'Water',
-          serialNumber: 'FILT-7729-WF',
-          purchaseDate: '2024-05-18',
-          warrantyDate: '2025-05-18', // Expired!
-          condition: 'Fair',
-          buildingId: 'building-1',
-          apartmentId: 'unit-304',
-          tenantId: 'tenant-3',
-          status: 'Under Repair',
-          lifecycleHistory: [
-            { status: 'Purchased', date: '2024-05-18', note: 'Standard unit acquisition.' },
-            { status: 'Installed', date: '2024-05-20', note: 'Hooked to unit 304 lines.' },
-            { status: 'Active', date: '2024-05-20', note: 'Active.' },
-            { status: 'Under Repair', date: '2026-06-25', note: 'Fittings show corrosion, plumber engaged.' }
-          ]
-        }
-      ];
-      localStorage.setItem('mock_assets', JSON.stringify(list));
-    }
+    
+    // Filter out sample mock assets
+    list = list.filter(a => !String(a.id || '').startsWith('AST-000'));
 
     // Filter by company
     const selectedCompany = localStorage.getItem('global_selected_company_id');

@@ -7,50 +7,9 @@ export const generateFurnitureNumber = () => {
 export const furnitureService = {
   getAll: (filters = {}) => {
     let list = JSON.parse(localStorage.getItem('mock_furniture') || '[]');
-    if (list.length === 0) {
-      list = [
-        {
-          id: 'FUR-0001',
-          furnitureNo: 'FUR-0001',
-          name: 'Solid Oak Dining Set',
-          category: 'Furniture',
-          apartmentId: 'unit-101',
-          buildingId: 'building-1',
-          condition: 'Good',
-          purchaseDate: '2023-05-12',
-          warrantyDate: '2025-05-12',
-          replacementCost: 1200.00,
-          repairHistory: []
-        },
-        {
-          id: 'FUR-0002',
-          furnitureNo: 'FUR-0002',
-          name: 'Stainless Steel Refrigerator',
-          category: 'Appliance',
-          apartmentId: 'unit-202',
-          buildingId: 'building-2',
-          condition: 'New',
-          purchaseDate: '2025-06-01',
-          warrantyDate: '2028-06-01',
-          replacementCost: 1850.00,
-          repairHistory: []
-        },
-        {
-          id: 'FUR-0003',
-          furnitureNo: 'FUR-0003',
-          name: 'Front-Load Washing Machine',
-          category: 'Appliance',
-          apartmentId: 'unit-304',
-          buildingId: 'building-1',
-          condition: 'Needs Repair',
-          purchaseDate: '2021-08-15',
-          warrantyDate: '2023-08-15',
-          replacementCost: 950.00,
-          repairHistory: ['MR-2026-0001']
-        }
-      ];
-      localStorage.setItem('mock_furniture', JSON.stringify(list));
-    }
+    
+    // Filter out sample mock furniture
+    list = list.filter(f => !String(f.id || '').startsWith('FUR-000'));
 
     if (filters.buildingId && filters.buildingId !== 'all') {
       list = list.filter(f => f.buildingId === filters.buildingId);
