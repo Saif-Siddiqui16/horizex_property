@@ -11,12 +11,13 @@ export const CompanySelector = () => {
     const companies = useMemo(() => {
         if (Array.isArray(companiesRaw) && companiesRaw.length > 0) {
             try {
-                localStorage.setItem('mock_companies', JSON.stringify(companiesRaw));
+                localStorage.setItem('cached_companies', JSON.stringify(companiesRaw));
+                localStorage.removeItem('mock_companies');
             } catch (e) {}
             return companiesRaw;
         }
         try {
-            const stored = localStorage.getItem('mock_companies');
+            const stored = localStorage.getItem('cached_companies') || localStorage.getItem('mock_companies');
             if (stored) {
                 const parsed = JSON.parse(stored);
                 if (Array.isArray(parsed) && parsed.length > 0) return parsed;

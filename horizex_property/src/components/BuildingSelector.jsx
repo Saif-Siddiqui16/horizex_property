@@ -15,10 +15,11 @@ export const BuildingSelector = () => {
                 const res = await api.get('/api/admin/properties');
                 allProps = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
                 if (allProps.length > 0) {
-                    localStorage.setItem('mock_properties', JSON.stringify(allProps));
+                    localStorage.setItem('cached_properties', JSON.stringify(allProps));
+                    localStorage.removeItem('mock_properties');
                 }
             } catch (apiErr) {
-                const stored = localStorage.getItem('mock_properties');
+                const stored = localStorage.getItem('cached_properties') || localStorage.getItem('mock_properties');
                 if (stored) {
                     try {
                         allProps = JSON.parse(stored);

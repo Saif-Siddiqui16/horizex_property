@@ -223,7 +223,7 @@ const getInitialReconciliations = () => {
 // Helper to get companies from localStorage or fallback
 const getStoredCompanies = () => {
     try {
-        const stored = localStorage.getItem('mock_companies');
+        const stored = localStorage.getItem('cached_companies') || localStorage.getItem('mock_companies');
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -235,7 +235,7 @@ const getStoredCompanies = () => {
 // Helper to get real properties from localStorage
 const getStoredBuildings = () => {
     try {
-        const stored = localStorage.getItem('mock_properties');
+        const stored = localStorage.getItem('cached_properties') || localStorage.getItem('mock_properties');
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) return parsed;

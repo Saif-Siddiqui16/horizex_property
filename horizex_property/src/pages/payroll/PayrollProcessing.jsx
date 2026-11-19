@@ -49,40 +49,32 @@ export const PayrollProcessing = () => {
 
   const loadData = () => {
     const compId = selectedCompanyId || localStorage.getItem('global_selected_company_id') || '';
-    const localList = payrollService.getAll({ ...filters, companyId: compId });
+    // Purge legacy mock payroll from storage
+    try {
+      localStorage.removeItem('mock_payroll');
+    } catch (e) {}
 
-    if (apiRuns && Array.isArray(apiRuns) && apiRuns.length > 0) {
-      const mergedMap = new Map();
-      localList.forEach(item => mergedMap.set(item.payrollNo || item.id, item));
-      apiRuns.forEach(apiItem => {
-        const key = apiItem.payrollNo || apiItem.id;
-        const existing = mergedMap.get(key) || {};
-        mergedMap.set(key, { ...existing, ...apiItem });
-      });
-      let combined = Array.from(mergedMap.values());
-      
-      // Filter combined runs by selected company
-      if (compId) {
-        combined = combined.filter(item => String(item.companyId) === String(compId));
-      }
-
-      let filtered = combined;
-      if (filters.payrollMonth) {
-        filtered = filtered.filter(item => item.payrollMonth === filters.payrollMonth);
-      }
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        filtered = filtered.filter(item =>
-          item.employeeName?.toLowerCase().includes(q) ||
-          item.employeeNo?.toLowerCase().includes(q) ||
-          item.payrollNo?.toLowerCase().includes(q) ||
-          item.department?.toLowerCase().includes(q)
-        );
-      }
-      setRecords(filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
-    } else {
-      setRecords(localList);
+    let combined = Array.isArray(apiRuns) ? [...apiRuns] : [];
+    
+    // Filter runs by selected company
+    if (compId) {
+      combined = combined.filter(item => String(item.companyId) === String(compId));
     }
+
+    let filtered = combined;
+    if (filters.payrollMonth) {
+      filtered = filtered.filter(item => item.payrollMonth === filters.payrollMonth);
+    }
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      filtered = filtered.filter(item =>
+        item.employeeName?.toLowerCase().includes(q) ||
+        item.employeeNo?.toLowerCase().includes(q) ||
+        item.payrollNo?.toLowerCase().includes(q) ||
+        item.department?.toLowerCase().includes(q)
+      );
+    }
+    setRecords(filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
     setSettings(payrollSettingsService.getSettings());
   };
 
@@ -195,7 +187,7 @@ export const PayrollProcessing = () => {
 
   // Get unique months for filter dropdown
   const uniqueMonths = Array.from(new Set(
-    (records.length ? records : payrollService.getAll()).map(r => r.payrollMonth).filter(Boolean)
+    records.map(r => r.payrollMonth).filter(Boolean)
   ));
 
   return (

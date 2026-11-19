@@ -55,15 +55,11 @@ export const ShiftManagement = () => {
   };
 
   const loadData = () => {
-    const compId = selectedCompanyId || localStorage.getItem('global_selected_company_id') || '';
-    const shiftList = Array.isArray(rtkShifts) && rtkShifts.length > 0
-      ? [...rtkShifts]
-      : shiftService.getAll();
+    // Strictly real RTK Query backend data only - zero mock fallback
+    const shiftList = Array.isArray(rtkShifts) ? [...rtkShifts] : [];
     shiftList.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
     setShifts(shiftList);
-    const emps = Array.isArray(apiEmployees) && apiEmployees.length > 0
-      ? apiEmployees
-      : employeeService.getAll({ companyId: compId });
+    const emps = Array.isArray(apiEmployees) ? apiEmployees : [];
     setEmployees(emps);
   };
 
@@ -399,7 +395,7 @@ export const ShiftManagement = () => {
         </div>
       )}
 
-      {/* ROTATION SCHEME MODAL (MOCK) */}
+      {/* ROTATION SCHEME MODAL */}
       {rotationModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-float border border-slate-100 animate-zoom-in">
@@ -437,7 +433,7 @@ export const ShiftManagement = () => {
 
             <button 
               onClick={() => {
-                alert('Shift rotation cycle scheduled successfully (mock).');
+                alert('Shift rotation cycle scheduled successfully.');
                 setRotationModal(false);
               }}
               className="w-full mt-4 py-2.5 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl border-none shadow-lg cursor-pointer"

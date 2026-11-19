@@ -15,19 +15,6 @@ import departmentService from '../../services/departmentService';
 import shiftService from '../../services/shiftService';
 import permissionService from '../../services/permissionService';
 import { EmployeeTable } from '../../components/payroll/EmployeeTable';
-const mockCompanies = [
-  { id: 1, name: 'Apex Real Estate Partners', code: 'APEX' },
-  { id: 2, name: 'Soros Capital LLC', code: 'SOROS' },
-  { id: 3, name: 'Horizex Group', code: 'HORIZEX' }
-];
-
-const mockBuildings = [
-  { id: 1, name: 'Parkview Heights' },
-  { id: 2, name: 'Sunset Towers' },
-  { id: 3, name: 'Greenfield Commons' },
-  { id: 4, name: 'Lakeside Villas' }
-];
-
 export const EmployeeDirectory = () => {
   const location = useLocation();
   const [selectedCompanyId, setSelectedCompanyId] = useState(() => {
@@ -37,8 +24,9 @@ export const EmployeeDirectory = () => {
   const { data: companiesRaw = [] } = useGetCompaniesQuery();
   const { data: propertiesRaw = [] } = useGetPropertiesQuery();
 
-  const companies = Array.isArray(companiesRaw) && companiesRaw.length > 0 ? companiesRaw : mockCompanies;
-  const rawBuildings = Array.isArray(propertiesRaw) && propertiesRaw.length > 0 ? propertiesRaw : mockBuildings;
+  // Strictly real PostgreSQL database records only - zero mock fallback
+  const companies = Array.isArray(companiesRaw) ? companiesRaw : [];
+  const rawBuildings = Array.isArray(propertiesRaw) ? propertiesRaw : [];
 
   const buildings = useMemo(() => {
     if (!selectedCompanyId || selectedCompanyId === 'all') return rawBuildings;

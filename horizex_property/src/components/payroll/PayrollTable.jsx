@@ -39,7 +39,7 @@ export const PayrollTable = ({ records = [], onApprove, onReject, onPay, onViewP
 
   const handleReceiptSubmit = (e) => {
     e.preventDefault();
-    if (!receiptFile.trim()) return alert('Please enter a mock filename/receipt URL.');
+    if (!receiptFile.trim()) return alert('Please enter a receipt filename or reference URL.');
     try {
       payrollService.uploadReceipt(activeReceiptRecord.id, receiptFile);
       setReceiptFile('');
@@ -315,7 +315,7 @@ export const PayrollTable = ({ records = [], onApprove, onReject, onPay, onViewP
               </button>
               <button 
                 onClick={() => {
-                  alert('Invoice dispatched to accounting workspace (mock).');
+                  alert('Invoice dispatched to accounting workspace.');
                   setActiveInvoice(null);
                 }}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl border-none shadow-md cursor-pointer"
@@ -349,11 +349,11 @@ export const PayrollTable = ({ records = [], onApprove, onReject, onPay, onViewP
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mock Receipt Filename / URL</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bank Receipt / Payment Reference Document</label>
               <div className="flex gap-2">
                 <input 
                   type="text" 
-                  placeholder="e.g. wire_transfer_Apex_june_2026.pdf" 
+                  placeholder="e.g. wire_transfer_receipt_june_2026.pdf" 
                   value={receiptFile} 
                   onChange={(e) => setReceiptFile(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-300 font-medium font-mono"

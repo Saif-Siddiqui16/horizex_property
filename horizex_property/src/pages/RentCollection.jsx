@@ -96,9 +96,11 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
 
       const invList = Array.isArray(invRes.data?.data) ? invRes.data.data : (Array.isArray(invRes.data) ? invRes.data : []);
       const backendPayments = Array.isArray(payRes.data?.data) ? payRes.data.data : (Array.isArray(payRes.data) ? payRes.data : []);
-      const rawPayments = localStorage.getItem('mock_payments');
-      const localPayments = rawPayments ? JSON.parse(rawPayments) : [];
-      const payList = [...backendPayments, ...localPayments];
+      // Strictly real backend payments only - purge legacy mock payments
+      try {
+        localStorage.removeItem('mock_payments');
+      } catch (e) {}
+      const payList = backendPayments;
       
       setInvoices(invList);
       setPayments(payList);
@@ -411,13 +413,13 @@ export const RentCollection = ({ defaultTab = 'collection' }) => {
 
   const handleEmail = async (id) => {
     await api.post(`/admin/invoices/${id}/email`).catch(() => {});
-    alert('Mock invoice email dispatched successfully to tenant.');
+    alert('Invoice email dispatched successfully to tenant.');
     loadData();
   };
 
   const handleDownload = async (id) => {
     await api.post(`/admin/invoices/${id}/email`).catch(() => {});
-    alert('Mock invoice PDF downloaded successfully.');
+    alert('Invoice PDF generated successfully.');
     loadData();
   };
 

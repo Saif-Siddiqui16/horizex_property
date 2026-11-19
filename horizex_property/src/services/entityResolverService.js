@@ -1,6 +1,14 @@
 import { NOTE_ENTITY_TYPES } from '../constants/notes';
 
-const getStore = (key) => JSON.parse(localStorage.getItem(key) || '[]');
+const getStore = (key) => {
+  if (key === 'mock_companies') {
+    return JSON.parse(localStorage.getItem('cached_companies') || localStorage.getItem('mock_companies') || '[]');
+  }
+  if (key === 'mock_properties') {
+    return JSON.parse(localStorage.getItem('cached_properties') || localStorage.getItem('mock_properties') || '[]');
+  }
+  return JSON.parse(localStorage.getItem(key) || '[]');
+};
 
 const matchId = (value, id) => String(value) === String(id);
 

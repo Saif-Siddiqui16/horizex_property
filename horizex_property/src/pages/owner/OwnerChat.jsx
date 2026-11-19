@@ -6,15 +6,11 @@ import { Send, RefreshCw, MessageSquare } from 'lucide-react';
 export const OwnerChat = () => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
-    const [adminUser, setAdminUser] = useState({
-        id: '13445edb-cdc2-475b-81c8-d8750e17ffa9',
-        name: 'Horizex Property Support',
-        role: 'ADMIN'
-    });
+    const [adminUser, setAdminUser] = useState(null);
     const [currentOwnerId, setCurrentOwnerId] = useState(() => {
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : {};
-        return localStorage.getItem('ownerId') || user.id || user.userId || 'e4b7a55f-596e-4f54-8fb5-d992e51c9a21';
+        return localStorage.getItem('ownerId') || user.id || user.userId || '';
     });
     const [sending, setSending] = useState(false);
     const messagesEndRef = useRef(null);
@@ -24,7 +20,7 @@ export const OwnerChat = () => {
     useEffect(() => {
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : {};
-        const id = localStorage.getItem('ownerId') || user.id || user.userId || 'e4b7a55f-596e-4f54-8fb5-d992e51c9a21';
+        const id = localStorage.getItem('ownerId') || user.id || user.userId || '';
         if (id) {
             setCurrentOwnerId(String(id));
             joinConversation(String(id));
@@ -34,7 +30,7 @@ export const OwnerChat = () => {
             if (!incoming) return;
             setMessages((prev) => {
                 if (prev.some((m) => m.id === incoming.id)) return prev;
-                const isFromMe = String(incoming.senderId) === String(id) || incoming.isMe;
+                const isFromMe = (id && String(incoming.senderId) === String(id)) || incoming.isMe;
                 const tempIndex = prev.findIndex((m) => m.id?.startsWith('temp-') && m.content === incoming.content);
                 if (tempIndex !== -1) {
                     const next = [...prev];
@@ -71,9 +67,12 @@ export const OwnerChat = () => {
             const list = Array.isArray(rawAdmins) ? rawAdmins : (rawAdmins?.data || []);
             if (list.length > 0) {
                 setAdminUser(list[0]);
+            } else {
+                setAdminUser(null);
             }
         } catch (error) {
-            console.warn('Using default support contact');
+            console.warn('Failed to load support contact:', error?.message || error);
+            setAdminUser(null);
         }
     };
 
@@ -113,7 +112,7 @@ export const OwnerChat = () => {
     const handleSendMessage = async (e) => {
         e.preventDefault();
         const text = newMessage.trim();
-        if (!text || !adminUser?.id || sending) return;
+        if (!text || !adminUser?.id || sending || !currentOwnerId) return;
 
         const tempId = `temp-${Date.now()}`;
         const tempMsg = {
@@ -153,7 +152,7 @@ export const OwnerChat = () => {
                 <div>
                     <h2 className="font-bold text-slate-800">Priority Support</h2>
                     <p className="text-xs font-medium text-slate-500">
-                        {adminUser ? `Connected with ${adminUser.name}` : 'Connecting...'}
+                        {adminUser ? `Connected with ${adminUser.name || 'Property Support'}` : 'Connecting with Property Support...'}
                     </p>
                 </div>
             </div>
@@ -165,7 +164,7 @@ export const OwnerChat = () => {
                         <MessageSquare className="w-12 h-12 text-slate-200 mb-2 stroke-[1.5]" />
                         <p className="text-sm font-medium text-slate-500">Priority Support Channel</p>
                         <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                            Send a message below to directly contact your property management team.
+                            {adminUser ? 'Send a message below to directly contact your property management team.' : 'Connecting with property management support...'}
                         </p>
                     </div>
                 )}
@@ -201,12 +200,13 @@ export const OwnerChat = () => {
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type a message..."
-                        className="flex-1 h-12 px-4 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-medium text-slate-700"
+                        placeholder={adminUser ? "Type a message..." : "Connecting support..."}
+                        disabled={!adminUser?.id || !currentOwnerId}
+                        className="flex-1 h-12 px-4 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-medium text-slate-700 disabled:bg-slate-100 disabled:cursor-not-allowed"
                     />
                     <button
                         type="submit"
-                        disabled={sending || !newMessage.trim()}
+                        disabled={sending || !newMessage.trim() || !adminUser?.id || !currentOwnerId}
                         className="h-12 w-12 bg-zinc-900 text-white rounded-xl flex items-center justify-center hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {sending ? <RefreshCw className="animate-spin" size={20} /> : <Send size={20} />}
