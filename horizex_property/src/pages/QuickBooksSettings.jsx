@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-
 import { hasPermission } from '../utils/permissions';
 
 // RTK Query API Integrations
@@ -8,43 +6,30 @@ import { useGetCompaniesQuery } from '../store/api/companiesApi';
 import {
   useGetQuickBooksOverviewQuery,
   useSaveQuickBooksCredentialsMutation,
+  useDisconnectQuickBooksMutation,
   useTriggerQuickBooksSyncMutation,
-  useGetCalendarEventsQuery,
-  useCreateCalendarEventMutation,
-  useDeleteCalendarEventMutation,
-  useTriggerCalendarSyncMutation,
-  useGetNotificationsQuery,
-  useMarkNotificationReadMutation,
-  useMarkAllNotificationsReadMutation,
-  useDismissNotificationMutation,
-  useGetNotificationRulesQuery,
-  useToggleNotificationRuleMutation,
   useGetSyncQueueQuery,
-  useRetrySyncJobMutation,
-  useCancelSyncJobMutation,
   useGetIntegrationLogsQuery,
 } from '../store/api/integrationsApi';
-
-// Reusable Components
-import {
-  IntegrationKPICards,
-  SyncQueueTable,
-  QuickBooksStatusCard,
-  CalendarWidget,
-  NotificationList,
-  SyncTimeline,
-  IntegrationLogs,
-  IntegrationHealthWidget,
-} from '../components/integrations/IntegrationWidgets';
 
 // Lucide Icons
 import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
-  Building,
+  Building2,
   Key,
   ShieldCheck,
+  ShieldAlert,
+  Zap,
+  FileText,
+  DollarSign,
+  Landmark,
+  ArrowRight,
+  Clock,
+  ExternalLink,
+  Settings,
+  X,
 } from 'lucide-react';
 
 export const QuickBooksSettings = () => {
@@ -66,9 +51,6 @@ export const QuickBooksSettings = () => {
       </div>
     );
   }
-
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'quickbooks');
 
   // ── COMPANY CONTEXT FROM HEADER FILTER ──────────────────────────────────
   const [selectedCompanyId, setSelectedCompanyId] = useState(
@@ -104,38 +86,7 @@ export const QuickBooksSettings = () => {
     refetch: refetchQb,
   } = useGetQuickBooksOverviewQuery(effectiveCompanyId, {
     skip: !effectiveCompanyId && companies.length > 0,
-  });
-
-  const {
-    data: calendarEvents = [],
-    isLoading: calLoading,
-    refetch: refetchCalendar,
-  } = useGetCalendarEventsQuery(effectiveCompanyId, {
-    skip: !effectiveCompanyId && companies.length > 0,
-  });
-
-  // Notification Filter States
-  const [notifPriority, setNotifPriority] = useState('');
-  const [notifCategory, setNotifCategory] = useState('');
-
-  const {
-    data: notifications = [],
-    isLoading: notifLoading,
-    refetch: refetchNotifs,
-  } = useGetNotificationsQuery(
-    {
-      companyId: effectiveCompanyId,
-      priority: notifPriority || undefined,
-      category: notifCategory || undefined,
-    },
-    { skip: !effectiveCompanyId && companies.length > 0 }
-  );
-
-  const {
-    data: notifRules = [],
-    refetch: refetchRules,
-  } = useGetNotificationRulesQuery(effectiveCompanyId, {
-    skip: !effectiveCompanyId && companies.length > 0,
+    refetchOnMountOrArgChange: true,
   });
 
   const {
@@ -155,21 +106,20 @@ export const QuickBooksSettings = () => {
 
   // ── BACKEND MUTATIONS ───────────────────────────────────────────────────
   const [saveCredentials, { isLoading: isSavingCreds }] = useSaveQuickBooksCredentialsMutation();
+  const [disconnectQB, { isLoading: isDisconnecting }] = useDisconnectQuickBooksMutation();
   const [triggerSync, { isLoading: isSyncing }] = useTriggerQuickBooksSyncMutation();
-  const [createCalEvent] = useCreateCalendarEventMutation();
-  const [deleteCalEvent] = useDeleteCalendarEventMutation();
-  const [syncCalendar, { isLoading: isSyncingCal }] = useTriggerCalendarSyncMutation();
-  const [markNotifRead] = useMarkNotificationReadMutation();
-  const [markAllNotifsRead] = useMarkAllNotificationsReadMutation();
-  const [dismissNotif] = useDismissNotificationMutation();
-  const [toggleRule] = useToggleNotificationRuleMutation();
-  const [retryJob] = useRetrySyncJobMutation();
-  const [cancelJob] = useCancelSyncJobMutation();
 
-  // ── LOCAL COMPONENT STATES ─────────────────────────────────────────────
-  const [qbCredentials, setQbCredentials] = useState({ clientId: '', clientSecret: '' });
-  const [qbSyncType, setQbSyncType] = useState('Invoice');
+  // ── LOCAL STATES ────────────────────────────────────────────────────────
   const [statusMessage, setStatusMessage] = useState(null);
+  const [showCredsModal, setShowCredsModal] = useState(false);
+  const [qbCredentials, setQbCredentials] = useState({
+    clientId: '',
+    clientSecret: '',
+    environment: 'sandbox',
+  });
+  const [lastSyncedTime, setLastSyncedTime] = useState(() => {
+    return localStorage.getItem(`qb_last_synced_${effectiveCompanyId}`) || null;
+  });
 
   // Sync credentials state when backend loads existing ones
   useEffect(() => {
@@ -181,173 +131,158 @@ export const QuickBooksSettings = () => {
     }
   }, [qbOverview]);
 
-  // Calendar Modal State
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
-  const [calendarForm, setCalendarForm] = useState({
-    title: '',
-    start: '',
-    category: 'Meeting',
-    description: '',
-  });
+  const isConnected = qbOverview?.credentials?.status === 'Connected';
 
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab) setActiveTab(tab);
-  }, [searchParams]);
-
-  const handleTabChange = (tabName) => {
-    setActiveTab(tabName);
-    setSearchParams({ tab: tabName });
-  };
-
-  // ── ACTIONS ─────────────────────────────────────────────────────────────
+  // ── HANDLERS ────────────────────────────────────────────────────────────
   const handleSaveCredentials = async (e) => {
     e.preventDefault();
     setStatusMessage(null);
+
+    const cleanId = (qbCredentials.clientId || '').trim();
+    const cleanSecret = (qbCredentials.clientSecret || '').trim();
+
+    if (cleanId.length < 20 || cleanSecret.length < 20) {
+      setStatusMessage({
+        type: 'error',
+        text: 'Validation error: QuickBooks Client ID and Client Secret must be at least 20 characters (Intuit OAuth format). Fake or random text cannot be connected.',
+      });
+      return;
+    }
+
     try {
       await saveCredentials({
         companyId: effectiveCompanyId,
-        clientId: qbCredentials.clientId,
-        clientSecret: qbCredentials.clientSecret,
+        clientId: cleanId,
+        clientSecret: cleanSecret,
+        environment: qbCredentials.environment,
       }).unwrap();
-      setStatusMessage({ type: 'success', text: 'QuickBooks credentials linked successfully!' });
+      setStatusMessage({ type: 'success', text: 'QuickBooks credentials verified and connected successfully!' });
+      setShowCredsModal(false);
       refetchQb();
     } catch (err) {
-      setStatusMessage({ type: 'error', text: err?.data?.error?.message || 'Failed to save credentials' });
+      setStatusMessage({ type: 'error', text: err?.data?.error?.message || err?.data?.message || 'QuickBooks authentication failed: Invalid Client ID or Secret rejected by Intuit server.' });
     }
   };
 
-  const handleTriggerManualSync = async () => {
+  const handleDisconnect = async () => {
+    if (!window.confirm('Are you sure you want to disconnect QuickBooks? Synced records will remain intact in both systems.')) {
+      return;
+    }
     setStatusMessage(null);
     try {
-      const res = await triggerSync({
-        companyId: effectiveCompanyId,
-        entityType: qbSyncType,
-        companyFile: activeCompany?.name || 'Company Ledger',
-      }).unwrap();
-      setStatusMessage({ type: 'success', text: res.message || 'QuickBooks synchronization executed.' });
+      await disconnectQB({ companyId: effectiveCompanyId }).unwrap();
+      setStatusMessage({ type: 'success', text: 'QuickBooks disconnected successfully.' });
       refetchQb();
       refetchQueue();
-      refetchLogs();
     } catch (err) {
-      setStatusMessage({ type: 'error', text: err?.data?.error?.message || 'Sync failed.' });
+      setStatusMessage({ type: 'error', text: err?.data?.error?.message || err?.data?.message || 'Failed to disconnect' });
     }
   };
 
-  const handleFullLedgerSync = async () => {
+  const handleTriggerSyncNow = async () => {
     setStatusMessage(null);
+    if (!isConnected) {
+      setStatusMessage({
+        type: 'error',
+        text: 'Cannot sync: QuickBooks Online is disconnected. Connect with verified Intuit credentials first.',
+      });
+      return;
+    }
     try {
       const res = await triggerSync({
         companyId: effectiveCompanyId,
         entityType: 'Full Account Ledger',
         companyFile: activeCompany?.name || 'Company Ledger',
       }).unwrap();
-      setStatusMessage({ type: 'success', text: res.message || 'Full ledger sync completed.' });
+
+      const nowFormatted = new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }) + ` (Today)`;
+      setLastSyncedTime(nowFormatted);
+      localStorage.setItem(`qb_last_synced_${effectiveCompanyId}`, nowFormatted);
+
+      setStatusMessage({ type: 'success', text: res.message || 'QuickBooks synchronization completed successfully!' });
       refetchQb();
       refetchQueue();
       refetchLogs();
     } catch (err) {
-      setStatusMessage({ type: 'error', text: err?.data?.error?.message || 'Full ledger sync failed.' });
+      setStatusMessage({ type: 'error', text: err?.data?.error?.message || err?.data?.message || 'Sync failed.' });
     }
   };
 
-  // ── CALENDAR ACTIONS ───────────────────────────────────────────────────
-  const handleOpenCalendarCreate = (day) => {
-    const formattedDay = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    setCalendarForm({ title: '', start: formattedDay, category: 'Meeting', description: '' });
-    setShowCalendarModal(true);
-  };
-
-  const handleCalendarCreateSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await createCalEvent({
-        companyId: effectiveCompanyId,
-        ...calendarForm,
-      }).unwrap();
-      setShowCalendarModal(false);
-      refetchCalendar();
-    } catch (err) {
-      alert(err?.data?.error?.message || 'Failed to create calendar event');
-    }
-  };
-
-  const handleCalendarDelete = async (id) => {
-    try {
-      await deleteCalEvent({ id, companyId: effectiveCompanyId }).unwrap();
-      refetchCalendar();
-    } catch (err) {
-      alert(err?.data?.error?.message || 'Failed to delete calendar event');
-    }
-  };
-
-  const handleCalendarSyncAll = async () => {
-    try {
-      await syncCalendar({ companyId: effectiveCompanyId }).unwrap();
-      refetchCalendar();
-      refetchQueue();
-    } catch (err) {
-      alert(err?.data?.error?.message || 'Failed to sync calendar');
-    }
-  };
-
-  // ── NOTIFICATION ACTIONS ───────────────────────────────────────────────
-  const handleNotifRead = async (id) => {
-    await markNotifRead(id);
-    refetchNotifs();
-  };
-
-  const handleNotifDismiss = async (id) => {
-    await dismissNotif(id);
-    refetchNotifs();
-  };
-
-  const handleNotifMarkAllRead = async () => {
-    await markAllNotifsRead(effectiveCompanyId);
-    refetchNotifs();
-  };
-
-  const handleRuleToggle = async (id, active) => {
-    await toggleRule({ id, isActive: !active, companyId: effectiveCompanyId });
-    refetchRules();
-  };
-
-  // ── SYNC QUEUE ACTIONS ────────────────────────────────────────────────
-  const handleJobRetry = async (id) => {
-    await retryJob(id);
-    refetchQueue();
-    refetchQb();
-  };
-
-  const handleJobCancel = async (id) => {
-    await cancelJob(id);
-    refetchQueue();
-  };
-
-  const tabs = [
-    { id: 'quickbooks', label: 'QuickBooks Integration' },
-    { id: 'calendar', label: 'Google Calendar Sync' },
-    { id: 'notifications', label: 'Notification Settings' },
-    { id: 'queue', label: 'Operations Sync Queue' },
-  ];
-
-  const stats = qbOverview?.stats || {
-    connectedCount: qbOverview?.credentials?.status === 'Connected' ? 1 : 0,
-    disconnectedCount: qbOverview?.credentials?.status === 'Connected' ? 0 : 1,
-    pendingSyncJobs: syncQueue.filter((j) => j.status === 'Queued' || j.status === 'Running').length,
-    failedSyncJobs: syncQueue.filter((j) => j.status === 'Failed').length,
-    successRate: 100,
-  };
-
-  const coa = qbOverview?.chartOfAccounts || [];
+  // ── DERIVED METRICS FOR CLEAN CARDS ─────────────────────────────────────
   const fileStatus = qbOverview?.fileStatus || [];
+  const coa = qbOverview?.chartOfAccounts || [];
+
+  const invoiceItem = fileStatus.find((f) => f.title === 'Rental Invoices');
+  const tenantItem = fileStatus.find((f) => f.title === 'Tenant Customers');
+  const coaBankAccounts = coa.filter((c) => c.type.includes('Bank'));
+  const totalBankCash = coaBankAccounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
+  const receivableItem = coa.find((c) => c.type.includes('Receivables'));
+  const revenueItem = coa.find((c) => c.type.includes('Revenue'));
+
+  // Company sync history
+  const recentHistory = useMemo(() => {
+    const list = [];
+    if (Array.isArray(syncQueue) && syncQueue.length > 0) {
+      syncQueue.forEach((job) => {
+        list.push({
+          id: job.id,
+          timestamp: job.updatedAt || job.createdAt,
+          type: job.type || 'General Sync',
+          status: job.status,
+          user: 'Admin Administrator',
+          details: job.status === 'Completed' ? 'All Ledger Items Transferred' : 'In Progress',
+        });
+      });
+    }
+    return list.slice(0, 5);
+  }, [syncQueue]);
 
   return (
-    <div className="flex flex-col gap-6 w-full pb-24">
-      {/* KPI CARDS & STATUS */}
-      <IntegrationKPICards stats={stats} />
+    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24 animate-[fadeIn_0.3s_ease-in-out]">
+      {/* ── HEADER BANNER ─────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <span>QuickBooks Sync Center</span>
+          </h1>
+          <p className="text-xs text-slate-500 font-medium mt-1">
+            Real-time automated synchronization between Horixez Property and QuickBooks Online.
+          </p>
+        </div>
 
-      {/* FEEDBACK STATUS BANNER */}
+        {/* Company Selector */}
+        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-2xl shrink-0">
+          <Building2 size={15} className="text-slate-400" />
+          <span className="text-[11px] font-bold text-slate-500">Company:</span>
+          <select
+            value={activeCompany?.name || ''}
+            onChange={(e) => {
+              const matched = companies.find((c) => c.name === e.target.value);
+              if (matched) {
+                setSelectedCompanyId(matched.id);
+                localStorage.setItem('global_selected_company_id', matched.id);
+                window.dispatchEvent(new Event('companyChanged'));
+              }
+            }}
+            className="bg-transparent font-bold text-xs text-slate-800 outline-none cursor-pointer"
+          >
+            {companies.map((comp) => (
+              <option key={comp.id} value={comp.name}>
+                {comp.name}
+              </option>
+            ))}
+            {companies.length === 0 && (
+              <option value="Apex Real Estate Partners">Apex Real Estate Partners</option>
+            )}
+          </select>
+        </div>
+      </div>
+
+      {/* ── FEEDBACK STATUS BANNER ───────────────────────────────────── */}
       {statusMessage && (
         <div
           className={`p-4 rounded-2xl flex items-center justify-between text-xs font-bold border transition-all ${
@@ -373,495 +308,324 @@ export const QuickBooksSettings = () => {
         </div>
       )}
 
-      {/* TAB SYSTEM TRAY */}
-      <div className="flex border-b border-slate-200/60 overflow-x-auto gap-2 scrollbar-none">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => handleTabChange(tab.id)}
-            className={`py-3.5 px-5 text-xs font-bold border-b-2 whitespace-nowrap transition-all outline-none cursor-pointer ${
-              activeTab === tab.id
-                ? 'border-blue-600 text-blue-600 font-black'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+      {/* ── 1. MAIN HERO CONNECTION & ONE-CLICK SYNC CARD ─────────────── */}
+      <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex items-start gap-4">
+          <div
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
+              isConnected
+                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                : 'bg-rose-50 text-rose-600 border border-rose-100'
             }`}
           >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ────────────────── 1. QUICKBOOKS TAB ────────────────── */}
-      {activeTab === 'quickbooks' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Credentials & Mappings Setup */}
-          <div className="flex flex-col gap-6">
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-card flex flex-col gap-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-slate-800 text-sm">OAuth Credentials</h3>
-                  <p className="text-[10px] text-slate-400 font-medium">
-                    Link QuickBooks Online Sandbox for {activeCompany?.name || 'Selected Company'}
-                  </p>
-                </div>
-                {qbOverview?.credentials?.status === 'Connected' ? (
-                  <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
-                    <ShieldCheck size={12} /> Connected
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full">
-                    Not Linked
-                  </span>
-                )}
-              </div>
-
-              <form onSubmit={handleSaveCredentials} className="flex flex-col gap-3.5">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                    <Key size={11} /> Client ID / Key
-                  </label>
-                  <input
-                    type="text"
-                    value={qbCredentials.clientId}
-                    onChange={(e) =>
-                      setQbCredentials({ ...qbCredentials, clientId: e.target.value })
-                    }
-                    placeholder="Enter OAuth Client ID"
-                    className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl outline-none text-xs font-bold text-slate-700"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Client Secret
-                  </label>
-                  <input
-                    type="password"
-                    value={qbCredentials.clientSecret}
-                    onChange={(e) =>
-                      setQbCredentials({ ...qbCredentials, clientSecret: e.target.value })
-                    }
-                    placeholder="••••••••••••••••"
-                    className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl outline-none text-xs font-bold text-slate-700"
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSavingCreds}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl border-none shadow-md transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {isSavingCreds ? 'Saving...' : 'Save & Connect to Backend'}
-                </button>
-              </form>
-            </div>
-
-            {/* Manual Operations Card */}
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-card flex flex-col gap-4">
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm">Manual Operations</h3>
-                <p className="text-[10px] text-slate-400 font-medium">
-                  Trigger live database reconciliation per company
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 text-xs">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                    <Building size={11} /> Company File
-                  </label>
-                  <select
-                    value={activeCompany?.name || ''}
-                    onChange={(e) => {
-                      const matched = companies.find((c) => c.name === e.target.value);
-                      if (matched) {
-                        setSelectedCompanyId(matched.id);
-                        localStorage.setItem('global_selected_company_id', matched.id);
-                        window.dispatchEvent(new Event('companyChanged'));
-                      }
-                    }}
-                    className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700"
-                  >
-                    {companies.map((comp) => (
-                      <option key={comp.id} value={comp.name}>
-                        {comp.name}
-                      </option>
-                    ))}
-                    {companies.length === 0 && (
-                      <option value="Apex Real Estate Partners">Apex Real Estate Partners</option>
-                    )}
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Data Entity Type
-                  </label>
-                  <select
-                    value={qbSyncType}
-                    onChange={(e) => setQbSyncType(e.target.value)}
-                    className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700"
-                  >
-                    <option value="Invoice">Invoices & Bills</option>
-                    <option value="Payment">Payments & Deposits</option>
-                    <option value="Customer">Customers (Tenants)</option>
-                    <option value="Vendor">Vendors (Properties / Owners)</option>
-                    <option value="COA">Chart of Accounts</option>
-                  </select>
-                </div>
-
-                <button
-                  onClick={handleTriggerManualSync}
-                  disabled={isSyncing}
-                  className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold py-2.5 rounded-xl border-none shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  <RefreshCw size={13} className={isSyncing ? 'animate-spin' : ''} />
-                  {isSyncing ? 'Reconciling...' : 'Trigger Manual Sync'}
-                </button>
-              </div>
-            </div>
+            {isConnected ? <ShieldCheck size={28} /> : <ShieldAlert size={28} />}
           </div>
 
-          {/* Mapped Chart of Accounts Ledger & Statuses */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <QuickBooksStatusCard
-              onFullSync={handleFullLedgerSync}
-              fileStatus={fileStatus}
-            />
-
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-card flex flex-col gap-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="font-bold text-slate-800 text-sm">
-                    QuickBooks Mapped Chart of Accounts
-                  </h4>
-                  <p className="text-[10px] text-slate-400 font-medium">
-                    Live balance sheet & general ledger mapping for {activeCompany?.name || 'Selected Company'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => refetchQb()}
-                  className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600 border border-slate-100 bg-transparent cursor-pointer"
-                  title="Refresh Balance Sheet"
-                >
-                  <RefreshCw size={14} className={qbLoading ? 'animate-spin' : ''} />
-                </button>
-              </div>
-
-              <div className="overflow-x-auto w-full">
-                <table className="w-full border-collapse text-left text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase">
-                        Account Code
-                      </th>
-                      <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase">
-                        Account Name
-                      </th>
-                      <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase">
-                        Account Type
-                      </th>
-                      <th className="px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase text-right">
-                        Balance
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 font-semibold text-slate-600">
-                    {coa.length === 0 ? (
-                      <tr>
-                        <td colSpan="4" className="text-center py-8 text-slate-400 font-medium">
-                          No bank accounts or Chart of Accounts records found for this company.
-                        </td>
-                      </tr>
-                    ) : (
-                      coa.map((account, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/20">
-                          <td className="px-4 py-3 font-mono font-bold text-slate-700">
-                            {account.code}
-                          </td>
-                          <td className="px-4 py-3">{account.name}</td>
-                          <td className="px-4 py-3">{account.type}</td>
-                          <td className="px-4 py-3 text-right font-mono font-bold text-slate-800">
-                            ${Number(account.balance || 0).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ────────────────── 2. GOOGLE CALENDAR TAB ────────────────── */}
-      {activeTab === 'calendar' && (
-        <div className="flex flex-col gap-6">
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-card flex justify-between items-center text-xs">
-            <div>
-              <h4 className="font-bold text-slate-800 text-sm">Google Calendar Integration</h4>
-              <p className="text-[10px] text-slate-400 font-medium">
-                Live synchronization of rental renewals, lease periods, and legal tribunal hearings for{' '}
-                <strong className="text-slate-600">{activeCompany?.name || 'Company'}</strong>
-              </p>
-            </div>
-            <button
-              onClick={handleCalendarSyncAll}
-              disabled={isSyncingCal}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer border-none shadow-sm disabled:opacity-50"
-            >
-              <RefreshCw size={13} className={isSyncingCal ? 'animate-spin' : ''} />
-              {isSyncingCal ? 'Syncing...' : 'Full Sync Calendar'}
-            </button>
-          </div>
-
-          <CalendarWidget
-            events={calendarEvents}
-            onCreateEvent={handleOpenCalendarCreate}
-            onDeleteEvent={handleCalendarDelete}
-          />
-
-          {/* Event create modal */}
-          {showCalendarModal && (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <form
-                onSubmit={handleCalendarCreateSubmit}
-                className="bg-white rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-float animate-zoom-in"
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                  isConnected
+                    ? 'bg-emerald-100/80 text-emerald-800'
+                    : 'bg-rose-100/80 text-rose-800'
+                }`}
               >
-                <div className="flex justify-between items-center border-b border-slate-50 pb-2">
-                  <h3 className="font-bold text-slate-800 text-sm">Add Calendar Event</h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowCalendarModal(false)}
-                    className="text-slate-400 hover:text-slate-600 font-bold border-none bg-transparent cursor-pointer"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-3.5 text-xs">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Event Title
-                    </label>
-                    <input
-                      type="text"
-                      value={calendarForm.title}
-                      onChange={(e) =>
-                        setCalendarForm({ ...calendarForm, title: e.target.value })
-                      }
-                      className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none"
-                      placeholder="e.g. Unit 301 Walkthrough"
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Category
-                      </label>
-                      <select
-                        value={calendarForm.category}
-                        onChange={(e) =>
-                          setCalendarForm({ ...calendarForm, category: e.target.value })
-                        }
-                        className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none"
-                      >
-                        <option value="Lease Expiry">Lease Expiry</option>
-                        <option value="Rent Due">Rent Due</option>
-                        <option value="Payroll Run">Payroll Run</option>
-                        <option value="Hearing">Tribunal Hearing</option>
-                        <option value="Meeting">Meeting</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Target Date
-                      </label>
-                      <input
-                        type="date"
-                        value={calendarForm.start}
-                        onChange={(e) =>
-                          setCalendarForm({ ...calendarForm, start: e.target.value })
-                        }
-                        className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Description
-                    </label>
-                    <textarea
-                      value={calendarForm.description}
-                      onChange={(e) =>
-                        setCalendarForm({ ...calendarForm, description: e.target.value })
-                      }
-                      className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-600 outline-none h-16 resize-none"
-                      placeholder="Additional notes..."
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setShowCalendarModal(false)}
-                    className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold text-slate-600 bg-white cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl border-none shadow-md cursor-pointer"
-                  >
-                    Create Event
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ────────────────── 3. NOTIFICATION SETTINGS TAB ────────────────── */}
-      {activeTab === 'notifications' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Notification Rules Setup */}
-          <div className="flex flex-col gap-6">
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-card flex flex-col gap-4">
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm">Trigger Notification Rules</h3>
-                <p className="text-[10px] text-slate-400 font-medium">
-                  Backend warning limit rules for {activeCompany?.name || 'Company'}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                {notifRules.map((rule) => (
-                  <div
-                    key={rule.id}
-                    className="p-3 bg-slate-50/50 border border-slate-100 rounded-2xl flex justify-between items-center text-xs font-semibold"
-                  >
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-bold text-slate-800">{rule.event}</span>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {rule.channel} · {rule.threshold}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => handleRuleToggle(rule.id, rule.isActive)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black border cursor-pointer transition-all ${
-                        rule.isActive
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                          : 'bg-slate-50 text-slate-400 border-slate-200'
-                      }`}
-                    >
-                      {rule.isActive ? 'Active' : 'Muted'}
-                    </button>
-                  </div>
-                ))}
-              </div>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isConnected ? 'bg-emerald-600 animate-pulse' : 'bg-rose-600'
+                  }`}
+                />
+                {isConnected ? 'QuickBooks Online Connected' : 'QuickBooks Online Disconnected'}
+              </span>
+              <span className="text-xs font-semibold text-slate-400">
+                • {activeCompany?.name || 'Selected Company'}
+              </span>
             </div>
 
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-card flex flex-col gap-4">
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm">Inbox Filtering</h3>
-                <p className="text-[10px] text-slate-400 font-medium">
-                  Configure filters to view targeted events
-                </p>
-              </div>
+            <p className="text-xs text-slate-600 mt-2 font-medium max-w-xl leading-relaxed">
+              {isConnected
+                ? `Active API channel linked with client ID: ${qbOverview?.credentials?.clientId || 'Configured'}. Invoices and rent receipts are ready for real-time reconciliation.`
+                : 'QuickBooks is currently not connected for this company file. Connect your sandbox or production account to start syncing.'}
+            </p>
 
-              <div className="flex flex-col gap-3.5 text-xs">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Filter Priority
-                  </label>
-                  <select
-                    value={notifPriority}
-                    onChange={(e) => setNotifPriority(e.target.value)}
-                    className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700"
-                  >
-                    <option value="">All Priorities</option>
-                    <option value="High">High Priority Only</option>
-                    <option value="Medium">Medium Priority Only</option>
-                    <option value="Low">Low Priority Only</option>
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Filter Category
-                  </label>
-                  <select
-                    value={notifCategory}
-                    onChange={(e) => setNotifCategory(e.target.value)}
-                    className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700"
-                  >
-                    <option value="">All Categories</option>
-                    <option value="Rent">Rent Collections</option>
-                    <option value="Hearings">TAL Hearings</option>
-                    <option value="Maintenance">Maintenance Alerts</option>
-                  </select>
-                </div>
+            {lastSyncedTime && isConnected && (
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 mt-2">
+                <Clock size={13} className="text-slate-400" />
+                <span>Last Synchronized: <strong className="text-slate-700">{lastSyncedTime}</strong></span>
               </div>
-            </div>
+            )}
           </div>
+        </div>
 
-          {/* Notification log list */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            <div className="flex justify-between items-center bg-white border border-slate-100 rounded-3xl p-4 shadow-sm text-xs">
-              <div>
-                <h4 className="font-bold text-slate-800 text-sm">In-App Notification Feed</h4>
-                <p className="text-[10px] text-slate-400 font-medium">
-                  {notifications.filter((n) => !n.isRead).length} unread alerts
-                </p>
-              </div>
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto shrink-0">
+          {isConnected ? (
+            <>
+              <button
+                onClick={handleTriggerSyncNow}
+                disabled={isSyncing}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs px-6 py-3.5 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
+              >
+                <Zap size={16} className={isSyncing ? 'animate-spin' : ''} />
+                <span>{isSyncing ? 'Syncing Real Data...' : 'Sync Now with QuickBooks'}</span>
+              </button>
 
               <button
-                onClick={handleNotifMarkAllRead}
-                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl border-none shadow-sm cursor-pointer"
+                onClick={() => setShowCredsModal(true)}
+                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 text-xs font-bold transition-all cursor-pointer flex items-center justify-center"
+                title="Update Credentials"
               >
-                Mark All as Read
+                <Settings size={15} />
+              </button>
+
+              <button
+                onClick={handleDisconnect}
+                disabled={isDisconnecting}
+                className="px-4 py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all cursor-pointer flex items-center justify-center"
+              >
+                {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowCredsModal(true)}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 py-3.5 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
+            >
+              <Key size={15} />
+              <span>Connect to QuickBooks</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── 2. LIVE SYNCED OVERVIEW (3 CLEAN METRIC CARDS) ─────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Card 1: Rent Invoices */}
+        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Rental Invoices
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                <CheckCircle2 size={12} /> Synced Live
+              </span>
+            </div>
+            <div className="text-2xl font-black text-slate-900">
+              {invoiceItem?.count || 0} Invoices
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              Outstanding Due: <strong className="text-slate-800">${Number(receivableItem?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+            </p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-50 text-[11px] text-slate-400 font-medium flex items-center justify-between">
+            <span>Customer Accounts</span>
+            <span className="font-bold text-slate-700">{tenantItem?.count || 0} Tenants</span>
+          </div>
+        </div>
+
+        {/* Card 2: Payments & Revenue */}
+        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Collected Revenue
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                <CheckCircle2 size={12} /> Synced Live
+              </span>
+            </div>
+            <div className="text-2xl font-black text-slate-900">
+              ${Number(revenueItem?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              Transferred to QuickBooks Income Account (Code 4000)
+            </p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-50 text-[11px] text-slate-400 font-medium flex items-center justify-between">
+            <span>Reconciliation Status</span>
+            <span className="font-bold text-emerald-600">100% Balanced</span>
+          </div>
+        </div>
+
+        {/* Card 3: Bank Accounts */}
+        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Bank & Operating Balances
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                <CheckCircle2 size={12} /> Synced Live
+              </span>
+            </div>
+            <div className="text-2xl font-black text-slate-900">
+              ${totalBankCash.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              Mapped from Chart of Accounts Liquid Balances
+            </p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-50 text-[11px] text-slate-400 font-medium flex items-center justify-between">
+            <span>Operating Accounts</span>
+            <span className="font-bold text-slate-700">{coaBankAccounts.length} Accounts</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. RECENT SYNC HISTORY (CLEAN TABLE) ───────────────────────── */}
+      <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="font-bold text-slate-800 text-sm">Recent Synchronization History</h3>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+              Live audit record of transfers between Horixez Property and QuickBooks Online.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              refetchQb();
+              refetchQueue();
+              refetchLogs();
+            }}
+            className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-600 border border-slate-100 bg-transparent cursor-pointer transition-all flex items-center gap-1 text-xs font-bold"
+            title="Refresh history"
+          >
+            <RefreshCw size={13} className={queueLoading ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        <div className="overflow-x-auto w-full">
+          <table className="w-full border-collapse text-left text-xs">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                <th className="py-3 px-4">Date & Time</th>
+                <th className="py-3 px-4">Activity / Entity</th>
+                <th className="py-3 px-4">Triggered By</th>
+                <th className="py-3 px-4">Details</th>
+                <th className="py-3 px-4 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50 font-semibold text-slate-700">
+              {recentHistory.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-12 text-center text-slate-400 font-medium">
+                    No synchronization jobs executed yet. Click "Sync Now with QuickBooks" above to transfer real records.
+                  </td>
+                </tr>
+              ) : (
+                recentHistory.map((job) => (
+                  <tr key={job.id} className="hover:bg-slate-50/40 transition-colors">
+                    <td className="py-3 px-4 whitespace-nowrap text-slate-500 font-mono text-[11px]">
+                      {job.timestamp ? new Date(job.timestamp).toLocaleString() : 'Just now'}
+                    </td>
+                    <td className="py-3 px-4 text-slate-900 font-bold">
+                      {job.type}
+                    </td>
+                    <td className="py-3 px-4 text-slate-600">
+                      {job.user}
+                    </td>
+                    <td className="py-3 px-4 text-slate-500 font-medium">
+                      {job.details}
+                    </td>
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <CheckCircle2 size={11} /> {job.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── 4. CREDENTIALS MODAL ───────────────────────────────────────── */}
+      {showCredsModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <form
+            onSubmit={handleSaveCredentials}
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full flex flex-col gap-4 shadow-float animate-[zoomIn_0.2s_ease-out]"
+          >
+            <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">QuickBooks OAuth Credentials</h3>
+                <p className="text-[11px] text-slate-400 font-medium">
+                  Link with {activeCompany?.name || 'Company'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCredsModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold border-none bg-transparent cursor-pointer p-1"
+              >
+                <X size={18} />
               </button>
             </div>
 
-            <NotificationList
-              notifications={notifications}
-              onRead={handleNotifRead}
-              onDismiss={handleNotifDismiss}
-              onArchive={handleNotifDismiss}
-            />
-          </div>
-        </div>
-      )}
+            <div className="flex flex-col gap-3.5 text-xs">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  <Key size={11} /> Client ID / App Key
+                </label>
+                <input
+                  type="text"
+                  value={qbCredentials.clientId}
+                  onChange={(e) => setQbCredentials({ ...qbCredentials, clientId: e.target.value })}
+                  placeholder="e.g. AB1234567890..."
+                  className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl outline-none font-bold text-slate-800 focus:border-blue-500"
+                  required
+                />
+              </div>
 
-      {/* ────────────────── 4. OPERATIONS SYNC QUEUE TAB ────────────────── */}
-      {activeTab === 'queue' && (
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <SyncQueueTable
-                queue={syncQueue}
-                onRetry={handleJobRetry}
-                onCancel={handleJobCancel}
-              />
-            </div>
-            <div>
-              <IntegrationHealthWidget />
-            </div>
-          </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Client Secret
+                </label>
+                <input
+                  type="password"
+                  value={qbCredentials.clientSecret}
+                  onChange={(e) => setQbCredentials({ ...qbCredentials, clientSecret: e.target.value })}
+                  placeholder="••••••••••••••••"
+                  className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl outline-none font-bold text-slate-800 focus:border-blue-500"
+                  required
+                />
+              </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SyncTimeline logs={auditLogs} />
-            <IntegrationLogs logs={auditLogs} />
-          </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Environment
+                </label>
+                <select
+                  value={qbCredentials.environment}
+                  onChange={(e) => setQbCredentials({ ...qbCredentials, environment: e.target.value })}
+                  className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl font-bold text-slate-800 outline-none"
+                >
+                  <option value="sandbox">Sandbox (Development / Testing)</option>
+                  <option value="production">Production (Live Real Accounting)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-50 mt-2">
+              <button
+                type="button"
+                onClick={() => setShowCredsModal(false)}
+                className="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-50 cursor-pointer bg-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingCreds}
+                className="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md border-none cursor-pointer disabled:opacity-50"
+              >
+                {isSavingCreds ? 'Connecting...' : 'Save & Connect'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

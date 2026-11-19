@@ -20,6 +20,15 @@ export const integrationsApi = masterApi.injectEndpoints({
       invalidatesTags: ['QuickBooks'],
     }),
 
+    disconnectQuickBooks: builder.mutation({
+      query: (body) => ({
+        url: '/admin/integrations/quickbooks/disconnect',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['QuickBooks'],
+    }),
+
     triggerQuickBooksSync: builder.mutation({
       query: (body) => ({
         url: '/admin/integrations/quickbooks/sync',
@@ -156,6 +165,7 @@ export const integrationsApi = masterApi.injectEndpoints({
 export const {
   useGetQuickBooksOverviewQuery,
   useSaveQuickBooksCredentialsMutation,
+  useDisconnectQuickBooksMutation,
   useTriggerQuickBooksSyncMutation,
   useGetCalendarEventsQuery,
   useCreateCalendarEventMutation,
